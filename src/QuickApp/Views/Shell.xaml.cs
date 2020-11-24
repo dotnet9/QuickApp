@@ -151,10 +151,28 @@ namespace QuickApp.Views
             {
                 imageSource = SystemIcon.GetImageSource(true, menuItem.FilePath);
             }
+
+            StackPanel sp = new StackPanel();
+            sp.Orientation = Orientation.Vertical;
+            Image img = new Image
+            {
+                Source = imageSource,
+                Width = 36,
+                Height = 36
+            };
+            sp.Children.Add(img);
+
+            TextBlock tb = new TextBlock
+            {
+                Text = menuItem.Name,
+                HorizontalAlignment = HorizontalAlignment.Center
+            };
+            sp.Children.Add(tb);
+
             var btn = new Button()
             {
                 ToolTip = menuItem.Name,
-                Content = new Image() { Source = imageSource }
+                Content = sp
             };
             btn.Click += (s, e) => RunExe(menuItem);
 
