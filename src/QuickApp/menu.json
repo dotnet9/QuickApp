@@ -1,0 +1,185 @@
+﻿{
+  "IsPowerOn": true,
+  "MenuItemInfos": [
+    {
+      "FilePath": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+      "IconPath": null,
+      "Name": "Google Chrome",
+      "Type": 0
+    },
+    {
+      "FilePath": "https://dotnet9.com/",
+      "IconPath": "logo.png",
+      "Name": "Dotnet9",
+      "Type": 1
+    },
+    {
+      "FilePath": "https://mp.weixin.qq.com/advanced/homepage?action=list&token=1208023186&lang=zh_CN",
+      "IconPath": "wx.ico",
+      "Name": "微信公众号",
+      "Type": 1
+    },
+    {
+      "FilePath": "https://tool.lu/json/",
+      "IconPath": "json.png",
+      "Name": "json格式化",
+      "Type": 1
+    },
+    {
+      "FilePath": "mstsc /v:192.168.1.133",
+      "IconPath": "shell.png",
+      "Name": "192.168.1.133",
+      "Type": 2
+    },
+    {
+      "FilePath": "C:\\Program Files (x86)\\KuLi\\KuLi.exe",
+      "IconPath": null,
+      "Name": "KuLi",
+      "Type": 0
+    },
+    {
+      "FilePath": "I:\\Program Files (x86)\\Tencent\\WeChat\\WeChat.exe",
+      "IconPath": null,
+      "Name": "微信",
+      "Type": 0
+    },
+    {
+      "FilePath": "I:\\Program Files (x86)\\Tencent\\QQ\\Bin\\QQScLauncher.exe",
+      "IconPath": null,
+      "Name": "腾讯QQ",
+      "Type": 0
+    },
+    {
+      "FilePath": "I:\\Program Files (x86)\\Tencent\\QQLive\\QQLive.exe",
+      "IconPath": null,
+      "Name": "腾讯视频",
+      "Type": 0
+    },
+    {
+      "FilePath": "I:\\Program Files (x86)\\Tencent\\WeMeet\\wemeetapp.exe",
+      "IconPath": null,
+      "Name": "腾讯会议",
+      "Type": 0
+    },
+    {
+      "FilePath": "F:\\code\\dotnet\\DemoApp\\netcoreapp3.1\\MaterialDesignDemo.exe",
+      "IconPath": null,
+      "Name": "MaterialDesignDemo",
+      "Type": 0
+    },
+    {
+      "FilePath": "F:\\code\\dotnet\\AduSkin\\src\\AduSkin.Demo\\bin\\Debug\\netcoreapp3.1\\AduSkin.Demo.exe",
+      "IconPath": null,
+      "Name": "AduSkin.Demo",
+      "Type": 0
+    },
+    {
+      "FilePath": "F:\\code\\dotnet\\HandyControl\\src\\Net_GE45\\HandyControlDemo_Net_GE45\\bin\\Debug\\netcoreapp3.1\\HandyControlDemo.exe",
+      "IconPath": null,
+      "Name": "HandyControlDemo",
+      "Type": 0
+    },
+    {
+      "FilePath": "C:\\Users\\Administrator\\AppData\\Local\\GitHubDesktop\\app-2.6.0\\GitHubDesktop.exe",
+      "IconPath": null,
+      "Name": "GitHubDesktop",
+      "Type": 0
+    },
+    {
+      "FilePath": "F:\\code\\dotnet\\wpf\\PanuonUI.Silver\\UIBrowser\\bin\\Debug\\UIBrowser.exe",
+      "IconPath": null,
+      "Name": "UIBrowser",
+      "Type": 0
+    },
+    {
+      "FilePath": "C:\\Program Files (x86)\\360\\360safe\\SoftMgr\\SoftMgr.exe",
+      "IconPath": null,
+      "Name": "360软件管家",
+      "Type": 0
+    },
+    {
+      "FilePath": "C:\\Program Files (x86)\\ScreenToGif\\ScreenToGif.exe",
+      "IconPath": null,
+      "Name": "ScreenToGif",
+      "Type": 0
+    },
+    {
+      "FilePath": "C:\\Program Files (x86)\\Notepad++\\notepad++.exe",
+      "IconPath": null,
+      "Name": "Notepad++",
+      "Type": 0
+    },
+    {
+      "FilePath": "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Preview\\Common7\\IDE\\devenv.exe",
+      "IconPath": null,
+      "Name": "Visual Studio 2019 Preview",
+      "Type": 0
+    },
+    {
+      "FilePath": "C:\\Program Files\\JetBrains\\IntelliJ IDEA 2020.1\\bin\\idea64.exe",
+      "IconPath": null,
+      "Name": "IntelliJ IDEA 2020.1",
+      "Type": 0
+    },
+    {
+      "FilePath": "D:\\Program Files (x86)\\Lambo VIII\\Client\\CUSuite.exe",
+      "IconPath": null,
+      "Name": "Lambo VIII",
+      "Type": 0
+    },
+    {
+      "FilePath": "C:\\Users\\Administrator\\AppData\\Local\\Postman\\Postman.exe",
+      "IconPath": null,
+      "Name": "Postman",
+      "Type": 0
+    },
+    {
+      "FilePath": "D:\\Program Files\\PremiumSoft\\Navicat Premium 12\\navicat.exe",
+      "IconPath": null,
+      "Name": "Navicat Premium 12",
+      "Type": 0
+    },
+    {
+      "FilePath": "C:\\Qt\\Qt5.14.2\\Tools\\QtCreator\\bin\\qtcreator.exe",
+      "IconPath": null,
+      "Name": "Qt Creator 4.11.1 (Community)",
+      "Type": 0
+    },
+    {
+      "FilePath": "I:\\Users\\Administrator\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe",
+      "IconPath": null,
+      "Name": "Visual Studio Code",
+      "Type": 0
+    },
+    {
+      "FilePath": "I:\\Users\\Administrator\\AppData\\Roaming\\baidu\\BaiduNetdisk\\BaiduNetdisk.exe",
+      "IconPath": null,
+      "Name": "百度网盘",
+      "Type": 0
+    },
+    {
+      "FilePath": "I:\\Program Files (x86)\\DingDing\\DingtalkLauncher.exe",
+      "IconPath": null,
+      "Name": "钉钉",
+      "Type": 0
+    },
+    {
+      "FilePath": "C:\\Program Files\\魔音MORIN\\魔音Morin.exe",
+      "IconPath": null,
+      "Name": "魔音MORIN",
+      "Type": 0
+    },
+    {
+      "FilePath": "C:\\Program Files (x86)\\Oray\\SunLogin\\SunloginClient\\SunloginClient.exe",
+      "IconPath": null,
+      "Name": "向日葵",
+      "Type": 0
+    },
+    {
+      "FilePath": "I:\\Program Files (x86)\\Youdao\\YoudaoNote\\YoudaoNote.exe",
+      "IconPath": null,
+      "Name": "启动有道云笔记",
+      "Type": 0
+    }
+  ]
+}
