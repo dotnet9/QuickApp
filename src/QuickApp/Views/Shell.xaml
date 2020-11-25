@@ -40,7 +40,7 @@
                             <Style TargetType="Button" BasedOn="{StaticResource PulseButton}">
                                 <Style.Setters>
                                     <Setter Property="Height" Value="72"/>
-                                    <Setter Property="FontSize" Value="14"/>
+                                    <Setter Property="FontSize" Value="12"/>
                                     <Setter Property="Foreground" Value="#FFFFFFFF"/>
                                     <Setter Property="HorizontalAlignment" Value="Center"/>
                                     <Setter Property="VerticalAlignment" Value="Center"/>

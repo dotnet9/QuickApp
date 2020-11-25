@@ -47,7 +47,7 @@ namespace QuickApp.Views
         {
             var desktopWorkingArea = System.Windows.SystemParameters.WorkArea;
             this.Top = desktopWorkingArea.Top;
-            this.Width = SystemParameters.FullPrimaryScreenWidth - 100;
+            this.Width = SystemParameters.FullPrimaryScreenWidth - 10;
         }
 
         private void Grid_MouseMove(object sender, MouseEventArgs e)
