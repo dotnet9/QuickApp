@@ -158,7 +158,8 @@ namespace QuickApp.Views
             {
                 Source = imageSource,
                 Width = 36,
-                Height = 36
+                Height = 36,
+                Tag = menuItem
             };
             sp.Children.Add(img);
 
@@ -219,6 +220,31 @@ namespace QuickApp.Views
             {
 
             }
+        }
+
+        //处理文件拽出操作
+        private void Grid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            // 目前每个菜单由一个Image和TextBlock组成，所以判断拖拽的是否是一个Image控件，其他目标控件的拖拽不处理
+            var img = e.OriginalSource as Image;
+            if (img == null || img.Tag == null)
+            {
+                return;
+            }
+            var menuInfo = img.Tag as MenuItemInfo;
+            if(menuInfo==null)
+            {
+                return;
+            }
+
+            #region 拖拽代码
+
+            ListView lv = new ListView();
+            string dataFormat = DataFormats.FileDrop;
+            DataObject dataObject = new DataObject(dataFormat, new string[] { menuInfo.FilePath});
+            DragDropEffects dde = DragDrop.DoDragDrop(lv, dataObject, DragDropEffects.Copy);
+
+            #endregion
         }
     }
 }
