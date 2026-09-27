@@ -48,32 +48,54 @@ public sealed class DockPlacementTests
         Assert.Equal(expectedY, rightY);
     }
 
-    [Fact]
-    public void Hidden_offset_pushes_the_dock_out_of_its_own_edge()
+    [Theory]
+    [InlineData(DockEdge.Top, -1)]      // 上边：y 减小
+    [InlineData(DockEdge.Left, -1)]     // 左边：x 减小
+    [InlineData(DockEdge.Bottom, 1)]    // 下边：y 增大
+    [InlineData(DockEdge.Right, 1)]     // 右边：x 增大
+    public void Hidden_offset_sign_matches_its_edge(DockEdge edge, int expectedSign)
     {
-        int top = DockPlacement.HiddenOffset(DockEdge.Top, DockW, DockH);
-        int bottom = DockPlacement.HiddenOffset(DockEdge.Bottom, DockW, DockH);
-        int left = DockPlacement.HiddenOffset(DockEdge.Left, DockW, DockH);
-        int right = DockPlacement.HiddenOffset(DockEdge.Right, DockW, DockH);
+        int offset = DockPlacement.HiddenOffset(edge, DockW, DockH);
+        Assert.Equal(expectedSign, Math.Sign(offset));
+    }
 
-        // 上/左：向负方向移出；下/右：向正方向移出
-        Assert.True(top > 0);
-        Assert.True(bottom < 0);
-        Assert.True(left < 0);
-        Assert.True(right > 0);
+    [Theory]
+    [InlineData(DockEdge.Top)]
+    [InlineData(DockEdge.Bottom)]
+    [InlineData(DockEdge.Left)]
+    [InlineData(DockEdge.Right)]
+    public void Hiding_leaves_the_work_area_on_every_edge(DockEdge edge)
+    {
+        int offset = DockPlacement.HiddenOffset(edge, DockW, DockH);
+        (int x, int y) = DockPlacement.Anchor(
+            WorkX, WorkY, WorkW, WorkH, DockW, DockH, edge, DockPlacement.DefaultMargin, offset);
 
-        // 位移量要够把窗口整个推出可视区
-        Assert.True(Math.Abs(top) >= DockH);
-        Assert.True(Math.Abs(left) >= DockW);
+        Assert.True(
+            DockPlacement.IsOutside(edge, x, y, DockW, DockH, WorkX, WorkY, WorkW, WorkH),
+            edge + " 收起后必须完全离开工作区");
+    }
+
+    [Theory]
+    [InlineData(DockEdge.Top)]
+    [InlineData(DockEdge.Bottom)]
+    [InlineData(DockEdge.Left)]
+    [InlineData(DockEdge.Right)]
+    public void Shown_position_stays_inside_the_work_area(DockEdge edge)
+    {
+        (int x, int y) = DockPlacement.Anchor(WorkX, WorkY, WorkW, WorkH, DockW, DockH, edge);
+
+        Assert.False(
+            DockPlacement.IsOutside(edge, x, y, DockW, DockH, WorkX, WorkY, WorkW, WorkH),
+            edge + " 展开时必须留在工作区内");
     }
 
     [Fact]
-    public void Hidden_position_actually_leaves_the_screen()
+    public void Hidden_offset_is_never_smaller_than_the_dock_itself()
     {
-        int offset = DockPlacement.HiddenOffset(DockEdge.Top, DockW, DockH);
-        (_, int y) = DockPlacement.Anchor(WorkX, WorkY, WorkW, WorkH, DockW, DockH, DockEdge.Top, DockPlacement.DefaultMargin, offset);
-
-        Assert.True(y + DockH <= WorkY, "收起后应完全离开工作区上边缘");
+        Assert.True(Math.Abs(DockPlacement.HiddenOffset(DockEdge.Top, DockW, DockH)) >= DockH);
+        Assert.True(Math.Abs(DockPlacement.HiddenOffset(DockEdge.Bottom, DockW, DockH)) >= DockH);
+        Assert.True(Math.Abs(DockPlacement.HiddenOffset(DockEdge.Left, DockW, DockH)) >= DockW);
+        Assert.True(Math.Abs(DockPlacement.HiddenOffset(DockEdge.Right, DockW, DockH)) >= DockW);
     }
 
     [Theory]

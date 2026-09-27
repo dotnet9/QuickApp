@@ -5,13 +5,16 @@ namespace QuickApp.Core.Services;
 
 /// <summary>
 /// Dock 停靠位置计算（纯数学，物理像素，可单测）。
-/// 上/下边缘水平居中，左/右边缘垂直居中；<paramref name="hiddenOffset"/> 用于收起时把窗口推出屏幕。
+/// 上/下边缘水平居中，左/右边缘垂直居中。
+///
+/// <paramref name="hiddenOffset"/> 的约定：**一个带符号的位移，Anchor 一律加上它**，
+/// 正负号保证窗口被推出自己所在的那条边——上/左为负，下/右为正。
+/// 之前这里 Anchor 对不同边用了不同的加减法，导致下边与左边收起时反而往屏幕里跑，故统一。
 /// </summary>
 public static class DockPlacement
 {
     public const int DefaultMargin = 10;
 
-    /// <summary>收起时窗口移出屏幕的距离（一般传窗口自身尺寸 + 一点余量）。</summary>
     public static (int X, int Y) Anchor(
         int workX,
         int workY,
@@ -34,7 +37,7 @@ public static class DockPlacement
                 break;
 
             case Models.DockEdge.Left:
-                x = workX + margin - hiddenOffset;
+                x = workX + margin + hiddenOffset;
                 y = workY + (workHeight - dockHeight) / 2;
                 break;
 
@@ -45,29 +48,32 @@ public static class DockPlacement
 
             default:
                 x = workX + (workWidth - dockWidth) / 2;
-                y = workY + margin - hiddenOffset;
+                y = workY + margin + hiddenOffset;
                 break;
         }
 
         return (x, y);
     }
 
-    /// <summary>把收起位移换算成像素：上/左为负方向，下/右为正方向。</summary>
+    /// <summary>
+    /// 收起时的位移量（带符号，直接交给 Anchor 相加）：
+    /// 上边向上移出、下边向下移出、左边向左、右边向右，位移量保证窗口整块离开工作区。
+    /// </summary>
     public static int HiddenOffset(Models.DockEdge edge, int dockWidth, int dockHeight, int gap = 22)
         => edge switch
         {
-            Models.DockEdge.Top => dockHeight + gap,
-            Models.DockEdge.Bottom => -(dockHeight + gap),
+            Models.DockEdge.Top => -(dockHeight + gap),
+            Models.DockEdge.Bottom => dockHeight + gap,
             Models.DockEdge.Left => -(dockWidth + gap),
             Models.DockEdge.Right => dockWidth + gap,
-            _ => dockHeight + gap
+            _ => -(dockHeight + gap)
         };
 
     /// <summary>左/右边缘是竖向 Dock。</summary>
     public static bool IsVertical(Models.DockEdge edge)
         => edge is Models.DockEdge.Left or Models.DockEdge.Right;
 
-    /// <summary>收起进度 0~1 对应的位移（带缓出的插值由调用方决定，这里只做线性映射）。</summary>
+    /// <summary>收起进度 0~1 对应的位移（缓动由调用方决定，这里只做线性映射）。</summary>
     public static int LerpOffset(int from, int to, double progress)
     {
         double p = Math.Clamp(progress, 0, 1);
@@ -105,6 +111,26 @@ public static class DockPlacement
 
         return best;
     }
+
+    /// <summary>窗口是否已经完全离开工作区（收起完成的判定，也用于单测）。</summary>
+    public static bool IsOutside(
+        Models.DockEdge edge,
+        int x,
+        int y,
+        int dockWidth,
+        int dockHeight,
+        int workX,
+        int workY,
+        int workWidth,
+        int workHeight)
+        => edge switch
+        {
+            Models.DockEdge.Top => y + dockHeight <= workY,
+            Models.DockEdge.Bottom => y >= workY + workHeight,
+            Models.DockEdge.Left => x + dockWidth <= workX,
+            Models.DockEdge.Right => x >= workX + workWidth,
+            _ => y + dockHeight <= workY
+        };
 
     /// <summary>日志/提示用的边缘名称。</summary>
     public static string Label(Models.DockEdge edge) => edge switch
