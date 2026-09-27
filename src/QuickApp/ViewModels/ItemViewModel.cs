@@ -1,32 +1,39 @@
-using System;
+﻿using System;
 using System.Windows.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using QuickApp.Core.Models;
 using QuickApp.Core.Services;
-using QuickApp.Theme;
 using ReactiveUI;
 
 namespace QuickApp.ViewModels;
 
 /// <summary>
 /// Dock 上的一个图标。
-/// 尺寸/朝向这类「随停靠边与设置变化」的值由 DockViewModel 统一写入（见 ApplyItemLayout），
-/// 这样 XAML 里的绑定都指向元素自己的 DataContext，不用 $parent 语法，编译期绑定最稳。
+/// 尺寸/朝向/占位底色/占位图形这类「随停靠边、设置与图标加载状态变化」的值，
+/// 由 DockViewModel 统一算好写进来（见 ApplyItemLayout 与 ItemVisualRequested）：
+/// XAML 因此只绑定元素自己的 DataContext，不需要 $parent 语法，也不用在 XAML 里内联图标资源。
 /// </summary>
 public sealed class ItemViewModel : ViewModelBase
 {
     private string? _iconFile;
     private IImage? _icon;
+    private IBrush? _iconBrush;
+    private IBrush? _ringBrush;
+    private IBrush? _textBrush;
+    private Geometry? _glyph;
     private bool _isRunning;
     private bool _showLabel = true;
+    private bool _showRemove;
+    private bool _isRenaming;
+    private bool _isDropTarget;
+    private string _editingName = string.Empty;
     private double _tileSize = 44;
     private Orientation _itemOrientation = Orientation.Vertical;
 
     public ItemViewModel(LauncherItem model, Action<ItemViewModel>? activate = null, Action<ItemViewModel>? remove = null)
     {
         Model = model;
-        Placeholder = PaletteBrushes.TilePlaceholder(model.Name);
         ActivateCommand = ReactiveCommand.Create(() => activate?.Invoke(this));
         RemoveCommand = ReactiveCommand.Create(() => remove?.Invoke(this));
     }
@@ -57,6 +64,10 @@ public sealed class ItemViewModel : ViewModelBase
     }
 
     public string KindLabel => ItemQuery.KindLabel(Model.Kind);
+
+    public bool IsCommand => Model.Kind == ItemKind.Command;
+
+    public bool IsWeb => Model.Kind == ItemKind.Web;
 
     /// <summary>占位状态显示的首字（图标还没提取出来时）。</summary>
     public string Initial => string.IsNullOrEmpty(Name) ? "?" : Name[..1].ToUpperInvariant();
@@ -93,8 +104,33 @@ public sealed class ItemViewModel : ViewModelBase
 
     public bool HasIcon => _icon is not null;
 
-    /// <summary>图标没提取出来时显示的占位底色（按名称哈希，和原型一致）。</summary>
-    public IBrush Placeholder { get; }
+    /// <summary>图标底色（真实图标提取出来之前的占位底），由视图按类型与尺寸算好写入。</summary>
+    public IBrush? IconBrush
+    {
+        get => _iconBrush;
+        set => Set(ref _iconBrush, value);
+    }
+
+    /// <summary>键盘选中时的描边色，由视图写入（跟随主题）。</summary>
+    public IBrush? RingBrush
+    {
+        get => _ringBrush;
+        set => Set(ref _ringBrush, value);
+    }
+
+    /// <summary>名称文字颜色，由视图写入。必须显式给：不设会继承 Fluent 主题前景色，系统浅色主题下就是黑字压深底。</summary>
+    public IBrush? TextBrush
+    {
+        get => _textBrush;
+        set => Set(ref _textBrush, value);
+    }
+
+    /// <summary>没有真实图标时显示的线性图标（按类型给不同图形），由视图写入。</summary>
+    public Geometry? Glyph
+    {
+        get => _glyph;
+        set => Set(ref _glyph, value);
+    }
 
     /// <summary>点击后的短暂反馈。</summary>
     public bool IsRunning
@@ -108,6 +144,43 @@ public sealed class ItemViewModel : ViewModelBase
     {
         get => _showLabel;
         set => Set(ref _showLabel, value);
+    }
+
+    /// <summary>编辑模式下才显示右上角的移除按钮。</summary>
+    public bool ShowRemove
+    {
+        get => _showRemove;
+        set => Set(ref _showRemove, value);
+    }
+
+    /// <summary>正在就地改名：名称位置换成输入框。</summary>
+    public bool IsRenaming
+    {
+        get => _isRenaming;
+        set
+        {
+            if (Set(ref _isRenaming, value))
+            {
+                this.RaisePropertyChanged(nameof(ShowNameText));
+            }
+        }
+    }
+
+    /// <summary>名称文本的显隐（改名时隐藏，让位给输入框）。</summary>
+    public bool ShowNameText => _showLabel && !_isRenaming;
+
+    /// <summary>改名输入框里的草稿，取消时不会污染 Name。</summary>
+    public string EditingName
+    {
+        get => _editingName;
+        set => Set(ref _editingName, value);
+    }
+
+    /// <summary>拖动排序时作为落点的插入位置高亮。</summary>
+    public bool IsDropTarget
+    {
+        get => _isDropTarget;
+        set => Set(ref _isDropTarget, value);
     }
 
     public double TileSize

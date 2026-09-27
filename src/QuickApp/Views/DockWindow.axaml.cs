@@ -1,23 +1,30 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
+using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using QuickApp.Core.Models;
 using QuickApp.Core.Services;
 using QuickApp.Platform.Windows;
+using QuickApp.Theme;
 using QuickApp.ViewModels;
 
 namespace QuickApp.Views;
 
 /// <summary>
 /// Dock 主窗口：无边框、置顶、不占任务栏，贴着所选屏幕边缘。
-/// 窗口定位与收起动画是「视图」职责，放在这里；数学部分在 Core 的 DockPlacement（可单测）。
+/// 窗口定位、右键菜单、键盘导航、拖动排序这些属于「视图」职责的都在这里；
+/// 位置数学在 Core 的 DockPlacement（可单测），顺序与命名落库在 DockViewModel。
 /// </summary>
 public partial class DockWindow : Window, IDockHost
 {
@@ -30,6 +37,10 @@ public partial class DockWindow : Window, IDockHost
     private DockViewModel? _vm;
     private bool _isHidden;
     private double _progress;
+
+    private ItemViewModel? _focused;
+    private ItemViewModel? _dragItem;
+    private ItemViewModel? _dropTarget;
 
     public DockWindow()
     {
@@ -53,6 +64,7 @@ public partial class DockWindow : Window, IDockHost
         _edgeTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
         _edgeTimer.Tick += (_, _) => CheckEdgeReveal();
 
+        // 内容尺寸变化会经 SizeToContent 反映到窗口尺寸上，SizeChanged 已覆盖重定位
         SizeChanged += OnWindowResized;
     }
 
@@ -66,9 +78,25 @@ public partial class DockWindow : Window, IDockHost
         viewModel.DockVisibilityChanged += (_, visible) => SetDockVisible(visible, animate: true);
         viewModel.PointerOverChanged += (_, over) => OnPointerOverChanged(over);
         viewModel.Items.CollectionChanged += OnItemsChanged;
+        viewModel.ItemVisualRequested += ApplyItemVisual;
+        viewModel.ContextRequested += ShowContextMenu;
+        viewModel.PropertyChanged += OnViewModelPropertyChanged;
+
+        BuildActionIcons();
 
         AddButton.Click += OnAddClicked;
         MoreButton.Click += OnMoreClicked;
+
+        // 图标区交互：左键执行、右键菜单、编辑模式拖动排序、双击改名、键盘导航
+        ItemsHost.AddHandler(PointerPressedEvent, OnItemsPointerPressed, RoutingStrategies.Tunnel);
+        ItemsHost.AddHandler(PointerMovedEvent, OnItemsPointerMoved, RoutingStrategies.Tunnel);
+        ItemsHost.AddHandler(PointerReleasedEvent, OnItemsPointerReleased, RoutingStrategies.Tunnel);
+        ItemsHost.AddHandler(PointerCaptureLostEvent, OnItemsPointerCaptureLost, RoutingStrategies.Tunnel);
+        ItemsHost.AddHandler(DoubleTappedEvent, OnItemsDoubleTapped, RoutingStrategies.Bubble);
+        ItemsHost.AddHandler(KeyDownEvent, OnItemsKeyDown, RoutingStrategies.Tunnel);
+        ItemsHost.AddHandler(KeyUpEvent, OnRenameBoxKeyUp, RoutingStrategies.Tunnel);
+        ItemsHost.AddHandler(LostFocusEvent, OnRenameBoxLostFocus, RoutingStrategies.Bubble);
+        ItemsHost.AddHandler(ContextRequestedEvent, OnContextRequested, RoutingStrategies.Tunnel);
 
         Opened += (_, _) =>
         {
@@ -80,6 +108,476 @@ public partial class DockWindow : Window, IDockHost
     }
 
     private void OnItemsChanged(object? sender, NotifyCollectionChangedEventArgs e) => ScheduleReposition();
+
+    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        switch (e.PropertyName)
+        {
+            case nameof(DockViewModel.IsDockVisible):
+            case nameof(DockViewModel.IsSearchOpen):
+            case nameof(DockViewModel.IsEditMode):
+            case nameof(DockViewModel.UpdateAvailable):
+                ScheduleReposition();
+                break;
+
+            case nameof(DockViewModel.PanelBrush):
+                ApplyTransparency();
+                break;
+        }
+    }
+
+    /// <summary>毛玻璃只在「玻璃」风格时申请，扁平风格直接要透明底。</summary>
+    private void ApplyTransparency()
+    {
+        try
+        {
+            bool glass = _vm?.Settings.Style != "flat";
+            TransparencyLevelHint = glass
+                ? new[] { WindowTransparencyLevel.AcrylicBlur, WindowTransparencyLevel.Blur, WindowTransparencyLevel.Transparent }
+                : new[] { WindowTransparencyLevel.Transparent };
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("设置窗口透明度失败", ex);
+        }
+    }
+
+    // ---------------- 图标与占位 ----------------
+
+    private void BuildActionIcons()
+    {
+        IBrush color = _vm?.TextDimBrush ?? Brushes.Gray;
+        SetIcon(MoveButton, Icons.Grip, 14, color);
+        SetIcon(SearchButton, Icons.Search, 15, color);
+        SetIcon(EditButton, Icons.Pencil, 15, color);
+        SetIcon(AddButton, Icons.Plus, 16, color);
+        SetIcon(MoreButton, Icons.More, 16, color);
+        SetIcon(PinButton, Icons.Pin, 15, color);
+        SetIcon(CollapseButton, Icons.ChevronUp, 14, color);
+
+        MoveButton.Cursor = new Cursor(StandardCursorType.SizeAll);
+        UpdateCollapseIcon();
+    }
+
+    private static void SetIcon(Button button, Geometry geometry, double size, IBrush stroke)
+    {
+        button.Content = new Path
+        {
+            Data = geometry,
+            Stroke = stroke,
+            StrokeThickness = 1.7,
+            StrokeLineCap = PenLineCap.Round,
+            StrokeJoin = PenLineJoin.Round,
+            Stretch = Stretch.Uniform,
+            Width = size,
+            Height = size
+        };
+    }
+
+    private void UpdateCollapseIcon()
+    {
+        Geometry geometry = _vm?.Settings.Edge switch
+        {
+            DockEdge.Bottom => Icons.ChevronDown,
+            DockEdge.Left => Icons.ChevronLeft,
+            DockEdge.Right => Icons.ChevronRight,
+            _ => Icons.ChevronUp
+        };
+
+        if (CollapseButton.Content is Path path)
+        {
+            path.Data = geometry;
+        }
+    }
+
+    /// <summary>给一个图标算占位底色与占位图形；已经有真实图标时把图形清掉。</summary>
+    private void ApplyItemVisual(ItemViewModel item)
+    {
+        item.IconBrush = PaletteBrushes.TileBrush(item.Name, item.Model.Kind, item.TileSize);
+        item.RingBrush = ReferenceEquals(item, _focused) ? _vm?.AccentBrush : null;
+        item.TextBrush = _vm?.TextBrush;
+
+        if (item.HasIcon)
+        {
+            item.Glyph = null;
+            return;
+        }
+
+        item.Glyph = item.IsCommand ? Icons.Terminal : item.IsWeb ? Icons.Globe : Icons.Application;
+    }
+
+    // ---------------- 图标区交互 ----------------
+
+    private ItemViewModel? ItemOf(object? source)
+    {
+        Border? border = (source as Visual)?.GetSelfAndVisualAncestors()
+            .OfType<Border>()
+            .FirstOrDefault(b => b.Classes.Contains("tile"));
+
+        return border?.DataContext as ItemViewModel;
+    }
+
+    private void SetFocused(ItemViewModel? item)
+    {
+        if (ReferenceEquals(_focused, item))
+        {
+            return;
+        }
+
+        if (_focused is not null)
+        {
+            _focused.RingBrush = null;
+        }
+
+        _focused = item;
+
+        if (_focused is not null)
+        {
+            _focused.RingBrush = _vm?.AccentBrush;
+        }
+    }
+
+    private void OnItemsPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (_vm is null)
+        {
+            return;
+        }
+
+        ItemViewModel? item = ItemOf(e.Source);
+        bool right = e.GetCurrentPoint(this).Properties.IsRightButtonPressed;
+
+        if (item is null)
+        {
+            SetFocused(null);
+            if (right)
+            {
+                _vm.RequestContext(null);
+                e.Handled = true;
+            }
+
+            return;
+        }
+
+        SetFocused(item);
+
+        if (right)
+        {
+            _vm.RequestContext(item);
+            e.Handled = true;
+            return;
+        }
+
+        if (_vm.IsEditMode)
+        {
+            // 编辑模式：左键按住 = 拖动排序
+            _dragItem = item;
+            e.Pointer.Capture(ItemsHost);
+            e.Handled = true;
+            return;
+        }
+
+        _vm.RunCommand.Execute(item);
+        e.Handled = true;
+    }
+
+    private void OnItemsPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (_vm is null || _dragItem is null || !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            return;
+        }
+
+        Panel? panel = ItemsHost.ItemsPanelRoot;
+        if (panel is null || panel.Children.Count == 0)
+        {
+            return;
+        }
+
+        Point position = e.GetPosition(panel);
+        bool horizontal = _vm.ListOrientation == Orientation.Horizontal;
+        double pointer = horizontal ? position.X : position.Y;
+
+        ItemViewModel? target = null;
+        foreach (Control child in panel.Children)
+        {
+            double start = horizontal ? child.Bounds.X : child.Bounds.Y;
+            double middle = start + (horizontal ? child.Bounds.Width : child.Bounds.Height) / 2;
+            if (pointer < middle)
+            {
+                target = child.DataContext as ItemViewModel;
+                break;
+            }
+        }
+
+        if (!ReferenceEquals(_dropTarget, target))
+        {
+            if (_dropTarget is not null)
+            {
+                _dropTarget.IsDropTarget = false;
+            }
+
+            _dropTarget = target;
+            if (_dropTarget is not null)
+            {
+                _dropTarget.IsDropTarget = true;
+            }
+        }
+
+        e.Handled = true;
+    }
+
+    private void OnItemsPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (_vm is null || _dragItem is null)
+        {
+            return;
+        }
+
+        ItemViewModel dragged = _dragItem;
+        ItemViewModel? target = _dropTarget;
+
+        _dragItem = null;
+        _dropTarget = null;
+        e.Pointer.Capture(null);
+
+        if (target is not null)
+        {
+            target.IsDropTarget = false;
+        }
+
+        if (target is not null && !ReferenceEquals(target, dragged) && !ReferenceEquals(target, dragged))
+        {
+            _vm.Reorder(dragged.Id, target.Id);
+        }
+    }
+
+    private void OnItemsPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        if (_dropTarget is not null)
+        {
+            _dropTarget.IsDropTarget = false;
+        }
+
+        _dragItem = null;
+        _dropTarget = null;
+    }
+
+    private void OnItemsDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (_vm is null || !_vm.IsEditMode)
+        {
+            return;
+        }
+
+        ItemViewModel? item = ItemOf(e.Source);
+        if (item is not null)
+        {
+            _vm.BeginRename(item);
+            FocusRenameBox();
+            e.Handled = true;
+        }
+    }
+
+    private void FocusRenameBox() => Dispatcher.UIThread.Post(() =>
+    {
+        TextBox? box = ItemsHost.GetVisualDescendants().OfType<TextBox>()
+            .FirstOrDefault(t => t.Classes.Contains("rename") && t.IsVisible);
+        box?.Focus();
+        box?.SelectAll();
+    }, DispatcherPriority.Input);
+
+    private void OnRenameBoxKeyUp(object? sender, KeyEventArgs e)
+    {
+        if (_vm is null || e.Source is not TextBox box || !box.Classes.Contains("rename"))
+        {
+            return;
+        }
+
+        if (box.DataContext is not ItemViewModel item)
+        {
+            return;
+        }
+
+        if (e.Key == Key.Enter)
+        {
+            _vm.CommitRename(item, save: true);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            _vm.CommitRename(item, save: false);
+            e.Handled = true;
+        }
+    }
+
+    private void OnRenameBoxLostFocus(object? sender, RoutedEventArgs e)
+    {
+        if (_vm is null || e.Source is not TextBox box || !box.Classes.Contains("rename"))
+        {
+            return;
+        }
+
+        if (box.DataContext is ItemViewModel item)
+        {
+            _vm.CommitRename(item, save: true);
+        }
+    }
+
+    private void OnContextRequested(object? sender, ContextRequestedEventArgs e)
+    {
+        if (_vm is null)
+        {
+            return;
+        }
+
+        _vm.RequestContext(ItemOf(e.Source));
+        e.Handled = true;
+    }
+
+    // ---------------- 键盘导航 ----------------
+
+    private void MoveFocus(int step)
+    {
+        if (_vm is null || _vm.Items.Count == 0)
+        {
+            return;
+        }
+
+        int index = _focused is null ? -1 : _vm.Items.IndexOf(_focused);
+        index = index < 0
+            ? (step > 0 ? 0 : _vm.Items.Count - 1)
+            : (index + step + _vm.Items.Count) % _vm.Items.Count;
+
+        SetFocused(_vm.Items[index]);
+    }
+
+    private void OnItemsKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (_vm is null || e.Source is TextBox)
+        {
+            return;
+        }
+
+        switch (e.Key)
+        {
+            case Key.Left:
+            case Key.Up:
+                MoveFocus(-1);
+                e.Handled = true;
+                break;
+
+            case Key.Right:
+            case Key.Down:
+                MoveFocus(1);
+                e.Handled = true;
+                break;
+
+            case Key.Enter:
+            case Key.Space:
+                if (_focused is not null)
+                {
+                    _vm.RunCommand.Execute(_focused);
+                }
+
+                e.Handled = true;
+                break;
+        }
+    }
+
+    // ---------------- 右键菜单 ----------------
+
+    private void ShowContextMenu(ItemViewModel? item)
+    {
+        if (_vm is null)
+        {
+            return;
+        }
+
+        var menu = new ContextMenu();
+
+        if (item is null)
+        {
+            menu.Items.Add(MenuEntry("添加文件…", () => _ = AddFilesAsync()));
+            menu.Items.Add(MenuEntry("进入编辑模式", () => _vm.ToggleEditCommand.Execute(null)));
+            menu.Items.Add(new Separator());
+
+            foreach (DockEdge edge in new[] { DockEdge.Top, DockEdge.Bottom, DockEdge.Left, DockEdge.Right })
+            {
+                DockEdge captured = edge;
+                bool current = _vm.Settings.Edge == captured;
+                menu.Items.Add(MenuEntry(
+                    "停靠到" + DockPlacement.Label(captured) + "边缘" + (current ? "（当前）" : string.Empty),
+                    () => _vm.SetEdgeCommand.Execute(captured),
+                    enabled: !current));
+            }
+
+            menu.Items.Add(new Separator());
+            menu.Items.Add(MenuEntry("设置…", ShowSettings));
+            menu.Items.Add(MenuEntry("退出", Exit));
+        }
+        else
+        {
+            ItemViewModel captured = item;
+            menu.Items.Add(MenuEntry("运行", () => _vm.RunCommand.Execute(captured)));
+            menu.Items.Add(new Separator());
+            menu.Items.Add(MenuEntry("编辑名称", () =>
+            {
+                _vm.BeginRename(captured);
+                FocusRenameBox();
+            }));
+            menu.Items.Add(MenuEntry("复制路径", () => CopyToClipboard(captured.Model.Target)));
+            menu.Items.Add(MenuEntry("在资源管理器中显示", () => RevealInExplorer(captured.Model.Target)));
+            menu.Items.Add(new Separator());
+            menu.Items.Add(MenuEntry("从 Dock 移除", () => _vm.RemoveCommand.Execute(captured)));
+        }
+
+        menu.PlacementTarget = ItemsHost;
+        menu.Placement = PlacementMode.Pointer;
+        menu.Open(ItemsHost);
+    }
+
+    private static MenuItem MenuEntry(string header, Action action, bool enabled = true)
+    {
+        var entry = new MenuItem { Header = header, IsEnabled = enabled };
+        entry.Click += (_, _) => action();
+        return entry;
+    }
+
+    private void CopyToClipboard(string text)
+    {
+        IntPtr handle = TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
+        if (ClipboardInterop.TrySetText(text, handle))
+        {
+            _vm?.Toast("已复制：" + text);
+            return;
+        }
+
+        _vm?.Toast("复制失败，剪贴板被其它程序占用");
+    }
+
+    private void RevealInExplorer(string target)
+    {
+        try
+        {
+            if (!System.IO.File.Exists(target))
+            {
+                _vm?.Toast("找不到该文件：" + target);
+                return;
+            }
+
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "explorer.exe",
+                Arguments = "/select,\"" + target + "\"",
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("在资源管理器中显示失败", ex);
+        }
+    }
 
     // ---------------- 显隐 ----------------
 
@@ -172,6 +670,8 @@ public partial class DockWindow : Window, IDockHost
     public void ApplyEdge(DockEdge edge)
     {
         _vm?.ApplySettings(paletteChanged: false, sizeChanged: true, save: false);
+        UpdateCollapseIcon();
+        SetFocused(null);
         ScheduleReposition();
     }
 
@@ -257,7 +757,7 @@ public partial class DockWindow : Window, IDockHost
         }
     }
 
-    // ---------------- 交互 ----------------
+    // ---------------- 窗口级输入 ----------------
 
     protected override void OnPointerEntered(PointerEventArgs e)
     {
@@ -286,6 +786,46 @@ public partial class DockWindow : Window, IDockHost
             return;
         }
 
+        // 搜索框 / 改名框里的按键交给控件自己处理
+        if (e.Source is TextBox)
+        {
+            if (e.Key == Key.Escape && _vm.IsSearchOpen)
+            {
+                _vm.IsSearchOpen = false;
+                e.Handled = true;
+            }
+
+            return;
+        }
+
+        if ((e.KeyModifiers.HasFlag(KeyModifiers.Control) && e.Key == Key.K) || e.Key == Key.S)
+        {
+            _vm.IsSearchOpen = true;
+            FocusSearchBox();
+            e.Handled = true;
+            return;
+        }
+
+        if (e.Key == Key.E)
+        {
+            _vm.ToggleEditCommand.Execute(null);
+            e.Handled = true;
+            return;
+        }
+
+        // 1~9 快速启动前九项
+        if (e.Key >= Key.D1 && e.Key <= Key.D9)
+        {
+            int index = e.Key - Key.D1;
+            if (index < _vm.Items.Count)
+            {
+                _vm.RunCommand.Execute(_vm.Items[index]);
+                e.Handled = true;
+            }
+
+            return;
+        }
+
         if (e.Key == Key.Escape)
         {
             if (_vm.IsSearchOpen)
@@ -305,6 +845,12 @@ public partial class DockWindow : Window, IDockHost
         }
     }
 
+    private void FocusSearchBox() => Dispatcher.UIThread.Post(() =>
+    {
+        SearchBox.Focus();
+        SearchBox.SelectAll();
+    }, DispatcherPriority.Input);
+
     /// <summary>被第二个实例或托盘唤醒：显示并激活。</summary>
     public void ActivateFromExternal()
     {
@@ -321,7 +867,9 @@ public partial class DockWindow : Window, IDockHost
         });
     }
 
-    private async void OnAddClicked(object? sender, RoutedEventArgs e)
+    private async void OnAddClicked(object? sender, RoutedEventArgs e) => await AddFilesAsync();
+
+    private async System.Threading.Tasks.Task AddFilesAsync()
     {
         if (_vm is null)
         {
