@@ -4,7 +4,61 @@
   <!--
     自己写 ControlTheme 而不用 Fluent 的按钮模板：
     原型上的圆角、悬停放大、按下缩放都要精确控制，主题模板会把 Background/CornerRadius 盖掉。
+    颜色全部走 ThemeDictionaries 资源（对应原型 CSS token），深/浅主题变体各一套，
+    设置窗口切浅色时按钮悬停/选中才不会用白色叠加消失在白卡上。
   -->
+
+  <!-- 全局字体：原型 font token 的中文字体优先 -->
+  <FontFamily x:Key="ContentControlThemeFontFamily">Microsoft YaHei UI, Microsoft YaHei, Segoe UI</FontFamily>
+
+  <!-- 原型浮层（菜单/气泡）圆角 10~11，Fluent 用 OverlayCornerRadius 统一控制弹层 -->
+  <CornerRadius x:Key="OverlayCornerRadius">10</CornerRadius>
+
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Dark">
+      <SolidColorBrush x:Key="QATextBrush" Color="#EEF1F6" />
+      <SolidColorBrush x:Key="QATextDimBrush" Color="#9AA4B3" />
+      <SolidColorBrush x:Key="QALineBrush" Color="#1FFFFFFF" />
+      <SolidColorBrush x:Key="QAHoverBrush" Color="#1AFFFFFF" />
+      <SolidColorBrush x:Key="QAActiveBrush" Color="#29FFFFFF" />
+      <SolidColorBrush x:Key="QAMenuHoverBrush" Color="#14FFFFFF" />
+      <SolidColorBrush x:Key="QAMenuBrush" Color="#FA181B21" />
+      <SolidColorBrush x:Key="QAAccentBrush" Color="#5AA2FF" />
+      <SolidColorBrush x:Key="QAAccentInkBrush" Color="#08111F" />
+      <SolidColorBrush x:Key="QADangerBrush" Color="#FF6B6B" />
+      <SolidColorBrush x:Key="QARemoveBgBrush" Color="#CC0B0E13" />
+      <SolidColorBrush x:Key="QATileShadowBrush" Color="#47000000" />
+      <!-- Fluent 菜单资源的原型覆盖：菜单底/悬停对应 menu-bg / menu-hover token -->
+      <SolidColorBrush x:Key="MenuFlyoutBackground" Color="#FA181B21" />
+      <SolidColorBrush x:Key="MenuFlyoutBorderBrush" Color="#1FFFFFFF" />
+      <SolidColorBrush x:Key="MenuItemBackground" Color="#00181818" />
+      <SolidColorBrush x:Key="MenuItemBackgroundPointerOver" Color="#14FFFFFF" />
+      <SolidColorBrush x:Key="MenuItemBackgroundPressed" Color="#1FFFFFFF" />
+      <SolidColorBrush x:Key="MenuItemForeground" Color="#EEF1F6" />
+      <SolidColorBrush x:Key="MenuItemForegroundPointerOver" Color="#EEF1F6" />
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="Light">
+      <SolidColorBrush x:Key="QATextBrush" Color="#111826" />
+      <SolidColorBrush x:Key="QATextDimBrush" Color="#5C6675" />
+      <SolidColorBrush x:Key="QALineBrush" Color="#1F111826" />
+      <SolidColorBrush x:Key="QAHoverBrush" Color="#0F111826" />
+      <SolidColorBrush x:Key="QAActiveBrush" Color="#1F111826" />
+      <SolidColorBrush x:Key="QAMenuHoverBrush" Color="#0F111826" />
+      <SolidColorBrush x:Key="QAMenuBrush" Color="#FDFFFFFF" />
+      <SolidColorBrush x:Key="QAAccentBrush" Color="#2563EB" />
+      <SolidColorBrush x:Key="QAAccentInkBrush" Color="#FFFFFF" />
+      <SolidColorBrush x:Key="QADangerBrush" Color="#D92D20" />
+      <SolidColorBrush x:Key="QARemoveBgBrush" Color="#CCFFFFFF" />
+      <SolidColorBrush x:Key="QATileShadowBrush" Color="#26111826" />
+      <SolidColorBrush x:Key="MenuFlyoutBackground" Color="#FDFFFFFF" />
+      <SolidColorBrush x:Key="MenuFlyoutBorderBrush" Color="#1F111826" />
+      <SolidColorBrush x:Key="MenuItemBackground" Color="#00FFFFFF" />
+      <SolidColorBrush x:Key="MenuItemBackgroundPointerOver" Color="#0F111826" />
+      <SolidColorBrush x:Key="MenuItemBackgroundPressed" Color="#1F111826" />
+      <SolidColorBrush x:Key="MenuItemForeground" Color="#111826" />
+      <SolidColorBrush x:Key="MenuItemForegroundPointerOver" Color="#111826" />
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
 
   <!-- Dock 上的一个图标 -->
   <ControlTheme x:Key="TileButton" TargetType="Button">
@@ -14,7 +68,11 @@
     <Setter Property="RenderTransformOrigin" Value="50%,50%" />
     <Setter Property="Transitions">
       <Transitions>
-        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.16" Easing="CubicEaseOut" />
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.16">
+          <TransformOperationsTransition.Easing>
+            <BackEaseOut />
+          </TransformOperationsTransition.Easing>
+        </TransformOperationsTransition>
       </Transitions>
     </Setter>
     <Setter Property="Template">
@@ -24,7 +82,7 @@
                   Background="{TemplateBinding Background}"
                   CornerRadius="{TemplateBinding CornerRadius}" />
           <Border Name="PART_Hover"
-                  Background="#2EFFFFFF"
+                  Background="{DynamicResource QAHoverBrush}"
                   CornerRadius="{TemplateBinding CornerRadius}"
                   Opacity="0">
             <Border.Transitions>
@@ -60,18 +118,24 @@
     </Style>
   </ControlTheme>
 
-  <!-- Dock 右侧的操作按钮 / 窗口上的小按钮：32x32 圆角方块，内容由 XAML 给的 Path 提供 -->
+  <!-- Dock 右侧的操作按钮 / 窗口上的小按钮：32x32 圆角方块（原型 .icon-btn 32px r9） -->
   <ControlTheme x:Key="IconButton" TargetType="Button">
-    <Setter Property="Width" Value="30" />
-    <Setter Property="Height" Value="30" />
+    <Setter Property="Width" Value="32" />
+    <Setter Property="Height" Value="32" />
     <Setter Property="Padding" Value="0" />
     <Setter Property="Cursor" Value="Hand" />
-    <Setter Property="Foreground" Value="#9AA4B3" />
+    <Setter Property="Foreground" Value="{DynamicResource QATextDimBrush}" />
+    <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.14" />
+      </Transitions>
+    </Setter>
     <Setter Property="Template">
       <ControlTemplate>
         <Border Name="PART_Bg"
                 Background="Transparent"
-                CornerRadius="8">
+                CornerRadius="9">
           <ContentPresenter Content="{TemplateBinding Content}"
                             ContentTemplate="{TemplateBinding ContentTemplate}"
                             HorizontalAlignment="Center"
@@ -81,33 +145,55 @@
     </Setter>
 
     <Style Selector="^:pointerover /template/ Border#PART_Bg">
-      <Setter Property="Background" Value="#1AFFFFFF" />
+      <Setter Property="Background" Value="{DynamicResource QAHoverBrush}" />
     </Style>
     <Style Selector="^:pointerover">
-      <Setter Property="Foreground" Value="#EEF1F6" />
+      <Setter Property="Foreground" Value="{DynamicResource QATextBrush}" />
     </Style>
     <Style Selector="^:pressed /template/ Border#PART_Bg">
-      <Setter Property="Background" Value="#28FFFFFF" />
+      <Setter Property="Background" Value="{DynamicResource QAActiveBrush}" />
+    </Style>
+    <Style Selector="^:pressed">
+      <Setter Property="RenderTransform" Value="scale(0.92)" />
+    </Style>
+    <Style Selector="^.active /template/ Border#PART_Bg">
+      <Setter Property="Background" Value="{DynamicResource QAHoverBrush}" />
     </Style>
   </ControlTheme>
 
-  <!-- 编辑模式里图标右上角的移除按钮：深色圆底 + 白 ×（原型样式），不随图标尺寸缩放 -->
+  <!-- 编辑模式里图标右上角的移除按钮：原型 .remove 17px 圆底白 ×，悬停危险色并放大 1.12 -->
   <ControlTheme x:Key="RemoveButton" TargetType="Button">
-    <Setter Property="Width" Value="18" />
-    <Setter Property="Height" Value="18" />
+    <Setter Property="Width" Value="17" />
+    <Setter Property="Height" Value="17" />
     <Setter Property="Padding" Value="0" />
     <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="RenderTransformOrigin" Value="50%,50%" />
     <Setter Property="Template">
       <ControlTemplate>
-        <Border Name="PART_Bg" Background="#CC0B0E13" CornerRadius="9">
+        <Border Name="PART_Bg"
+                Background="{DynamicResource QARemoveBgBrush}"
+                CornerRadius="9"
+                BoxShadow="0 1 3 0 #66000000">
           <ContentPresenter Content="{TemplateBinding Content}"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center" />
         </Border>
       </ControlTemplate>
     </Setter>
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.14">
+          <TransformOperationsTransition.Easing>
+            <BackEaseOut />
+          </TransformOperationsTransition.Easing>
+        </TransformOperationsTransition>
+      </Transitions>
+    </Setter>
     <Style Selector="^:pointerover /template/ Border#PART_Bg">
-      <Setter Property="Background" Value="#E5484D" />
+      <Setter Property="Background" Value="{DynamicResource QADangerBrush}" />
+    </Style>
+    <Style Selector="^:pointerover">
+      <Setter Property="RenderTransform" Value="scale(1.12)" />
     </Style>
   </ControlTheme>
 
@@ -117,7 +203,7 @@
     <Setter Property="Padding" Value="12,0" />
     <Setter Property="FontSize" Value="12" />
     <Setter Property="Cursor" Value="Hand" />
-    <Setter Property="Foreground" Value="#9AA4B3" />
+    <Setter Property="Foreground" Value="{DynamicResource QATextDimBrush}" />
     <Setter Property="Template">
       <ControlTemplate>
         <Border Name="PART_Bg"
@@ -131,24 +217,26 @@
       </ControlTemplate>
     </Setter>
     <Style Selector="^:pointerover /template/ Border#PART_Bg">
-      <Setter Property="Background" Value="#1F3A6BFF" />
+      <Setter Property="Background" Value="{DynamicResource QAHoverBrush}" />
     </Style>
     <Style Selector="^.active /template/ Border#PART_Bg">
-      <Setter Property="Background" Value="#FF3B82F6" />
+      <Setter Property="Background" Value="{DynamicResource QAAccentBrush}" />
     </Style>
     <Style Selector="^.active">
-      <Setter Property="Foreground" Value="White" />
+      <Setter Property="Foreground" Value="{DynamicResource QAAccentInkBrush}" />
     </Style>
   </ControlTheme>
 
-  <!-- 文字按钮（设置窗口里的「打开目录」「立即检查」等） -->
+  <!-- 文字按钮（设置窗口里的「打开所在目录」「立即检查」等），对应原型 .chip：r8、悬停加深、primary 强调色填充 -->
   <ControlTheme x:Key="LinkButton" TargetType="Button">
-    <Setter Property="Padding" Value="8,3" />
+    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="Height" Value="26" />
     <Setter Property="Cursor" Value="Hand" />
     <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{DynamicResource QATextBrush}" />
     <Setter Property="Template">
       <ControlTemplate>
-        <Border Name="PART_Bg" Background="#14000000" CornerRadius="6" Padding="{TemplateBinding Padding}">
+        <Border Name="PART_Bg" Background="{DynamicResource QAHoverBrush}" CornerRadius="8" Padding="{TemplateBinding Padding}">
           <ContentPresenter Content="{TemplateBinding Content}"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center" />
@@ -156,7 +244,13 @@
       </ControlTemplate>
     </Setter>
     <Style Selector="^:pointerover /template/ Border#PART_Bg">
-      <Setter Property="Background" Value="#28FFFFFF" />
+      <Setter Property="Background" Value="{DynamicResource QAActiveBrush}" />
+    </Style>
+    <Style Selector="^.primary /template/ Border#PART_Bg">
+      <Setter Property="Background" Value="{DynamicResource QAAccentBrush}" />
+    </Style>
+    <Style Selector="^.primary">
+      <Setter Property="Foreground" Value="{DynamicResource QAAccentInkBrush}" />
     </Style>
   </ControlTheme>
 

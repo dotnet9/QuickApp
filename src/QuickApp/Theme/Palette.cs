@@ -24,14 +24,14 @@ public sealed record Palette(
     Color Danger)
 {
     public static Palette Dark { get; } = new(
-        Panel: Color.Parse("#12151C"),
-        PanelBorder: Color.Parse("#26FFFFFF"),
+        Panel: Color.Parse("#1A1D24"),
+        PanelBorder: Color.Parse("#1FFFFFFF"),
         Text: Color.Parse("#EEF1F6"),
         TextDim: Color.Parse("#9AA4B3"),
         Accent: Color.Parse("#5AA2FF"),
         AccentInk: Color.Parse("#08111F"),
         Hover: Color.Parse("#1AFFFFFF"),
-        Active: Color.Parse("#28FFFFFF"),
+        Active: Color.Parse("#29FFFFFF"),
         Bubble: Color.Parse("#F7181B21"),
         Menu: Color.Parse("#FA181B21"),
         MenuHover: Color.Parse("#14FFFFFF"),
@@ -39,7 +39,7 @@ public sealed record Palette(
 
     public static Palette Light { get; } = new(
         Panel: Color.Parse("#FFFFFF"),
-        PanelBorder: Color.Parse("#14111826"),
+        PanelBorder: Color.Parse("#1F111826"),
         Text: Color.Parse("#111826"),
         TextDim: Color.Parse("#5C6675"),
         Accent: Color.Parse("#2563EB"),

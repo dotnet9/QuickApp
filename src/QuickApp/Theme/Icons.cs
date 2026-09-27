@@ -59,4 +59,91 @@ public static class Icons
 
     /// <summary>通用应用占位图标。</summary>
     public static Geometry Application { get; } = Geometry.Parse("M4,4 L20,4 L20,20 L4,20 Z M4,8.5 L20,8.5");
+
+    // ---------------- 以下图标供「更换图标」选择器使用（对应原型 PICKER_ICONS） ----------------
+
+    /// <summary>对话气泡。</summary>
+    public static Geometry Chat { get; } = Geometry.Parse(
+        "M20.5,11.5 C20.5,16 16.9,19.5 12,19.5 C10.8,19.5 9.7,19.3 8.7,18.9 L3,21 L4.6,15.6 " +
+        "C3.9,14.4 3.5,13 3.5,11.5 C3.5,7 7.1,3.5 12,3.5 C16.9,3.5 20.5,7 20.5,11.5 Z");
+
+    /// <summary>播放：圆 + 三角。</summary>
+    public static Geometry Play { get; } = Geometry.Parse(
+        Circle(12, 12, 9) + " M10,8.5 L16,12 L10,15.5 Z");
+
+    /// <summary>音乐：两个圆 + 连线。</summary>
+    public static Geometry Music { get; } = Geometry.Parse(
+        Circle(6.5, 18, 2.5) + " " + Circle(16.5, 16, 2.5) + " M9,18 L9,6 L19,4 L19,16");
+
+    /// <summary>相机：机身 + 镜头。</summary>
+    public static Geometry Camera { get; } = Geometry.Parse(
+        "M5,6 L14,6 C15.1,6 16,6.9 16,8 L16,16 C16,17.1 15.1,18 14,18 L5,18 C3.9,18 3,17.1 3,16 L3,8 C3,6.9 3.9,6 5,6 Z " +
+        "M16,11 L21,8 L21,16 L16,13 Z");
+
+    /// <summary>显示器（含屏幕十字线）。</summary>
+    public static Geometry Monitor { get; } = Geometry.Parse(
+        RoundedRect(2.5, 4, 19, 13, 2) +
+        " M8,20.5 L16,20.5 M12,17 L12,20.5 M9,10.5 L15,10.5 M12,7.5 L12,13.5");
+
+    /// <summary>显示器（无屏幕内容，向日葵类远程工具的区分款）。</summary>
+    public static Geometry MonitorAlt { get; } = Geometry.Parse(
+        RoundedRect(2.5, 4, 19, 13, 2) + " M8,20.5 L16,20.5 M12,17 L12,20.5");
+
+    /// <summary>文档：折角 + 两行字。</summary>
+    public static Geometry Note { get; } = Geometry.Parse(
+        "M14,3 L6.5,3 C5.67,3 5,3.67 5,4.5 L5,19.5 C5,20.33 5.67,21 6.5,21 L17.5,21 C18.33,21 19,20.33 19,19.5 L19,8 Z " +
+        "M14,3 L14,8 L19,8 M8.5,13 L15.5,13 M8.5,16.5 L13,16.5");
+
+    /// <summary>云。</summary>
+    public static Geometry Cloud { get; } = Geometry.Parse(
+        "M7.5,18.5 C4.6,18.5 2.8,16.6 2.8,14.2 C2.8,12.1 4.2,10.6 6.2,10.2 " +
+        "C6.9,6.9 9.4,5 12.4,5 C15.9,5 18.6,7.4 19,10.6 C20.8,11 22,12.4 22,14.3 " +
+        "C22,16.6 20.3,18.5 17.8,18.5 Z");
+
+    /// <summary>代码：左右尖括号。</summary>
+    public static Geometry Code { get; } = Geometry.Parse("M9,7 L4,12 L9,17 M15,7 L20,12 L15,17");
+
+    /// <summary>火箭：舱体 + 尾翼（原型路径的相对贝塞尔已转绝对）。</summary>
+    public static Geometry Rocket { get; } = Geometry.Parse(
+        "M12,2.5 C14.8,4.7 16.2,7.7 16.2,11 L12,15 L7.8,11 C7.8,7.7 9.2,4.7 12,2.5 Z " +
+        "M7.8,11 L5,18 L9,16.5 M16.2,11 L19,18 L15,16.5");
+
+    /// <summary>数据库：三层椭圆 + 侧壁。</summary>
+    public static Geometry Database { get; } = Geometry.Parse(
+        "M5,6 C5,4.34 8.13,3 12,3 C15.87,3 19,4.34 19,6 C19,7.66 15.87,9 12,9 C8.13,9 5,7.66 5,6 Z " +
+        "M5,12 C5,13.66 8.13,15 12,15 C15.87,15 19,13.66 19,12 " +
+        "M5,6 L5,18 C5,19.66 8.13,21 12,21 C15.87,21 19,19.66 19,18 L19,6");
+
+    /// <summary>盾牌 + 对勾。</summary>
+    public static Geometry Shield { get; } = Geometry.Parse(
+        "M12,3 L19,6 L19,11.5 C19,15.8 16.1,19.1 12,21 C7.9,19.1 5,15.8 5,11.5 L5,6 Z " +
+        "M9.5,12 L11.3,13.8 L14.8,10.2");
+
+    /// <summary>录制：双圆。</summary>
+    public static Geometry Record { get; } = Geometry.Parse(
+        Circle(12, 12, 9) + " " + Circle(12, 12, 3.5));
+
+    /// <summary>圆（只用 M/C/L/Z 的四段贝塞尔近似，k=0.5523r）。</summary>
+    private static string Circle(double cx, double cy, double r)
+    {
+        double k = r * 0.5523;
+        return string.Create(System.Globalization.CultureInfo.InvariantCulture,
+            $"M{cx - r},{cy} C{cx - r},{cy - k} {cx - k},{cy - r} {cx},{cy - r} " +
+            $"C{cx + k},{cy - r} {cx + r},{cy - k} {cx + r},{cy} " +
+            $"C{cx + r},{cy + k} {cx + k},{cy + r} {cx},{cy + r} " +
+            $"C{cx - k},{cy + r} {cx - r},{cy + k} {cx - r},{cy} Z");
+    }
+
+    /// <summary>圆角矩形路径（顺时针，四角用四分之一贝塞尔）。</summary>
+    private static string RoundedRect(double x, double y, double width, double height, double radius)
+    {
+        double right = x + width;
+        double bottom = y + height;
+        double k = radius * 0.5523;
+        return string.Create(System.Globalization.CultureInfo.InvariantCulture,
+            $"M{x + radius},{y} L{right - radius},{y} C{right - radius + k},{y} {right},{y + radius - k} {right},{y + radius} " +
+            $"L{right},{bottom - radius} C{right},{bottom - radius + k} {right - radius + k},{bottom} {right - radius},{bottom} " +
+            $"L{x + radius},{bottom} C{x + radius - k},{bottom} {x},{bottom - radius + k} {x},{bottom - radius} " +
+            $"L{x},{y + radius} C{x},{y + radius - k} {x + radius - k},{y} {x + radius},{y} Z");
+    }
 }
