@@ -20,6 +20,7 @@ public partial class App : Application
 {
     private ServiceProvider? _services;
     private SingleInstanceService? _singleInstance;
+    private HotkeyService? _hotkey;
     private DockWindow? _dock;
     private SettingsWindow? _settings;
     private TrayIcon? _tray;
@@ -47,12 +48,16 @@ public partial class App : Application
 
         _services = BuildServices();
         var viewModel = _services.GetRequiredService<DockViewModel>();
+        var appIcon = CreateAppIcon();
 
         _dock = new DockWindow();
         _dock.Attach(viewModel);
+        _dock.Icon = appIcon;
         _dock.SettingsRequested += (_, _) => ShowSettings();
 
         _singleInstance.Listen(() => _dock.ActivateFromExternal());
+
+        RegisterGlobalHotkey(viewModel);
 
         desktop.MainWindow = _dock;
         _dock.Show();
@@ -92,6 +97,35 @@ public partial class App : Application
         return services.BuildServiceProvider();
     }
 
+    /// <summary>全局唤起热键（默认 Ctrl+Alt+Space）：显隐切换，收起状态下一按即唤出。</summary>
+    private void RegisterGlobalHotkey(DockViewModel viewModel)
+    {
+        try
+        {
+            _hotkey = new HotkeyService(AppLog.Info);
+            if (_hotkey.TryRegister(viewModel.Settings.Hotkey, () => ToggleDockFromHotkey(viewModel), out string? error))
+            {
+                AppLog.Info("全局热键已注册：" + viewModel.Settings.Hotkey);
+            }
+            else
+            {
+                _hotkey.Dispose();
+                _hotkey = null;
+                AppLog.Info("全局热键注册失败：" + error);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("注册全局热键失败", ex);
+        }
+    }
+
+    private void ToggleDockFromHotkey(DockViewModel viewModel)
+    {
+        // 收起（且未钉住）时唤出；显示时收回，等效一个开关
+        viewModel.IsDockVisible = !(viewModel.IsDockVisible && !viewModel.IsPinned);
+    }
+
     private void CreateTrayIcon(DockViewModel viewModel)
     {
         try
@@ -105,6 +139,10 @@ public partial class App : Application
             var pin = new NativeMenuItem("钉住（不自动隐藏）");
             pin.Click += (_, _) => viewModel.TogglePinCommand.Execute(null);
             menu.Items.Add(pin);
+
+            var autoStart = new NativeMenuItem("开机启动");
+            autoStart.Click += (_, _) => viewModel.ToggleAutoStartCommand.Execute(null);
+            menu.Items.Add(autoStart);
 
             menu.Items.Add(new NativeMenuItemSeparator());
 
@@ -124,7 +162,7 @@ public partial class App : Application
 
             _tray = new TrayIcon
             {
-                Icon = CreateTrayBitmap(),
+                Icon = CreateAppIcon(),
                 ToolTipText = "QuickApp 快捷应用",
                 Menu = menu,
                 IsVisible = true
@@ -141,21 +179,40 @@ public partial class App : Application
         }
     }
 
-    /// <summary>托盘图标在运行时画出来，省得带一个二进制资源（也避免 AOT 资源加载的坑）。</summary>
-    private static WindowIcon CreateTrayBitmap()
+    /// <summary>
+    /// 运行时画应用图标，省得带二进制资源（也避免 AOT 资源加载的坑）。
+    /// 对应原型 .tray-icon：145° 蓝紫渐变圆角方块 + 白色「应用」描边图形。
+    /// </summary>
+    private static WindowIcon CreateAppIcon()
     {
         const int size = 32;
         var bitmap = new RenderTargetBitmap(new PixelSize(size, size), new Vector(96, 96));
 
         using (DrawingContext context = bitmap.CreateDrawingContext())
         {
-            var background = new SolidColorBrush(Color.Parse("#3B82F6"));
-            context.DrawRectangle(background, null, new RoundedRect(new Rect(0, 0, size, size), 8));
+            var background = new LinearGradientBrush
+            {
+                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+                EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
+                GradientStops =
+                {
+                    new GradientStop(Color.Parse("#4A6CF7"), 0),
+                    new GradientStop(Color.Parse("#2F49C9"), 1)
+                }
+            };
+            context.DrawRectangle(background, null, new RoundedRect(new Rect(0, 0, size, size), 7));
 
-            var foreground = new SolidColorBrush(Colors.White);
-            context.DrawRectangle(foreground, null, new RoundedRect(new Rect(7, 9, 18, 4), 2));
-            context.DrawRectangle(foreground, null, new RoundedRect(new Rect(7, 16, 12, 4), 2));
-            context.DrawRectangle(foreground, null, new RoundedRect(new Rect(7, 23, 18, 4), 2));
+            // 原型 GLYPHS.app：24 网格的圆角矩形 + 顶部横线，等比放到 32px
+            Geometry glyph = Geometry.Parse(
+                "M10,4.67 L22,4.67 C24.95,4.67 27.33,7.05 27.33,10 L27.33,22 " +
+                "C27.33,24.95 24.95,27.33 22,27.33 L10,27.33 C7.05,27.33 4.67,24.95 4.67,22 " +
+                "L4.67,10 C4.67,7.05 7.05,4.67 10,4.67 Z M4.67,11.33 L27.33,11.33");
+            var stroke = new Pen(new SolidColorBrush(Colors.White), 2.3)
+            {
+                LineCap = PenLineCap.Round,
+                LineJoin = PenLineJoin.Round
+            };
+            context.DrawGeometry(null, stroke, glyph);
         }
 
         using var stream = new MemoryStream();
@@ -180,6 +237,7 @@ public partial class App : Application
 
         _settings = new SettingsWindow();
         _settings.Attach(viewModel);
+        _settings.Icon = CreateAppIcon();
         _settings.Closed += (_, _) =>
         {
             viewModel.ApplySettings();
@@ -203,6 +261,9 @@ public partial class App : Application
 
             _singleInstance?.Dispose();
             _singleInstance = null;
+
+            _hotkey?.Dispose();
+            _hotkey = null;
 
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
