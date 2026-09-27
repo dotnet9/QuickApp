@@ -16,6 +16,17 @@ public partial class SettingsWindow : Window
         InitializeComponent();
         AddCmdButton.Click += OnAddCommand;
         AddFileButton.Click += OnAddFiles;
+        CloseButton.Click += (_, _) => Close();
+        HeaderBar.PointerPressed += OnHeaderPressed;
+    }
+
+    /// <summary>自绘标题栏拖动整窗（无系统装饰时用它替代标题栏）。</summary>
+    private void OnHeaderPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
+    {
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+        {
+            BeginMoveDrag(e);
+        }
     }
 
     public void Attach(DockViewModel dock)

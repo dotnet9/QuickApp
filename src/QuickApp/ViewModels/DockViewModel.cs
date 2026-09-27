@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -355,6 +355,12 @@ public sealed class DockViewModel : ViewModelBase
         RefreshFilter();
     }
 
+    /// <summary>
+    /// 有些值只有视图侧能给：线性图标的 Geometry 要在视图层解析、占位底色要按类型与尺寸算。
+    /// 视图订阅这个事件，把每个图标的 IconBrush / Glyph 写回 ItemViewModel。
+    /// </summary>
+    public event Action<ItemViewModel>? ItemVisualRequested;
+
     /// <summary>把「随停靠边变化的布局参数」推给每个图标，避免 XAML 里用 $parent 绑定。</summary>
     private void ApplyItemLayout()
     {
@@ -362,8 +368,10 @@ public sealed class DockViewModel : ViewModelBase
         foreach (ItemViewModel item in _allItems)
         {
             item.ShowLabel = Settings.ShowLabels;
+            item.ShowRemove = IsEditMode;
             item.TileSize = Settings.TileSize;
             item.ItemOrientation = orientation;
+            ItemVisualRequested?.Invoke(item);
         }
     }
 
@@ -602,6 +610,10 @@ public sealed class DockViewModel : ViewModelBase
             _ => true
         };
 
+        // Fluent 控件的浅/深由「应用主题变体」决定，必须跟着我们的设置走：
+        // 否则系统是浅色主题时，勾选框/滑块/下拉会被渲染成浅色控件压在深色面板上（设置窗口看着就是两套风格）。
+        ApplyThemeVariant(dark);
+
         Palette palette = (dark ? Palette.Dark : Palette.Light)
             .WithOpacity(Settings.PanelOpacity, flat: Settings.Style == "flat");
 
@@ -626,6 +638,24 @@ public sealed class DockViewModel : ViewModelBase
         })
         {
             this.RaisePropertyChanged(name);
+        }
+    }
+
+    /// <summary>把 Avalonia 的主题变体同步成我们选定的深浅，保证 Fluent 控件与自绘面板同一套配色。</summary>
+    private static void ApplyThemeVariant(bool dark)
+    {
+        try
+        {
+            if (Avalonia.Application.Current is { } app)
+            {
+                app.RequestedThemeVariant = dark
+                    ? Avalonia.Styling.ThemeVariant.Dark
+                    : Avalonia.Styling.ThemeVariant.Light;
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("切换应用主题变体失败", ex);
         }
     }
 
@@ -686,6 +716,117 @@ public sealed class DockViewModel : ViewModelBase
         {
             _host?.OpenUrl(url);
         }
+    }
+
+    // ---------------- 视图回调：尺寸/透明度/标签变化后由窗口重新应用 ----------------
+
+    /// <summary>拖动排序落定后刷新顺序（顺序本身就是 config.Items 的顺序）。</summary>
+    public void ApplySort() => ApplyItemLayout();
+
+    /// <summary>只改透明度时不必重算朝向（窗口会重新应用透明度）。</summary>
+    public void ApplyOpacity(bool paletteChanged) => ApplySettings(paletteChanged, sizeChanged: false, save: false);
+
+    /// <summary>切换「仅图标 / 图标 + 名称」时只更新标签，不动尺寸与朝向（搜索态下由窗口自行恢复布局）。</summary>
+    public void ApplyLabels()
+    {
+        if (IsSearchOpen && SearchQuery.Trim().Length > 0)
+        {
+            return;
+        }
+
+        foreach (ItemViewModel item in _allItems)
+        {
+            item.IsRenaming = false;
+            item.ShowLabel = Settings.ShowLabels;
+            item.ItemOrientation = IsVertical ? Orientation.Horizontal : Orientation.Vertical;
+        }
+    }
+
+    // ---------------- 右键菜单请求（菜单由窗口按当前主题建，视图模型不碰 UI 类型） ----------------
+
+    public event Action<ItemViewModel?>? ContextRequested;
+
+    public void RequestContext(ItemViewModel? item) => ContextRequested?.Invoke(item);
+
+    // ---------------- 就地改名 ----------------
+
+    public void BeginRename(ItemViewModel item)
+    {
+        if (!IsEditMode)
+        {
+            IsEditMode = true;
+        }
+
+        foreach (ItemViewModel other in _allItems)
+        {
+            if (!ReferenceEquals(other, item))
+            {
+                other.IsRenaming = false;
+            }
+        }
+
+        item.EditingName = item.Name;
+        item.IsRenaming = true;
+    }
+
+    public void CommitRename(ItemViewModel item, bool save)
+    {
+        if (!item.IsRenaming)
+        {
+            return;
+        }
+
+        item.IsRenaming = false;
+        if (!save)
+        {
+            return;
+        }
+
+        string value = item.EditingName.Trim();
+        if (value.Length == 0)
+        {
+            Toast("名称不能为空，已保留原名");
+            return;
+        }
+
+        if (string.Equals(value, item.Name, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        item.Name = value;
+        Save();
+        Toast("已重命名为 " + value);
+    }
+
+    // ---------------- 拖动排序 ----------------
+
+    /// <summary>把 draggedId 移到 beforeId 之前；beforeId 为空表示移到最后。</summary>
+    public void Reorder(string draggedId, string? beforeId)
+    {
+        int from = _config.Items.FindIndex(i => string.Equals(i.Id, draggedId, StringComparison.OrdinalIgnoreCase));
+        if (from < 0)
+        {
+            return;
+        }
+
+        LauncherItem moved = _config.Items[from];
+        _config.Items.RemoveAt(from);
+
+        int insertAt = _config.Items.Count;
+        if (!string.IsNullOrEmpty(beforeId))
+        {
+            int anchor = _config.Items.FindIndex(i => string.Equals(i.Id, beforeId, StringComparison.OrdinalIgnoreCase));
+            if (anchor >= 0)
+            {
+                insertAt = anchor;
+            }
+        }
+
+        _config.Items.Insert(insertAt, moved);
+        ApplySort();
+        Save();
+        Toast("顺序已保存");
     }
 
     private void DismissUpdate()

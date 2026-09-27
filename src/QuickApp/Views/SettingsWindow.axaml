@@ -4,11 +4,14 @@
         x:Class="QuickApp.Views.SettingsWindow"
         x:DataType="vm:SettingsViewModel"
         Title="QuickApp 设置"
-        Width="480"
-        Height="640"
+        Width="540"
+        Height="680"
         CanResize="False"
+        ShowInTaskbar="True"
+        WindowDecorations="None"
         WindowStartupLocation="CenterScreen"
-        Background="{Binding BackgroundBrush}">
+        Background="Transparent"
+        TransparencyLevelHint="Transparent">
 
   <Window.Styles>
     <Style Selector="ComboBox">
@@ -19,111 +22,171 @@
       <Setter Property="MinWidth" Value="150" />
       <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
-    <Style Selector="TextBox">
+    <Style Selector="ToggleSwitch">
+      <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+    <Style Selector="TextBlock.section">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Margin" Value="0,14,0,4" />
+    </Style>
+    <Style Selector="TextBlock.row">
       <Setter Property="FontSize" Value="13" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+    <Style Selector="TextBlock.hint">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Opacity" Value="0.9" />
     </Style>
   </Window.Styles>
 
-  <ScrollViewer>
-    <StackPanel Margin="18,12,18,18" Spacing="2">
+  <!-- 外留白给卡片阴影/圆角留空间；整窗透明，只有卡片是实底 -->
+  <Grid Margin="16">
+    <Border Background="{Binding BackgroundBrush}"
+            BorderBrush="{Binding PanelBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="{Binding PanelRadius}">
+      <DockPanel>
 
-      <TextBlock Classes="section" Text="常规" />
-      <CheckBox Content="鼠标触到所在边缘时滑出" IsChecked="{Binding RevealOnEdgeTouch}" />
-      <CheckBox Content="钉住（不自动隐藏）" IsChecked="{Binding Pinned}" />
-      <CheckBox Content="执行一个项目后自动收起" IsChecked="{Binding CollapseAfterLaunch}" />
-      <CheckBox Content="开机启动" IsChecked="{Binding AutoStartEnabled}" />
-      <Grid ColumnDefinitions="160,*" Margin="0,6,0,0">
-        <TextBlock Grid.Column="0" Classes="row" Text="自动隐藏延时" />
-        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-          <Slider Minimum="0" Maximum="3000" TickFrequency="100" Value="{Binding AutoHideDelayMs}" />
-          <TextBlock Classes="row" Width="60" Text="{Binding AutoHideDelayMs}" />
-        </StackPanel>
-      </Grid>
+        <!-- 自绘标题栏（可拖动窗口），替代系统标题栏 -->
+        <Border Name="HeaderBar"
+                DockPanel.Dock="Top"
+                Background="Transparent"
+                Padding="18,12,12,10"
+                Cursor="SizeAll">
+          <Grid ColumnDefinitions="*,Auto">
+            <TextBlock Grid.Column="0"
+                       Text="设置"
+                       FontSize="15"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center"
+                       Foreground="{Binding TextBrush}" />
+            <Button Grid.Column="1"
+                    Theme="{StaticResource IconButton}"
+                    Name="CloseButton"
+                    Width="30"
+                    Height="30"
+                    ToolTip.Tip="关闭">
+              <Path Data="M6,6 L18,18 M18,6 L6,18"
+                    Stroke="{Binding TextDimBrush}"
+                    StrokeThickness="1.8"
+                    StrokeLineCap="Round"
+                    Width="12"
+                    Height="12"
+                    Stretch="Uniform" />
+            </Button>
+          </Grid>
+        </Border>
 
-      <TextBlock Classes="section" Text="外观" />
-      <Grid ColumnDefinitions="160,*">
-        <TextBlock Grid.Column="0" Classes="row" Text="主题" />
-        <ComboBox Grid.Column="1" SelectedIndex="{Binding ThemeIndex}">
-          <ComboBoxItem>跟随系统</ComboBoxItem>
-          <ComboBoxItem>深色</ComboBoxItem>
-          <ComboBoxItem>浅色</ComboBoxItem>
-        </ComboBox>
-      </Grid>
-      <Grid ColumnDefinitions="160,*">
-        <TextBlock Grid.Column="0" Classes="row" Text="风格" />
-        <ComboBox Grid.Column="1" SelectedIndex="{Binding StyleIndex}">
-          <ComboBoxItem>毛玻璃</ComboBoxItem>
-          <ComboBoxItem>扁平</ComboBoxItem>
-        </ComboBox>
-      </Grid>
-      <CheckBox Content="在图标下显示名称" IsChecked="{Binding ShowLabels}" />
-      <Grid ColumnDefinitions="160,*" Margin="0,6,0,0">
-        <TextBlock Grid.Column="0" Classes="row" Text="图标尺寸" />
-        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-          <Slider Minimum="28" Maximum="72" TickFrequency="2" Value="{Binding TileSize}" />
-          <TextBlock Classes="row" Width="60" Text="{Binding TileSize}" />
-        </StackPanel>
-      </Grid>
-      <Grid ColumnDefinitions="160,*" Margin="0,6,0,0">
-        <TextBlock Grid.Column="0" Classes="row" Text="面板圆角" />
-        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-          <Slider Minimum="0" Maximum="32" TickFrequency="1" Value="{Binding CornerRadius}" />
-          <TextBlock Classes="row" Width="60" Text="{Binding CornerRadius}" />
-        </StackPanel>
-      </Grid>
-      <Grid ColumnDefinitions="160,*" Margin="0,6,0,0">
-        <TextBlock Grid.Column="0" Classes="row" Text="面板不透明度" />
-        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-          <Slider Minimum="20" Maximum="100" TickFrequency="1" Value="{Binding OpacityPercent}" />
-          <TextBlock Classes="row" Width="60" Text="{Binding OpacityPercent}" />
-        </StackPanel>
-      </Grid>
-      <TextBlock Classes="hint" Text="毛玻璃在部分系统或 Avalonia 后端上会退化成纯色，此时请把不透明度调到 100%。" />
+        <ScrollViewer>
+          <StackPanel Margin="18,0,18,18" Spacing="2">
 
-      <TextBlock Classes="section" Text="停靠" />
-      <Grid ColumnDefinitions="160,*">
-        <TextBlock Grid.Column="0" Classes="row" Text="停靠边缘" />
-        <ComboBox Grid.Column="1" SelectedIndex="{Binding EdgeIndex}">
-          <ComboBoxItem>上边缘</ComboBoxItem>
-          <ComboBoxItem>下边缘</ComboBoxItem>
-          <ComboBoxItem>左边缘（竖向）</ComboBoxItem>
-          <ComboBoxItem>右边缘（竖向）</ComboBoxItem>
-        </ComboBox>
-      </Grid>
+            <TextBlock Classes="section" Text="常规" Foreground="{Binding TextDimBrush}" />
+            <ToggleSwitch Content="鼠标触到所在边缘时滑出" IsChecked="{Binding RevealOnEdgeTouch}" Foreground="{Binding TextBrush}" />
+            <ToggleSwitch Content="钉住（不自动隐藏）" IsChecked="{Binding Pinned}" Foreground="{Binding TextBrush}" />
+            <ToggleSwitch Content="执行一个项目后自动收起" IsChecked="{Binding CollapseAfterLaunch}" Foreground="{Binding TextBrush}" />
+            <ToggleSwitch Content="开机启动" IsChecked="{Binding AutoStartEnabled}" Foreground="{Binding TextBrush}" />
+            <Grid ColumnDefinitions="160,*" Margin="0,6,0,0">
+              <TextBlock Grid.Column="0" Classes="row" Text="自动隐藏延时" Foreground="{Binding TextBrush}" />
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <Slider Minimum="0" Maximum="3000" TickFrequency="100" Value="{Binding AutoHideDelayMs}" />
+                <TextBlock Classes="row" Width="60" Text="{Binding AutoHideDelayMs}" Foreground="{Binding TextDimBrush}" />
+              </StackPanel>
+            </Grid>
 
-      <TextBlock Classes="section" Text="数据" />
-      <Grid ColumnDefinitions="160,*">
-        <TextBlock Grid.Column="0" Classes="row" Text="配置文件" />
-        <StackPanel Grid.Column="1" Spacing="4">
-          <TextBlock Classes="hint" Text="{Binding ConfigFilePath}" />
-          <Button Classes="link" Content="打开所在目录" HorizontalAlignment="Left"
-                  Command="{Binding OpenConfigFolderCommand}" CommandParameter="{Binding ConfigFilePath}" />
-        </StackPanel>
-      </Grid>
-      <StackPanel Spacing="4" Margin="0,6,0,0">
-        <TextBlock Classes="row" Text="添加命令行" />
-        <TextBox Name="CmdName" PlaceholderText="名称，例如 远程桌面" />
-        <TextBox Name="CmdValue" PlaceholderText="命令，例如 mstsc /v:192.168.1.133" />
-        <StackPanel Orientation="Horizontal" Spacing="8">
-          <Button Name="AddCmdButton" Content="添加命令行" />
-          <Button Name="AddFileButton" Content="添加文件…" />
-        </StackPanel>
-      </StackPanel>
+            <TextBlock Classes="section" Text="外观" Foreground="{Binding TextDimBrush}" />
+            <Grid ColumnDefinitions="160,*" Margin="0,2,0,2">
+              <TextBlock Grid.Column="0" Classes="row" Text="主题" Foreground="{Binding TextBrush}" />
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                <Button Theme="{StaticResource Segment}" Content="跟随系统" Classes.active="{Binding IsThemeSystem}" Command="{Binding SetThemeCommand}" CommandParameter="system" />
+                <Button Theme="{StaticResource Segment}" Content="深色" Classes.active="{Binding IsThemeDark}" Command="{Binding SetThemeCommand}" CommandParameter="dark" />
+                <Button Theme="{StaticResource Segment}" Content="浅色" Classes.active="{Binding IsThemeLight}" Command="{Binding SetThemeCommand}" CommandParameter="light" />
+              </StackPanel>
+            </Grid>
+            <Grid ColumnDefinitions="160,*" Margin="0,2,0,2">
+              <TextBlock Grid.Column="0" Classes="row" Text="风格" Foreground="{Binding TextBrush}" />
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                <Button Theme="{StaticResource Segment}" Content="毛玻璃" Classes.active="{Binding IsStyleGlass}" Command="{Binding SetStyleCommand}" CommandParameter="glass" />
+                <Button Theme="{StaticResource Segment}" Content="扁平" Classes.active="{Binding IsStyleFlat}" Command="{Binding SetStyleCommand}" CommandParameter="flat" />
+              </StackPanel>
+            </Grid>
+            <ToggleSwitch Content="在图标下显示名称" IsChecked="{Binding ShowLabels}" Foreground="{Binding TextBrush}" />
+            <Grid ColumnDefinitions="160,*" Margin="0,6,0,0">
+              <TextBlock Grid.Column="0" Classes="row" Text="图标尺寸" Foreground="{Binding TextBrush}" />
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <Slider Minimum="28" Maximum="72" TickFrequency="2" Value="{Binding TileSize}" />
+                <TextBlock Classes="row" Width="60" Text="{Binding TileSize}" Foreground="{Binding TextDimBrush}" />
+              </StackPanel>
+            </Grid>
+            <Grid ColumnDefinitions="160,*" Margin="0,6,0,0">
+              <TextBlock Grid.Column="0" Classes="row" Text="面板圆角" Foreground="{Binding TextBrush}" />
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <Slider Minimum="0" Maximum="32" TickFrequency="1" Value="{Binding CornerRadius}" />
+                <TextBlock Classes="row" Width="60" Text="{Binding CornerRadius}" Foreground="{Binding TextDimBrush}" />
+              </StackPanel>
+            </Grid>
+            <Grid ColumnDefinitions="160,*" Margin="0,6,0,0">
+              <TextBlock Grid.Column="0" Classes="row" Text="面板不透明度" Foreground="{Binding TextBrush}" />
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                <Slider Minimum="20" Maximum="100" TickFrequency="1" Value="{Binding OpacityPercent}" />
+                <TextBlock Classes="row" Width="60" Text="{Binding OpacityPercent}" Foreground="{Binding TextDimBrush}" />
+              </StackPanel>
+            </Grid>
+            <TextBlock Classes="hint"
+                       Text="毛玻璃在部分系统或 Avalonia 后端上会退化成纯色，此时请把不透明度调到 100%。"
+                       Foreground="{Binding TextDimBrush}" />
 
-      <TextBlock Classes="section" Text="更新" />
-      <CheckBox Content="启动时检查更新" IsChecked="{Binding CheckUpdates}" />
-      <Grid ColumnDefinitions="160,*">
-        <TextBlock Grid.Column="0" Classes="row" Text="{Binding VersionText}" />
-        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-          <Button Content="立即检查" Command="{Binding CheckUpdateCommand}" />
-          <TextBlock Classes="row" Text="{Binding CheckResult}" />
-        </StackPanel>
-      </Grid>
-      <TextBlock Classes="hint" Text="更新来自 GitHub Releases（dotnet9/QuickApp），发现新版本会在 Dock 上提示。" />
+            <TextBlock Classes="section" Text="停靠" Foreground="{Binding TextDimBrush}" />
+            <Grid ColumnDefinitions="160,*" Margin="0,2,0,2">
+              <TextBlock Grid.Column="0" Classes="row" Text="停靠边缘" Foreground="{Binding TextBrush}" />
+              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                <Button Theme="{StaticResource Segment}" Content="上" Classes.active="{Binding IsEdgeTop}" Command="{Binding SetEdgeCommand}" CommandParameter="top" />
+                <Button Theme="{StaticResource Segment}" Content="下" Classes.active="{Binding IsEdgeBottom}" Command="{Binding SetEdgeCommand}" CommandParameter="bottom" />
+                <Button Theme="{StaticResource Segment}" Content="左" Classes.active="{Binding IsEdgeLeft}" Command="{Binding SetEdgeCommand}" CommandParameter="left" />
+                <Button Theme="{StaticResource Segment}" Content="右" Classes.active="{Binding IsEdgeRight}" Command="{Binding SetEdgeCommand}" CommandParameter="right" />
+              </StackPanel>
+            </Grid>
+            <TextBlock Classes="hint"
+                       Text="左/右边缘为竖向 Dock；收起时向各自所在边滑出。"
+                       Foreground="{Binding TextDimBrush}" />
 
-      <TextBlock Classes="section" Text="关于" />
-      <TextBlock Classes="hint" Text="QuickApp 快捷应用 · Avalonia + ReactiveUI 重写版" />
-      <TextBlock Classes="hint" Text="数据与原型：design/index.html（四边停靠、深浅主题、毛玻璃/扁平）" />
-    </StackPanel>
-  </ScrollViewer>
+            <TextBlock Classes="section" Text="数据" Foreground="{Binding TextDimBrush}" />
+            <Grid ColumnDefinitions="160,*">
+              <TextBlock Grid.Column="0" Classes="row" Text="配置文件" Foreground="{Binding TextBrush}" />
+              <StackPanel Grid.Column="1" Spacing="4">
+                <TextBlock Classes="hint" Text="{Binding ConfigFilePath}" Foreground="{Binding TextDimBrush}" />
+                <Button Theme="{StaticResource LinkButton}" Content="打开所在目录" HorizontalAlignment="Left"
+                        Command="{Binding OpenConfigFolderCommand}" CommandParameter="{Binding ConfigFilePath}" />
+              </StackPanel>
+            </Grid>
+            <StackPanel Spacing="4" Margin="0,8,0,0">
+              <TextBlock Classes="row" Text="添加命令行" Foreground="{Binding TextBrush}" />
+              <TextBox Name="CmdName" PlaceholderText="名称，例如 远程桌面" />
+              <TextBox Name="CmdValue" PlaceholderText="命令，例如 mstsc /v:192.168.1.133" />
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Theme="{StaticResource LinkButton}" Name="AddCmdButton" Content="添加命令行" />
+                <Button Theme="{StaticResource LinkButton}" Name="AddFileButton" Content="添加文件…" />
+              </StackPanel>
+            </StackPanel>
+
+            <TextBlock Classes="section" Text="更新" Foreground="{Binding TextDimBrush}" />
+            <ToggleSwitch Content="启动时检查更新" IsChecked="{Binding CheckUpdates}" Foreground="{Binding TextBrush}" />
+            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+              <TextBlock Classes="row" Width="160" Text="{Binding VersionText}" Foreground="{Binding TextBrush}" />
+              <Button Theme="{StaticResource LinkButton}" Content="立即检查" Command="{Binding CheckUpdateCommand}" />
+              <TextBlock Classes="row" Text="{Binding CheckResult}" Foreground="{Binding TextDimBrush}" />
+            </StackPanel>
+            <TextBlock Classes="hint"
+                       Text="更新来自 GitHub Releases（dotnet9/QuickApp），发现新版本会在 Dock 上提示。"
+                       Foreground="{Binding TextDimBrush}" />
+
+            <TextBlock Classes="section" Text="关于" Foreground="{Binding TextDimBrush}" />
+            <TextBlock Classes="hint" Text="QuickApp 快捷应用 · Avalonia + ReactiveUI 重写版" Foreground="{Binding TextDimBrush}" />
+            <TextBlock Classes="hint" Text="界面原型：design/index.html（四边停靠、深浅主题、毛玻璃/扁平）" Foreground="{Binding TextDimBrush}" />
+          </StackPanel>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+  </Grid>
 </Window>

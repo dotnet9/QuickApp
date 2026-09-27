@@ -20,11 +20,72 @@ public sealed class SettingsViewModel : ViewModelBase
         _dock = dock;
         CheckUpdateCommand = ReactiveCommand.CreateFromTask(() => _dock.CheckUpdateAsync());
         OpenConfigFolderCommand = ReactiveCommand.Create<string>(OpenConfigFolder);
+
+        SetThemeCommand = ReactiveCommand.Create<string>(value =>
+        {
+            Settings.Theme = value;
+            ApplyChange(palette: true, size: false);
+        });
+
+        SetStyleCommand = ReactiveCommand.Create<string>(value =>
+        {
+            Settings.Style = value;
+            ApplyChange(palette: true, size: false);
+        });
+
+        SetEdgeCommand = ReactiveCommand.Create<string>(value =>
+        {
+            DockEdge edge = value switch
+            {
+                "bottom" => DockEdge.Bottom,
+                "left" => DockEdge.Left,
+                "right" => DockEdge.Right,
+                _ => DockEdge.Top
+            };
+
+            if (Settings.Edge != edge)
+            {
+                _dock.SetEdgeCommand.Execute(edge);
+            }
+
+            ApplyChange(palette: false, size: true);
+        });
     }
 
     public ICommand CheckUpdateCommand { get; }
 
     public ICommand OpenConfigFolderCommand { get; }
+
+    public ICommand SetThemeCommand { get; }
+
+    public ICommand SetStyleCommand { get; }
+
+    public ICommand SetEdgeCommand { get; }
+
+    /// <summary>卡片外观复用 Dock 的调色板，保证两个窗口同一套配色。</summary>
+    public IBrush PanelBorderBrush => _dock.PanelBorderBrush;
+
+    public double PanelRadius => _dock.PanelRadius;
+
+    // ---------------- 分段控件选中态 ----------------
+
+    public bool IsThemeSystem => Settings.Theme is not ("dark" or "light");
+
+    public bool IsThemeDark => Settings.Theme == "dark";
+
+    public bool IsThemeLight => Settings.Theme == "light";
+
+    public bool IsStyleGlass => Settings.Style != "flat";
+
+    public bool IsStyleFlat => Settings.Style == "flat";
+
+    public bool IsEdgeTop => Settings.Edge == DockEdge.Top;
+
+    public bool IsEdgeBottom => Settings.Edge == DockEdge.Bottom;
+
+    public bool IsEdgeLeft => Settings.Edge == DockEdge.Left;
+
+    public bool IsEdgeRight => Settings.Edge == DockEdge.Right;
 
     private AppSettings Settings => _dock.Settings;
 
