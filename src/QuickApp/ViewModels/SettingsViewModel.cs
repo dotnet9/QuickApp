@@ -259,6 +259,8 @@ public sealed class SettingsViewModel : ViewModelBase
 
     public string VersionText => _dock.VersionText;
 
+    public string HotkeyText => Settings.Hotkey;
+
     public string CheckResult => _dock.UpdateText.Length > 0 ? _dock.UpdateText : "已是最新版本";
 
     // ---------------- 数据 ----------------
@@ -276,6 +278,10 @@ public sealed class SettingsViewModel : ViewModelBase
         _dock.AddTargets(paths);
         this.RaisePropertyChanged(nameof(ConfigFilePath));
     }
+
+    public bool ExportConfigTo(string filePath) => _dock.ExportConfigTo(filePath);
+
+    public bool ImportConfigFrom(string filePath) => _dock.ImportConfigFrom(filePath);
 
     private static void OpenConfigFolder(string? path)
     {
@@ -310,5 +316,16 @@ public sealed class SettingsViewModel : ViewModelBase
         this.RaisePropertyChanged(nameof(TextBrush));
         this.RaisePropertyChanged(nameof(TextDimBrush));
         this.RaisePropertyChanged(nameof(AccentBrush));
+
+        // 分段按钮的选中态（Classes.active 绑定）依赖这些属性通知，漏发就不变色
+        this.RaisePropertyChanged(nameof(IsThemeSystem));
+        this.RaisePropertyChanged(nameof(IsThemeDark));
+        this.RaisePropertyChanged(nameof(IsThemeLight));
+        this.RaisePropertyChanged(nameof(IsStyleGlass));
+        this.RaisePropertyChanged(nameof(IsStyleFlat));
+        this.RaisePropertyChanged(nameof(IsEdgeTop));
+        this.RaisePropertyChanged(nameof(IsEdgeBottom));
+        this.RaisePropertyChanged(nameof(IsEdgeLeft));
+        this.RaisePropertyChanged(nameof(IsEdgeRight));
     }
 }

@@ -27,6 +27,7 @@ public sealed class ItemViewModel : ViewModelBase
     private bool _showRemove;
     private bool _isRenaming;
     private bool _isDropTarget;
+    private bool _isDragged;
     private string _editingName = string.Empty;
     private double _tileSize = 44;
     private Orientation _itemOrientation = Orientation.Vertical;
@@ -102,7 +103,17 @@ public sealed class ItemViewModel : ViewModelBase
         }
     }
 
-    public bool HasIcon => _icon is not null;
+    public bool HasIcon => _icon is not null && string.IsNullOrEmpty(Model.IconKey);
+
+    /// <summary>用户指定的占位图标键（图标选择器写入 Model.IconKey）；为空时显示真实图标。</summary>
+    public string? IconKey => Model.IconKey;
+
+    /// <summary>「更换图标」选中占位图标后调用：真实位图让位给所选几何图形。</summary>
+    public void ClearIcon()
+    {
+        Icon = null;
+        this.RaisePropertyChanged(nameof(IconKey));
+    }
 
     /// <summary>图标底色（真实图标提取出来之前的占位底），由视图按类型与尺寸算好写入。</summary>
     public IBrush? IconBrush
@@ -139,12 +150,34 @@ public sealed class ItemViewModel : ViewModelBase
         set => Set(ref _isRunning, value);
     }
 
-    /// <summary>「仅图标 / 图标 + 名称」。</summary>
+    /// <summary>「仅图标 / 图标 + 名称」。切换时 ShowNameText 的绑定也要跟着刷新。</summary>
     public bool ShowLabel
     {
         get => _showLabel;
-        set => Set(ref _showLabel, value);
+        set
+        {
+            if (Set(ref _showLabel, value))
+            {
+                this.RaisePropertyChanged(nameof(ShowNameText));
+            }
+        }
     }
+
+    /// <summary>悬停时的位移放大组合（方向背离停靠边），由 DockViewModel 按当前边算好写入。</summary>
+    public string HoverTransform { get; set; } = "scale(1.18)";
+
+    /// <summary>按下时的回缩组合（原型 tile:active 的 scale .94），偏移方向与悬停一致。</summary>
+    public string PressedTransform { get; set; } = "scale(0.94)";
+
+    /// <summary>拖动排序中：本项是不是正被拖动的那一个（原型 .dragging 的 35% 透明）。</summary>
+    public bool IsDragged
+    {
+        get => _isDragged;
+        set => Set(ref _isDragged, value);
+    }
+
+    /// <summary>图标排布是否竖向（横排在名称上方）：决定移除按钮放左上还是右上。</summary>
+    public bool IsItemVertical => ItemOrientation == Orientation.Vertical;
 
     /// <summary>编辑模式下才显示右上角的移除按钮。</summary>
     public bool ShowRemove
@@ -200,11 +233,20 @@ public sealed class ItemViewModel : ViewModelBase
 
     public double IconSize => Math.Round(TileSize * 0.5, 1);
 
+    /// <summary>改名框宽度：瓦片宽 + 70（原型 startRename 的 width 规则，最小 120）。</summary>
+    public double RenameWidth => Math.Max(120, Math.Round(TileSize + 70));
+
     /// <summary>上/下边缘图标在上、名称在下；左/右边缘图标在左、名称在右。</summary>
     public Orientation ItemOrientation
     {
         get => _itemOrientation;
-        set => Set(ref _itemOrientation, value);
+        set
+        {
+            if (Set(ref _itemOrientation, value))
+            {
+                this.RaisePropertyChanged(nameof(IsItemVertical));
+            }
+        }
     }
 
     private static IImage? LoadBitmap(string? path)

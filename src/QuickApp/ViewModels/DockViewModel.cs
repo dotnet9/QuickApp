@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using Avalonia;
 using Avalonia.Layout;
 using Avalonia.Media;
 using QuickApp.Core.Models;
@@ -45,6 +46,7 @@ public sealed class DockViewModel : ViewModelBase
     private bool _isEditMode;
     private bool _isDockVisible = true;
     private bool _isPointerOver;
+    private bool _glassDegraded;
     private string? _statusMessage;
     private UpdateInfo? _pendingUpdate;
     private bool _isCheckingUpdate;
@@ -68,6 +70,7 @@ public sealed class DockViewModel : ViewModelBase
 
         RunCommand = ReactiveCommand.Create<ItemViewModel>(RunItem);
         RemoveCommand = ReactiveCommand.Create<ItemViewModel>(RemoveItem);
+        UndoRemoveCommand = ReactiveCommand.Create(UndoRemove);
         ClearSearchCommand = ReactiveCommand.Create(() => SearchQuery = string.Empty);
         ToggleSearchCommand = ReactiveCommand.Create(() => IsSearchOpen = !IsSearchOpen);
         ToggleEditCommand = ReactiveCommand.Create(() => IsEditMode = !IsEditMode);
@@ -182,6 +185,27 @@ public sealed class DockViewModel : ViewModelBase
         _ => "▲"
     };
 
+    /// <summary>图标悬停放大时向屏幕外侧偏移（对应原型 --pop-x/--pop-y）。</summary>
+    public string TileHoverTransform => Settings.Edge switch
+    {
+        DockEdge.Bottom => "translateY(4px) scale(1.18)",
+        DockEdge.Left => "translateX(-4px) scale(1.18)",
+        DockEdge.Right => "translateX(4px) scale(1.18)",
+        _ => "translateY(-4px) scale(1.18)"
+    };
+
+    /// <summary>按下回缩（原型 tile:active 的 scale .94），偏移方向同悬停。</summary>
+    public string TilePressedTransform => Settings.Edge switch
+    {
+        DockEdge.Bottom => "translateY(4px) scale(0.94)",
+        DockEdge.Left => "translateX(-4px) scale(0.94)",
+        DockEdge.Right => "translateX(4px) scale(0.94)",
+        _ => "translateY(-4px) scale(0.94)"
+    };
+
+    /// <summary>图标区留白：对应原型 .dock-items 的 padding（横排 6px 14px，竖排 14px 6px）。</summary>
+    public Thickness ListPadding => IsVertical ? new Thickness(14, 6) : new Thickness(6, 14);
+
     // ---------------- 更新状态 ----------------
 
     public bool UpdateAvailable => _pendingUpdate is not null;
@@ -231,10 +255,38 @@ public sealed class DockViewModel : ViewModelBase
         private set => Set(ref _statusMessage, value);
     }
 
-    /// <summary>底部提示条：显示一段时间后自动消失。</summary>
+    /// <summary>Toast 上的动作按钮（如移除后的「撤销」），null 表示无动作。</summary>
+    public string? ToastActionLabel
+    {
+        get => _toastActionLabel;
+        private set => Set(ref _toastActionLabel, value);
+    }
+
+    public ICommand? ToastActionCommand
+    {
+        get => _toastActionCommand;
+        private set => Set(ref _toastActionCommand, value);
+    }
+
+    private string? _toastActionLabel;
+    private ICommand? _toastActionCommand;
+
+    /// <summary>底部居中的悬浮 Toast（原型 .toast），duration 后自动消失。</summary>
     public void Toast(string message, int durationMs = 2200)
     {
+        ShowToast(message, null, null, durationMs);
+    }
+
+    public void Toast(string message, string? actionLabel, ICommand? actionCommand, int durationMs = 5000)
+    {
+        ShowToast(message, actionLabel, actionCommand, durationMs);
+    }
+
+    private void ShowToast(string message, string? actionLabel, ICommand? actionCommand, int durationMs)
+    {
         StatusMessage = message;
+        ToastActionLabel = actionLabel;
+        ToastActionCommand = actionCommand;
         int token = ++_toastToken;
         _ = ClearToastAsync(token, durationMs);
     }
@@ -245,6 +297,8 @@ public sealed class DockViewModel : ViewModelBase
         if (token == _toastToken)
         {
             StatusMessage = null;
+            ToastActionLabel = null;
+            ToastActionCommand = null;
         }
     }
 
@@ -293,6 +347,9 @@ public sealed class DockViewModel : ViewModelBase
 
     public bool IsSearchEmpty => Items.Count == 0 && SearchQuery.Length > 0;
 
+    /// <summary>Dock 一个项都没有（与「搜索无结果」区分开，给出添加引导）。</summary>
+    public bool IsDockEmpty => Items.Count == 0 && SearchQuery.Trim().Length == 0;
+
     // ---------------- 编辑模式 ----------------
 
     public bool IsEditMode
@@ -300,10 +357,18 @@ public sealed class DockViewModel : ViewModelBase
         get => _isEditMode;
         set
         {
-            if (Set(ref _isEditMode, value) && value)
+            if (!Set(ref _isEditMode, value))
+            {
+                return;
+            }
+
+            if (value)
             {
                 IsDockVisible = true;
             }
+
+            // ShowRemove 跟随编辑模式，重新推给每个图标
+            ApplyItemLayout();
         }
     }
 
@@ -312,6 +377,8 @@ public sealed class DockViewModel : ViewModelBase
     public ICommand RunCommand { get; }
 
     public ICommand RemoveCommand { get; }
+
+    public ICommand UndoRemoveCommand { get; }
 
     public ICommand ClearSearchCommand { get; }
 
@@ -341,7 +408,10 @@ public sealed class DockViewModel : ViewModelBase
 
     // ---------------- 数据 ----------------
 
-    private void LoadItems()
+    private void LoadItems() => RebuildItems();
+
+    /// <summary>用 _config.Items 重建视图列表（首次载入与导入配置共用）。</summary>
+    private void RebuildItems()
     {
         _allItems.Clear();
         foreach (LauncherItem item in _config.Items)
@@ -365,29 +435,42 @@ public sealed class DockViewModel : ViewModelBase
     private void ApplyItemLayout()
     {
         Orientation orientation = IsVertical ? Orientation.Horizontal : Orientation.Vertical;
+        string hover = TileHoverTransform;
+        string pressed = TilePressedTransform;
         foreach (ItemViewModel item in _allItems)
         {
             item.ShowLabel = Settings.ShowLabels;
             item.ShowRemove = IsEditMode;
             item.TileSize = Settings.TileSize;
             item.ItemOrientation = orientation;
+            item.HoverTransform = hover;
+            item.PressedTransform = pressed;
             ItemVisualRequested?.Invoke(item);
         }
     }
 
     private void RefreshFilter()
     {
-        IReadOnlyList<LauncherItem> models = _allItems.Select(v => v.Model).ToList();
-        IReadOnlyList<LauncherItem> filtered = ItemQuery.Filter(models, SearchQuery);
-        var keep = new HashSet<string>(filtered.Select(i => i.Id), StringComparer.OrdinalIgnoreCase);
+        // 显示顺序永远跟随 _config.Items（拖动排序后只改了它，视图列表按它重建）
+        var vmById = new Dictionary<string, ItemViewModel>(_allItems.Count, StringComparer.OrdinalIgnoreCase);
+        foreach (ItemViewModel vm in _allItems)
+        {
+            vmById[vm.Id] = vm;
+        }
+
+        IReadOnlyList<LauncherItem> filtered = ItemQuery.Filter(_config.Items, SearchQuery);
 
         Items.Clear();
-        foreach (ItemViewModel vm in _allItems.Where(v => keep.Contains(v.Id)))
+        foreach (LauncherItem model in filtered)
         {
-            Items.Add(vm);
+            if (vmById.TryGetValue(model.Id, out ItemViewModel? vm))
+            {
+                Items.Add(vm);
+            }
         }
 
         this.RaisePropertyChanged(nameof(IsSearchEmpty));
+        this.RaisePropertyChanged(nameof(IsDockEmpty));
         this.RaisePropertyChanged(nameof(CountText));
     }
 
@@ -449,16 +532,39 @@ public sealed class DockViewModel : ViewModelBase
             return;
         }
 
-        if (!_allItems.Remove(vm))
+        int index = _allItems.IndexOf(vm);
+        if (index < 0 || !_allItems.Remove(vm) || !_config.Items.Remove(vm.Model))
         {
             return;
         }
 
-        _config.Items.Remove(vm.Model);
+        _lastRemoved = (vm.Model, index);
         RefreshFilter();
         Save();
-        Toast("已移除 " + vm.Name + "（可在设置里重新添加）");
+        Toast("已移除 " + vm.Name, "撤销", UndoRemoveCommand, 5000);
     }
+
+    /// <summary>移除撤销（原型 toast 的「撤销」动作）：把项插回原位置。</summary>
+    private void UndoRemove()
+    {
+        if (_lastRemoved is not { } removed)
+        {
+            return;
+        }
+
+        _lastRemoved = null;
+        int index = Math.Clamp(removed.Index, 0, Math.Min(_allItems.Count, _config.Items.Count));
+        var vm = new ItemViewModel(removed.Item, RunItem, RemoveItem);
+        _config.Items.Insert(Math.Min(removed.Index, _config.Items.Count), removed.Item);
+        _allItems.Insert(index, vm);
+        _ = LoadIconAsync(vm);
+        ApplyItemLayout();
+        RefreshFilter();
+        Save();
+        Toast("已恢复");
+    }
+
+    private (LauncherItem Item, int Index)? _lastRemoved;
 
     /// <summary>添加目标（设置里选择文件，或将来的拖入）。</summary>
     public void AddTargets(IEnumerable<string> paths)
@@ -527,6 +633,48 @@ public sealed class DockViewModel : ViewModelBase
         Toast("已添加命令行：" + model.Name);
     }
 
+    /// <summary>图标选择器选定后：写入 IconKey 并刷新该图标的显示。</summary>
+    public void ChangeIcon(ItemViewModel item, string iconKey)
+    {
+        item.Model.IconKey = iconKey;
+        item.ClearIcon();
+        ItemVisualRequested?.Invoke(item);
+        Save();
+        Toast("已更换 " + item.Name + " 的图标");
+    }
+
+    // ---------------- 导入 / 导出 ----------------
+
+    public bool ExportConfigTo(string filePath) => _store.Export(_config, filePath);
+
+    /// <summary>从文件导入完整配置（设置 + 列表整体替换），返回是否成功。</summary>
+    public bool ImportConfigFrom(string filePath)
+    {
+        AppConfig? imported = _store.Import(filePath);
+        if (imported is null)
+        {
+            Toast("导入失败：不是有效的 QuickApp 配置文件");
+            return false;
+        }
+
+        bool edgeChanged = imported.Settings.Edge != Settings.Edge;
+        _config.SchemaVersion = imported.SchemaVersion;
+        _config.Settings = imported.Settings;
+        _config.Items = imported.Items;
+
+        RebuildItems();
+        RefreshPalette();
+        ApplySettings(paletteChanged: false, sizeChanged: true, save: false);
+        if (edgeChanged)
+        {
+            _host?.ApplyEdge(Settings.Edge);
+        }
+
+        Save();
+        Toast("已导入 " + _config.Items.Count + " 项");
+        return true;
+    }
+
     // ---------------- 设置 ----------------
 
     private void SetEdge(DockEdge edge)
@@ -581,10 +729,12 @@ public sealed class DockViewModel : ViewModelBase
             this.RaisePropertyChanged(nameof(BodyOrientation));
             this.RaisePropertyChanged(nameof(ListOrientation));
             this.RaisePropertyChanged(nameof(ListSpacing));
+            this.RaisePropertyChanged(nameof(ListPadding));
             this.RaisePropertyChanged(nameof(DividerWidth));
             this.RaisePropertyChanged(nameof(DividerHeight));
             this.RaisePropertyChanged(nameof(ListMaxWidth));
             this.RaisePropertyChanged(nameof(ListMaxHeight));
+            this.RaisePropertyChanged(nameof(TileHoverTransform));
             this.RaisePropertyChanged(nameof(CollapseGlyph));
             ApplyItemLayout();
         }
@@ -593,7 +743,6 @@ public sealed class DockViewModel : ViewModelBase
         this.RaisePropertyChanged(nameof(ThemeName));
         this.RaisePropertyChanged(nameof(StyleName));
         this.RaisePropertyChanged(nameof(AutoStartEnabled));
-        this.RaisePropertyChanged(nameof(IsPinned));
 
         if (save)
         {
@@ -615,7 +764,7 @@ public sealed class DockViewModel : ViewModelBase
         ApplyThemeVariant(dark);
 
         Palette palette = (dark ? Palette.Dark : Palette.Light)
-            .WithOpacity(Settings.PanelOpacity, flat: Settings.Style == "flat");
+            .WithOpacity(GlassAlpha, flat: Settings.Style == "flat");
 
         Color opaque = Color.FromArgb(255, palette.Panel.R, palette.Panel.G, palette.Panel.B);
         PanelBrush = PaletteBrushes.Panel(palette);
@@ -658,6 +807,20 @@ public sealed class DockViewModel : ViewModelBase
             AppLog.Error("切换应用主题变体失败", ex);
         }
     }
+
+    /// <summary>窗口透明级别不可用时毛玻璃退化成高不透明度纯色（对应原型 @supports 回退）。</summary>
+    public void SetGlassDegraded(bool degraded)
+    {
+        if (_glassDegraded == degraded)
+        {
+            return;
+        }
+
+        _glassDegraded = degraded;
+        RefreshPalette();
+    }
+
+    private double GlassAlpha => _glassDegraded ? Math.Max(Settings.PanelOpacity, 0.92) : Settings.PanelOpacity;
 
     private static bool IsSystemDark()
     {
@@ -825,6 +988,7 @@ public sealed class DockViewModel : ViewModelBase
 
         _config.Items.Insert(insertAt, moved);
         ApplySort();
+        RefreshFilter();
         Save();
         Toast("顺序已保存");
     }
