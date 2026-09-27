@@ -12,7 +12,7 @@
         SizeToContent="WidthAndHeight"
         WindowStartupLocation="Manual"
         Background="Transparent"
-        TransparencyLevelHint="AcrylicBlur,Blur,Transparent">
+        TransparencyLevelHint="Transparent">
 
   <Window.Resources>
     <!-- 一个图标：图标 + 名称（名称按设置显隐），左/右边缘时自动变成横向排列 -->
@@ -23,6 +23,7 @@
                 Classes="tile"
                 Classes.edit="{Binding ShowRemove}"
                 Classes.renaming="{Binding IsRenaming}"
+                Classes.dragged="{Binding IsDragged}"
                 Classes.droptarget="{Binding IsDropTarget}"
                 Width="{Binding TileSize}"
                 Height="{Binding TileSize}"
@@ -62,11 +63,11 @@
                   Width="{Binding TileSize}"
                   Height="{Binding TileSize}" />
 
-            <!-- 编辑模式：移除 -->
+            <!-- 编辑模式：移除。横向 Dock 在左上角、竖向 Dock 在右上角，向外偏 3px（原型 .remove） -->
             <Button Theme="{StaticResource RemoveButton}"
-                    Width="18"
-                    Height="18"
-                    Margin="0,0,0,0"
+                    Classes="remove"
+                    Classes.removeLeft="{Binding !IsItemVertical}"
+                    Margin="0,-3,-3,0"
                     HorizontalAlignment="Right"
                     VerticalAlignment="Top"
                     IsVisible="{Binding ShowRemove}"
@@ -83,20 +84,27 @@
           </Panel>
         </Border>
 
-        <!-- 就地改名：名称位置换成输入框（回车提交、Esc 取消、失焦提交） -->
+        <!-- 就地改名：名称位置换成输入框（回车提交、Esc 取消、失焦提交），对应原型 .rename-input -->
         <TextBox Classes="rename"
                  Name="RenameBox"
                  Text="{Binding EditingName}"
                  IsVisible="{Binding IsRenaming}"
-                 Width="100"
-                 Height="24"
-                 FontSize="11"
+                 Width="{Binding RenameWidth}"
+                 Height="32"
+                 FontSize="13"
+                 TextAlignment="Center"
+                 Background="{DynamicResource QAMenuBrush}"
+                 BorderBrush="{DynamicResource QAAccentBrush}"
+                 BorderThickness="1"
+                 CornerRadius="8"
+                 Foreground="{DynamicResource QATextBrush}"
                  HorizontalAlignment="Center" />
 
         <TextBlock Classes="label"
                    Text="{Binding Name}"
                    IsVisible="{Binding ShowNameText}"
-                   MaxWidth="96"
+                   MaxWidth="84"
+                   Foreground="{Binding TextBrush}"
                    TextAlignment="Center"
                    TextTrimming="CharacterEllipsis" />
       </StackPanel>
@@ -109,107 +117,166 @@
       <Setter Property="HorizontalAlignment" Value="Center" />
     </Style>
 
-    <!-- 图标方块：悬停放大、拖动落点半透明、改名时淡出 -->
+    <!-- 图标方块：悬停沿屏幕外侧弹出（带回弹）、带原型同款 2px 投影 -->
     <Style Selector="Border.tile">
       <Setter Property="RenderTransformOrigin" Value="50%,50%" />
       <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="BoxShadow" Value="0 2 6 0 #47000000" />
       <Setter Property="Transitions">
         <Transitions>
-          <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.16" Easing="CubicEaseOut" />
+          <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.2">
+            <TransformOperationsTransition.Easing>
+              <BackEaseOut />
+            </TransformOperationsTransition.Easing>
+          </TransformOperationsTransition>
         </Transitions>
       </Setter>
     </Style>
     <Style Selector="Border.tile:pointerover">
-      <Setter Property="RenderTransform" Value="scale(1.1)" />
+      <Setter Property="RenderTransform" Value="{Binding HoverTransform, x:DataType=vm:ItemViewModel}" />
     </Style>
-    <Style Selector="Border.tile.droptarget">
-      <Setter Property="Opacity" Value="0.5" />
+    <Style Selector="Border.tile.pressed">
+      <Setter Property="RenderTransform" Value="{Binding PressedTransform, x:DataType=vm:ItemViewModel}" />
+    </Style>
+    <Style Selector="Border.tile.dragged">
+      <Setter Property="Opacity" Value="0.35" />
     </Style>
     <Style Selector="Border.tile.renaming">
-      <Setter Property="Opacity" Value="0.35" />
+      <Setter Property="Opacity" Value="0.3" />
+    </Style>
+
+    <!-- 移除按钮：横向 Dock 在左上（原型 .remove 的 left:-3px） -->
+    <Style Selector="Button.remove.removeLeft">
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="Margin" Value="-3,-3,0,0" />
     </Style>
     <Style Selector="Border.tile.edit">
       <Setter Property="Cursor" Value="SizeAll" />
     </Style>
+
+    <!-- 气泡/工具提示：对应原型 .bubble（菜单底色 + 1px 边线 + r10） -->
+    <Style Selector="ToolTip">
+      <Setter Property="Background" Value="{DynamicResource QAMenuBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource QALineBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Foreground" Value="{DynamicResource QATextBrush}" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="Padding" Value="11,7" />
+    </Style>
   </Window.Styles>
 
-  <!-- 外留白：给悬停放大与阴影留出空间 -->
-  <Grid Margin="8">
+  <!-- 外留白：投影空间（逐像素透明窗下阴影与桌面正确混合） -->
+  <Grid Margin="12">
     <Border Name="Panel"
             Background="{Binding PanelBrush}"
             BorderBrush="{Binding PanelBorderBrush}"
             BorderThickness="1"
             CornerRadius="{Binding PanelRadius}"
-            Padding="8,4,8,6">
+            Padding="10,4,10,6"
+            BoxShadow="0 8 20 0 #66000000, 0 2 8 0 #44000000, inset 0 1 0 0 #1AFFFFFF">
       <StackPanel Orientation="Vertical" Spacing="2">
 
         <!-- 搜索行 -->
-        <Grid ColumnDefinitions="Auto,*,Auto,Auto"
-              IsVisible="{Binding IsSearchOpen}"
-              Margin="4,2,4,4">
-          <Path Grid.Column="0"
-                Data="M10,3 C13.87,3 17,6.13 17,10 C17,13.87 13.87,17 10,17 C6.13,17 3,13.87 3,10 C3,6.13 6.13,3 10,3 Z M15.2,15.2 L21,21"
-                Stroke="{Binding TextDimBrush}"
-                StrokeThickness="1.8"
-                StrokeLineCap="Round"
-                Width="15"
-                Height="15"
-                Stretch="Uniform"
-                VerticalAlignment="Center"
-                Margin="2,0,6,0" />
-          <TextBox Grid.Column="1"
-                   Name="SearchBox"
-                   Text="{Binding SearchQuery}"
-                   PlaceholderText="搜索应用、网址、命令…"
-                   FontSize="13"
-                   Background="Transparent"
-                   BorderThickness="0" />
-          <TextBlock Grid.Column="2"
-                     Text="{Binding CountText}"
-                     FontSize="11"
-                     VerticalAlignment="Center"
-                     Margin="6,0"
-                     Foreground="{Binding TextDimBrush}" />
-          <Button Grid.Column="3"
-                  Theme="{StaticResource IconButton}"
-                  Width="26"
-                  Height="26"
-                  Command="{Binding ClearSearchCommand}"
-                  ToolTip.Tip="清空搜索">
-            <Path Data="M6,6 L18,18 M18,6 L6,18"
+        <StackPanel IsVisible="{Binding IsSearchOpen}">
+          <Grid ColumnDefinitions="Auto,*,Auto,Auto"
+                Margin="4,2,4,4">
+            <Path Grid.Column="0"
+                  Data="M10,3 C13.87,3 17,6.13 17,10 C17,13.87 13.87,17 10,17 C6.13,17 3,13.87 3,10 C3,6.13 6.13,3 10,3 Z M15.2,15.2 L21,21"
                   Stroke="{Binding TextDimBrush}"
-                  StrokeThickness="2"
+                  StrokeThickness="1.8"
                   StrokeLineCap="Round"
-                  Width="10"
-                  Height="10"
-                  Stretch="Uniform" />
-          </Button>
-        </Grid>
+                  Width="15"
+                  Height="15"
+                  Stretch="Uniform"
+                  VerticalAlignment="Center"
+                  Margin="2,0,6,0" />
+            <TextBox Grid.Column="1"
+                     Name="SearchBox"
+                     Text="{Binding SearchQuery}"
+                     PlaceholderText="搜索应用、网址、命令…"
+                     FontSize="13"
+                     Background="Transparent"
+                     BorderThickness="0" />
+            <TextBlock Grid.Column="2"
+                       Text="{Binding CountText}"
+                       FontSize="11"
+                       VerticalAlignment="Center"
+                       Margin="6,0"
+                       Foreground="{Binding TextDimBrush}" />
+            <Button Grid.Column="3"
+                    Theme="{StaticResource IconButton}"
+                    Width="26"
+                    Height="26"
+                    Command="{Binding ClearSearchCommand}"
+                    ToolTip.Tip="清空搜索">
+              <Path Data="M6,6 L18,18 M18,6 L6,18"
+                    Stroke="{Binding TextDimBrush}"
+                    StrokeThickness="2"
+                    StrokeLineCap="Round"
+                    Width="10"
+                    Height="10"
+                    Stretch="Uniform" />
+            </Button>
+          </Grid>
+          <!-- 搜索行下边线（原型 .dock-search 的 border-bottom） -->
+          <Border Height="1" Margin="2,0,2,2" Background="{Binding PanelBorderBrush}" />
+        </StackPanel>
 
         <!-- 搜索无结果 -->
         <TextBlock IsVisible="{Binding IsSearchEmpty}"
                    Text="没有匹配的项目"
                    FontSize="12"
-                   Margin="12,10"
+                   Margin="18,16"
+                   Foreground="{Binding TextDimBrush}" />
+
+        <!-- 空列表：给一个添加引导（原型 .dock-empty） -->
+        <TextBlock IsVisible="{Binding IsDockEmpty}"
+                   Text="Dock 是空的 · 点右侧 + 添加第一个应用"
+                   FontSize="12"
+                   Margin="18,16"
                    Foreground="{Binding TextDimBrush}" />
 
         <!-- 主体：图标条 | 分隔线 | 操作区（左/右边缘时整列改成竖向） -->
         <StackPanel Orientation="{Binding BodyOrientation}" Spacing="8">
 
-          <ScrollViewer HorizontalScrollBarVisibility="Auto"
-                        VerticalScrollBarVisibility="Auto"
-                        MaxWidth="{Binding ListMaxWidth}"
-                        MaxHeight="{Binding ListMaxHeight}">
-            <ItemsControl Name="ItemsHost"
-                          ItemsSource="{Binding Items}"
-                          ItemTemplate="{StaticResource TileTemplate}">
-              <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                  <StackPanel Orientation="{Binding ListOrientation}" Spacing="{Binding ListSpacing}" />
-                </ItemsPanelTemplate>
-              </ItemsControl.ItemsPanel>
-            </ItemsControl>
-          </ScrollViewer>
+          <!-- 图标区滚动 chrome：滚动条隐藏，用两端渐隐 + 强调色指示条（原型 .fade/.scroll-indicator） -->
+          <Grid Name="ScrollArea"
+                MaxWidth="{Binding ListMaxWidth}"
+                MaxHeight="{Binding ListMaxHeight}">
+            <ScrollViewer Name="ItemsScroll"
+                          HorizontalScrollBarVisibility="Hidden"
+                          VerticalScrollBarVisibility="Hidden"
+                          Padding="{Binding ListPadding}">
+              <ItemsControl Name="ItemsHost"
+                            ItemsSource="{Binding Items}"
+                            ItemTemplate="{StaticResource TileTemplate}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Orientation="{Binding ListOrientation}" Spacing="{Binding ListSpacing}" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+              </ItemsControl>
+            </ScrollViewer>
+
+            <!-- 两端渐隐：轴向随停靠边，位置与显隐由视图按滚动位置计算 -->
+            <Border Name="FadeStart" IsHitTestVisible="False" IsVisible="False" />
+            <Border Name="FadeEnd" IsHitTestVisible="False" IsVisible="False" />
+
+            <!-- 滚动指示条 -->
+            <Border Name="ScrollIndicator"
+                    IsHitTestVisible="False"
+                    IsVisible="False"
+                    Background="{Binding HoverBrush}"
+                    CornerRadius="2"
+                    Margin="0,0,6,2">
+              <Border Name="ScrollThumb"
+                      Background="{Binding AccentBrush}"
+                      Opacity="0.65"
+                      CornerRadius="2"
+                      HorizontalAlignment="Left"
+                      VerticalAlignment="Top" />
+            </Border>
+          </Grid>
 
           <Border Width="{Binding DividerWidth}"
                   Height="{Binding DividerHeight}"
@@ -217,13 +284,13 @@
 
           <!-- 操作区：全部图形按钮（图标在视图层由代码塞进去） -->
           <StackPanel Orientation="{Binding BodyOrientation}" Spacing="2" VerticalAlignment="Center">
-            <Button Theme="{StaticResource IconButton}" Name="MoveButton" ToolTip.Tip="按住拖到任意一边吸附" />
-            <Button Theme="{StaticResource IconButton}" Name="SearchButton" Command="{Binding ToggleSearchCommand}" ToolTip.Tip="搜索（S）" />
-            <Button Theme="{StaticResource IconButton}" Name="EditButton" Command="{Binding ToggleEditCommand}" ToolTip.Tip="编辑模式（E）" />
-            <Button Theme="{StaticResource IconButton}" Name="AddButton" ToolTip.Tip="添加文件" />
-            <Button Theme="{StaticResource IconButton}" Name="MoreButton" ToolTip.Tip="更多" />
-            <Button Theme="{StaticResource IconButton}" Name="PinButton" Command="{Binding TogglePinCommand}" ToolTip.Tip="钉住 Dock" />
-            <Button Theme="{StaticResource IconButton}" Name="CollapseButton" Command="{Binding HideCommand}" ToolTip.Tip="收起" />
+            <Button Theme="{StaticResource IconButton}" Name="MoveButton" Width="32" Height="32" ToolTip.Tip="按住拖到任意一边吸附" />
+            <Button Theme="{StaticResource IconButton}" Name="SearchButton" Width="32" Height="32" Command="{Binding ToggleSearchCommand}" ToolTip.Tip="搜索（S）" />
+            <Button Theme="{StaticResource IconButton}" Name="EditButton" Width="32" Height="32" Command="{Binding ToggleEditCommand}" ToolTip.Tip="编辑模式（E）" />
+            <Button Theme="{StaticResource IconButton}" Name="AddButton" Width="32" Height="32" ToolTip.Tip="添加文件或命令行" />
+            <Button Theme="{StaticResource IconButton}" Name="MoreButton" Width="32" Height="32" ToolTip.Tip="更多" />
+            <Button Theme="{StaticResource IconButton}" Name="PinButton" Width="32" Height="32" Command="{Binding TogglePinCommand}" ToolTip.Tip="钉住 Dock" />
+            <Button Theme="{StaticResource IconButton}" Name="CollapseButton" Width="32" Height="32" Command="{Binding HideCommand}" ToolTip.Tip="收起" />
           </StackPanel>
         </StackPanel>
 
@@ -242,21 +309,17 @@
           </Grid>
         </Border>
 
-        <!-- 编辑模式工具条 -->
-        <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding IsEditMode}" Margin="6,2,6,0">
-          <TextBlock Text="拖动排序 · 双击改名 · 点 × 移除"
-                     FontSize="11"
-                     VerticalAlignment="Center"
-                     Foreground="{Binding TextDimBrush}" />
-          <Button Theme="{StaticResource LinkButton}" Content="完成" Command="{Binding ToggleEditCommand}" />
+        <!-- 编辑模式工具条（原型 .dock-editbar：上边线 + 12px 提示 + primary 完成钮） -->
+        <StackPanel IsVisible="{Binding IsEditMode}" Margin="8,2,8,2">
+          <Border Height="1" Margin="2,0,2,6" Background="{Binding PanelBorderBrush}" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="拖动排序 · 双击改名 · 点 × 移除"
+                       FontSize="12"
+                       VerticalAlignment="Center"
+                       Foreground="{Binding TextDimBrush}" />
+            <Button Theme="{StaticResource LinkButton}" Classes="primary" Content="完成" Command="{Binding ToggleEditCommand}" />
+          </StackPanel>
         </StackPanel>
-
-        <!-- 提示条 -->
-        <TextBlock IsVisible="{Binding StatusMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
-                   Text="{Binding StatusMessage}"
-                   FontSize="11"
-                   Margin="6,2,6,0"
-                   Foreground="{Binding TextDimBrush}" />
       </StackPanel>
     </Border>
   </Grid>

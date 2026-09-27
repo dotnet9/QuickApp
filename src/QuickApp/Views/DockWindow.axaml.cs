@@ -29,7 +29,8 @@ namespace QuickApp.Views;
 public partial class DockWindow : Window, IDockHost
 {
     private const int DockMargin = 10;
-    private const int EdgeBand = 4;
+    private const int EdgeBand = 6;
+    private const double DragThreshold = 5;
 
     private readonly DispatcherTimer _animator;
     private readonly DispatcherTimer _hideTimer;
@@ -41,10 +42,24 @@ public partial class DockWindow : Window, IDockHost
     private ItemViewModel? _focused;
     private ItemViewModel? _dragItem;
     private ItemViewModel? _dropTarget;
+    private Border? _pressedTile;
+    private Point _dragPressPosition;
+    private bool _dragStarted;
+
+    // 拖动手柄吸附：拖动中窗口跟手，光标最近边显示吸附提示，松手落边
+    private bool _dockDragging;
+    private PixelPoint _dragCursorOrigin;
+    private PixelPoint _dragWindowOrigin;
+    private DockEdge _dragEdge;
+    private Window? _snapChip;
+    private TextBlock? _snapChipText;
 
     public DockWindow()
     {
         InitializeComponent();
+
+        // 透明级别拿不到时退成全透明底，避免出现白色/黑色矩形包住圆角面板
+        TransparencyBackgroundFallback = Brushes.Transparent;
 
         _animator = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
         _animator.Tick += (_, _) => StepAnimation();
@@ -66,6 +81,14 @@ public partial class DockWindow : Window, IDockHost
 
         // 内容尺寸变化会经 SizeToContent 反映到窗口尺寸上，SizeChanged 已覆盖重定位
         SizeChanged += OnWindowResized;
+        // Avalonia 12 里透明级别变化走依赖属性（旧版的 TransparencyLevelChanged 事件没了）
+        PropertyChanged += (_, e) =>
+        {
+            if (e.Property == ActualTransparencyLevelProperty)
+            {
+                ReportTransparencyLevel();
+            }
+        };
     }
 
     public event EventHandler? SettingsRequested;
@@ -84,6 +107,13 @@ public partial class DockWindow : Window, IDockHost
 
         BuildActionIcons();
 
+        // Button 的类处理器在冒泡阶段把 PointerPressed 标记为已处理，
+        // 手柄的四个指针事件必须走 Tunnel 才能先于按钮自身的点击逻辑
+        MoveButton.AddHandler(PointerPressedEvent, OnMoveButtonPointerPressed, RoutingStrategies.Tunnel);
+        MoveButton.AddHandler(PointerMovedEvent, OnMoveButtonPointerMoved, RoutingStrategies.Tunnel);
+        MoveButton.AddHandler(PointerReleasedEvent, OnMoveButtonPointerReleased, RoutingStrategies.Tunnel);
+        MoveButton.AddHandler(PointerCaptureLostEvent, OnMoveButtonPointerCaptureLost, RoutingStrategies.Tunnel);
+
         AddButton.Click += OnAddClicked;
         MoreButton.Click += OnMoreClicked;
 
@@ -98,47 +128,268 @@ public partial class DockWindow : Window, IDockHost
         ItemsHost.AddHandler(LostFocusEvent, OnRenameBoxLostFocus, RoutingStrategies.Bubble);
         ItemsHost.AddHandler(ContextRequestedEvent, OnContextRequested, RoutingStrategies.Tunnel);
 
+        // 滚动 chrome（原型：滚轮横扫、两端渐隐、指示条）
+        ItemsScroll.PointerWheelChanged += OnScrollWheel;
+        ItemsScroll.ScrollChanged += OnScrollChanged;
+
+        // 搜索框：回车直接运行第一个匹配项
+        SearchBox.KeyDown += OnSearchBoxKeyDown;
+
         Opened += (_, _) =>
         {
             ApplyEdge(viewModel.Settings.Edge);
+            UpdatePinState();
+            ReportTransparencyLevel();
+            UpdateScrollChromeLayout();
             _edgeTimer.Start();
         };
 
         Closed += (_, _) => _edgeTimer.Stop();
     }
 
-    private void OnItemsChanged(object? sender, NotifyCollectionChangedEventArgs e) => ScheduleReposition();
-
+    private void OnItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        ScheduleReposition();
+        UpdateScrollChrome();
+    }
     private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         switch (e.PropertyName)
         {
             case nameof(DockViewModel.IsDockVisible):
-            case nameof(DockViewModel.IsSearchOpen):
-            case nameof(DockViewModel.IsEditMode):
             case nameof(DockViewModel.UpdateAvailable):
                 ScheduleReposition();
                 break;
 
+            case nameof(DockViewModel.IsSearchOpen):
+            case nameof(DockViewModel.IsEditMode):
+                // 关闭搜索/编辑后若鼠标不在 Dock 上，重新进入自动隐藏倒计时
+                ScheduleReposition();
+                ScheduleAutoHide();
+                break;
+
+            case nameof(DockViewModel.IsPinned):
+                UpdatePinState();
+                ScheduleAutoHide();
+                break;
+
+            case nameof(DockViewModel.StatusMessage):
+                UpdateToast();
+                break;
+
             case nameof(DockViewModel.PanelBrush):
                 ApplyTransparency();
+                UpdateFadeBrushes();
                 break;
         }
     }
 
-    /// <summary>毛玻璃只在「玻璃」风格时申请，扁平风格直接要透明底。</summary>
+    // ---------------- 滚动 chrome（原型 .fade / .scroll-indicator） ----------------
+
+    private void OnScrollWheel(object? sender, PointerWheelEventArgs e)
+    {
+        if (_vm is null)
+        {
+            return;
+        }
+
+        Vector offset = ItemsScroll.Offset;
+
+        if (_vm.IsVertical)
+        {
+            ItemsScroll.Offset = offset.WithY(offset.Y - e.Delta.Y * 48);
+        }
+        else
+        {
+            // 横向 Dock：滚轮（含触摸板横扫）都转成水平滚动
+            double horizontalDelta = Math.Abs(e.Delta.X) > Math.Abs(e.Delta.Y) ? e.Delta.X : e.Delta.Y;
+            ItemsScroll.Offset = offset.WithX(offset.X - horizontalDelta * 48);
+        }
+
+        e.Handled = true;
+    }
+
+    private void OnScrollChanged(object? sender, ScrollChangedEventArgs e) => UpdateScrollChrome();
+
+    private void UpdateScrollChrome()
+    {
+        if (_vm is null)
+        {
+            return;
+        }
+
+        Vector offset = ItemsScroll.Offset;
+        Size extent = ItemsScroll.Extent;
+        Size viewport = ItemsScroll.Viewport;
+        bool vertical = _vm.IsVertical;
+        bool canScroll = vertical ? extent.Height > viewport.Height + 2 : extent.Width > viewport.Width + 2;
+        double maxOffset = canScroll
+            ? (vertical ? extent.Height - viewport.Height : extent.Width - viewport.Width)
+            : 0;
+
+        ScrollIndicator.IsVisible = canScroll;
+        FadeStart.IsVisible = canScroll && (vertical ? offset.Y : offset.X) > 2;
+        FadeEnd.IsVisible = canScroll && (vertical ? offset.Y : offset.X) < maxOffset - 2;
+
+        if (!canScroll)
+        {
+            return;
+        }
+
+        double track = vertical ? ScrollArea.Bounds.Height - 10 : ScrollArea.Bounds.Width - 10;
+        double ratio = vertical ? viewport.Height / extent.Height : viewport.Width / extent.Width;
+        double thumb = Math.Max(14, track * ratio);
+        double progress = (vertical ? offset.Y : offset.X) / maxOffset;
+
+        if (vertical)
+        {
+            ScrollIndicator.Width = 3;
+            ScrollIndicator.HorizontalAlignment = HorizontalAlignment.Right;
+            ScrollIndicator.VerticalAlignment = VerticalAlignment.Stretch;
+            ScrollThumb.Width = double.NaN;
+            ScrollThumb.HorizontalAlignment = HorizontalAlignment.Stretch;
+            ScrollThumb.Height = thumb;
+            ScrollThumb.VerticalAlignment = VerticalAlignment.Top;
+            ScrollThumb.Margin = new Thickness(0, progress * (track - thumb), 0, 0);
+        }
+        else
+        {
+            ScrollIndicator.Height = 3;
+            ScrollIndicator.HorizontalAlignment = HorizontalAlignment.Stretch;
+            ScrollIndicator.VerticalAlignment = VerticalAlignment.Bottom;
+            ScrollThumb.Height = double.NaN;
+            ScrollThumb.VerticalAlignment = VerticalAlignment.Stretch;
+            ScrollThumb.Width = thumb;
+            ScrollThumb.HorizontalAlignment = HorizontalAlignment.Left;
+            ScrollThumb.Margin = new Thickness(progress * (track - thumb), 0, 0, 0);
+        }
+    }
+
+    /// <summary>渐隐层的尺寸与朝向随停靠边重算（面板换色时画刷单独更新）。</summary>
+    private void UpdateScrollChromeLayout()
+    {
+        bool vertical = _vm?.IsVertical ?? false;
+        const double fadeLength = 26;
+
+        if (vertical)
+        {
+            FadeStart.HorizontalAlignment = HorizontalAlignment.Stretch;
+            FadeStart.VerticalAlignment = VerticalAlignment.Top;
+            FadeStart.Height = fadeLength;
+            FadeStart.Width = double.NaN;
+            FadeEnd.HorizontalAlignment = HorizontalAlignment.Stretch;
+            FadeEnd.VerticalAlignment = VerticalAlignment.Bottom;
+            FadeEnd.Height = fadeLength;
+            FadeEnd.Width = double.NaN;
+        }
+        else
+        {
+            FadeStart.VerticalAlignment = VerticalAlignment.Stretch;
+            FadeStart.HorizontalAlignment = HorizontalAlignment.Left;
+            FadeStart.Width = fadeLength;
+            FadeStart.Height = double.NaN;
+            FadeEnd.VerticalAlignment = VerticalAlignment.Stretch;
+            FadeEnd.HorizontalAlignment = HorizontalAlignment.Right;
+            FadeEnd.Width = fadeLength;
+            FadeEnd.Height = double.NaN;
+        }
+
+        UpdateFadeBrushes();
+    }
+
+    /// <summary>渐隐画刷：面板色（近似不透明）渐到透明，方向随停靠边。</summary>
+    private void UpdateFadeBrushes()
+    {
+        if (_vm is null || _vm.SettingsBackgroundBrush is not SolidColorBrush surface)
+        {
+            return;
+        }
+
+        Color c = surface.Color;
+        Color from = Color.FromArgb(230, c.R, c.G, c.B);
+        Color to = Color.FromArgb(0, c.R, c.G, c.B);
+
+        bool vertical = _vm.IsVertical;
+        FadeStart.Background = new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(vertical ? 0 : 1, vertical ? 1 : 0, RelativeUnit.Relative),
+            GradientStops = { new GradientStop(from, 0), new GradientStop(to, 1) }
+        };
+        FadeEnd.Background = new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(vertical ? 0 : 1, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(vertical ? 0 : 1, vertical ? 1 : 0, RelativeUnit.Relative),
+            GradientStops = { new GradientStop(from, 0), new GradientStop(to, 1) }
+        };
+    }
+
+    // ---------------- 悬浮 Toast（原型 .toast） ----------------
+
+    private ToastWindow? _toast;
+
+    private void UpdateToast()
+    {
+        string? message = _vm?.StatusMessage;
+        if (string.IsNullOrEmpty(message))
+        {
+            _toast?.HideToast();
+            return;
+        }
+
+        _toast ??= new ToastWindow();
+        _toast.ShowToast(message, _vm?.ToastActionLabel, _vm?.ToastActionCommand);
+    }
+
+    /// <summary>钉住时给图钉按钮一个强调色激活态（对应原型 icon-btn.active）。</summary>
+    private void UpdatePinState()
+    {
+        bool pinned = _vm?.IsPinned ?? false;
+        if (pinned)
+        {
+            PinButton.Classes.Add("active");
+        }
+        else
+        {
+            PinButton.Classes.Remove("active");
+        }
+
+        if (PinButton.Content is Path path)
+        {
+            path.Stroke = pinned
+                ? _vm?.AccentBrush ?? Brushes.DodgerBlue
+                : _vm?.TextDimBrush ?? Brushes.Gray;
+        }
+    }
+
+    /// <summary>
+    /// 窗体恒定逐像素透明：面板圆角外完全透明（真正的异形窗），投影画在透明边距里与桌面混合。
+    /// 不再申请系统 acrylic——它是整窗矩形，会在面板外面留下一圈模糊「小边框」，圆角也被吃掉。
+    /// </summary>
     private void ApplyTransparency()
     {
         try
         {
-            bool glass = _vm?.Settings.Style != "flat";
-            TransparencyLevelHint = glass
-                ? new[] { WindowTransparencyLevel.AcrylicBlur, WindowTransparencyLevel.Blur, WindowTransparencyLevel.Transparent }
-                : new[] { WindowTransparencyLevel.Transparent };
+            TransparencyLevelHint = new[] { WindowTransparencyLevel.Transparent };
         }
         catch (Exception ex)
         {
             AppLog.Error("设置窗口透明度失败", ex);
+        }
+    }
+
+    /// <summary>实际拿到的透明级别决定毛玻璃是否退化（对应原型 @supports 回退规则）。</summary>
+    private void ReportTransparencyLevel()
+    {
+        try
+        {
+            WindowTransparencyLevel actual = ActualTransparencyLevel;
+            AppLog.Info("窗口透明级别：" + actual);
+            _vm?.SetGlassDegraded(actual == WindowTransparencyLevel.None);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("读取窗口透明级别失败", ex);
         }
     }
 
@@ -197,6 +448,14 @@ public partial class DockWindow : Window, IDockHost
         item.RingBrush = ReferenceEquals(item, _focused) ? _vm?.AccentBrush : null;
         item.TextBrush = _vm?.TextBrush;
 
+        // 手动挑过的占位图标优先于真实图标（原型「更换图标」的语义）
+        if (item.Model.IconKey is { } key)
+        {
+            IconCatalog.TryResolve(key, out Geometry picked);
+            item.Glyph = picked;
+            return;
+        }
+
         if (item.HasIcon)
         {
             item.Glyph = null;
@@ -216,6 +475,11 @@ public partial class DockWindow : Window, IDockHost
 
         return border?.DataContext as ItemViewModel;
     }
+
+    private static Border? TileOf(object? source)
+        => (source as Visual)?.GetSelfAndVisualAncestors()
+            .OfType<Border>()
+            .FirstOrDefault(b => b.Classes.Contains("tile"));
 
     private void SetFocused(ItemViewModel? item)
     {
@@ -244,12 +508,19 @@ public partial class DockWindow : Window, IDockHost
             return;
         }
 
+        // 点在 × 移除按钮上：放行给按钮，否则隧道里先手会把点击吞成拖动
+        if ((e.Source as Visual)?.GetSelfAndVisualAncestors().OfType<Button>().Any() == true)
+        {
+            return;
+        }
+
         ItemViewModel? item = ItemOf(e.Source);
         bool right = e.GetCurrentPoint(this).Properties.IsRightButtonPressed;
 
         if (item is null)
         {
             SetFocused(null);
+            ClearPressedTile();
             if (right)
             {
                 _vm.RequestContext(null);
@@ -268,12 +539,21 @@ public partial class DockWindow : Window, IDockHost
             return;
         }
 
+        // 按下回缩反馈（原型 tile:active 的 scale .94），松开或拖走后移除
+        if (TileOf(e.Source) is { } pressedTile)
+        {
+            _pressedTile = pressedTile;
+            _pressedTile.Classes.Add("pressed");
+        }
+
         if (_vm.IsEditMode)
         {
-            // 编辑模式：左键按住 = 拖动排序
+            // 编辑模式：左键按住 = 准备拖动排序。
+            // 不置 Handled、不立即捕获指针——捕获会把后续命中的 Source 重定向到 ItemsHost，
+            // 双击手势的 DoubleTapped 就找不到图标了；位移超过阈值才真正进入拖动并捕获。
             _dragItem = item;
-            e.Pointer.Capture(ItemsHost);
-            e.Handled = true;
+            _dragPressPosition = e.GetPosition(ItemsHost);
+            _dragStarted = false;
             return;
         }
 
@@ -288,15 +568,31 @@ public partial class DockWindow : Window, IDockHost
             return;
         }
 
+        // 位移超过阈值才进入拖动，把「按下-松手」留给双击改名
+        if (!_dragStarted)
+        {
+            Point position = e.GetPosition(ItemsHost);
+            double distance = Math.Abs(position.X - _dragPressPosition.X) + Math.Abs(position.Y - _dragPressPosition.Y);
+            if (distance < DragThreshold)
+            {
+                return;
+            }
+
+            _dragStarted = true;
+            e.Pointer.Capture(ItemsHost);
+            ClearPressedTile();
+            _dragItem.IsDragged = true;
+        }
+
         Panel? panel = ItemsHost.ItemsPanelRoot;
         if (panel is null || panel.Children.Count == 0)
         {
             return;
         }
 
-        Point position = e.GetPosition(panel);
+        Point dropPosition = e.GetPosition(panel);
         bool horizontal = _vm.ListOrientation == Orientation.Horizontal;
-        double pointer = horizontal ? position.X : position.Y;
+        double pointer = horizontal ? dropPosition.X : dropPosition.Y;
 
         ItemViewModel? target = null;
         foreach (Control child in panel.Children)
@@ -315,12 +611,15 @@ public partial class DockWindow : Window, IDockHost
             if (_dropTarget is not null)
             {
                 _dropTarget.IsDropTarget = false;
+                ApplyItemVisual(_dropTarget);
             }
 
             _dropTarget = target;
             if (_dropTarget is not null)
             {
                 _dropTarget.IsDropTarget = true;
+                // 落点用强调色描边提示（对应原型拖拽插入线）
+                _dropTarget.RingBrush = _vm.AccentBrush;
             }
         }
 
@@ -329,6 +628,8 @@ public partial class DockWindow : Window, IDockHost
 
     private void OnItemsPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
+        ClearPressedTile();
+
         if (_vm is null || _dragItem is null)
         {
             return;
@@ -339,28 +640,42 @@ public partial class DockWindow : Window, IDockHost
 
         _dragItem = null;
         _dropTarget = null;
+        _dragStarted = false;
+        dragged.IsDragged = false;
         e.Pointer.Capture(null);
 
-        if (target is not null)
+        if (!ReferenceEquals(target, dragged) && target is not null)
         {
             target.IsDropTarget = false;
-        }
-
-        if (target is not null && !ReferenceEquals(target, dragged) && !ReferenceEquals(target, dragged))
-        {
+            ApplyItemVisual(target);
             _vm.Reorder(dragged.Id, target.Id);
         }
     }
 
     private void OnItemsPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
     {
+        ClearPressedTile();
+
         if (_dropTarget is not null)
         {
             _dropTarget.IsDropTarget = false;
+            ApplyItemVisual(_dropTarget);
         }
 
+        _dragItem?.IsDragged = false;
         _dragItem = null;
         _dropTarget = null;
+        _dragStarted = false;
+    }
+
+    /// <summary>移除按下回缩态（按下另一项、松开、拖动开始时都会调用）。</summary>
+    private void ClearPressedTile()
+    {
+        if (_pressedTile is not null)
+        {
+            _pressedTile.Classes.Remove("pressed");
+            _pressedTile = null;
+        }
     }
 
     private void OnItemsDoubleTapped(object? sender, TappedEventArgs e)
@@ -369,6 +684,11 @@ public partial class DockWindow : Window, IDockHost
         {
             return;
         }
+
+        // 双击进入改名，同时取消可能已开始的拖动
+        _dragItem = null;
+        _dropTarget = null;
+        _dragStarted = false;
 
         ItemViewModel? item = ItemOf(e.Source);
         if (item is not null)
@@ -437,6 +757,20 @@ public partial class DockWindow : Window, IDockHost
 
     // ---------------- 键盘导航 ----------------
 
+    private void OnSearchBoxKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (_vm is null)
+        {
+            return;
+        }
+
+        if (e.Key == Key.Enter && _vm.Items.Count > 0)
+        {
+            _vm.RunCommand.Execute(_vm.Items[0]);
+            e.Handled = true;
+        }
+    }
+
     private void MoveFocus(int step)
     {
         if (_vm is null || _vm.Items.Count == 0)
@@ -499,6 +833,7 @@ public partial class DockWindow : Window, IDockHost
         if (item is null)
         {
             menu.Items.Add(MenuEntry("添加文件…", () => _ = AddFilesAsync()));
+            menu.Items.Add(MenuEntry("添加命令行…", () => _ = AddCommandAsync()));
             menu.Items.Add(MenuEntry("进入编辑模式", () => _vm.ToggleEditCommand.Execute(null)));
             menu.Items.Add(new Separator());
 
@@ -526,7 +861,9 @@ public partial class DockWindow : Window, IDockHost
                 _vm.BeginRename(captured);
                 FocusRenameBox();
             }));
+            menu.Items.Add(MenuEntry("更换图标", () => Dispatcher.UIThread.Post(() => OpenIconPicker(captured))));
             menu.Items.Add(MenuEntry("复制路径", () => CopyToClipboard(captured.Model.Target)));
+            menu.Items.Add(MenuEntry("复制为命令", () => CopyToClipboard(ItemQuery.ToCommandText(captured.Model))));
             menu.Items.Add(MenuEntry("在资源管理器中显示", () => RevealInExplorer(captured.Model.Target)));
             menu.Items.Add(new Separator());
             menu.Items.Add(MenuEntry("从 Dock 移除", () => _vm.RemoveCommand.Execute(captured)));
@@ -542,6 +879,61 @@ public partial class DockWindow : Window, IDockHost
         var entry = new MenuItem { Header = header, IsEnabled = enabled };
         entry.Click += (_, _) => action();
         return entry;
+    }
+
+    /// <summary>「更换图标」：指针处弹出图标网格，选中即写入 IconKey（原型的 icon-picker）。</summary>
+    private void OpenIconPicker(ItemViewModel item)
+    {
+        if (_vm is null)
+        {
+            return;
+        }
+
+        var grid = new WrapPanel { ItemWidth = 38, ItemHeight = 38 };
+        foreach (string key in IconCatalog.PickerKeys)
+        {
+            string captured = key;
+            IconCatalog.TryResolve(captured, out Geometry geometry);
+            var glyph = new Path
+            {
+                Data = geometry,
+                Stroke = _vm.TextBrush,
+                StrokeThickness = 1.7,
+                StrokeLineCap = PenLineCap.Round,
+                StrokeJoin = PenLineJoin.Round,
+                Stretch = Stretch.Uniform,
+                Width = 18,
+                Height = 18
+            };
+            var button = new Button
+            {
+                Content = glyph,
+                Width = 36,
+                Height = 36,
+                Padding = new Thickness(0),
+                Background = Brushes.Transparent,
+                HorizontalContentAlignment = HorizontalAlignment.Center,
+                VerticalContentAlignment = VerticalAlignment.Center
+            };
+            ToolTip.SetTip(button, captured);
+            button.Click += (_, _) => _vm.ChangeIcon(item, captured);
+            grid.Children.Add(button);
+        }
+
+        var flyout = new Flyout
+        {
+            Placement = PlacementMode.Pointer,
+            Content = new Border
+            {
+                Background = _vm.MenuBrush,
+                BorderBrush = _vm.PanelBorderBrush,
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(10),
+                Padding = new Thickness(8),
+                Child = grid
+            }
+        };
+        flyout.ShowAt(ItemsHost);
     }
 
     private void CopyToClipboard(string text)
@@ -579,6 +971,181 @@ public partial class DockWindow : Window, IDockHost
         }
     }
 
+    // ---------------- 拖动手柄吸附四边 ----------------
+
+    private void OnMoveButtonPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (_vm is null || !e.GetCurrentPoint(MoveButton).Properties.IsLeftButtonPressed)
+        {
+            return;
+        }
+
+        if (!NativeMethods.GetCursorPos(out NativeMethods.POINT cursor))
+        {
+            return;
+        }
+
+        _dragCursorOrigin = new PixelPoint(cursor.X, cursor.Y);
+        _dragWindowOrigin = Position;
+        _dragEdge = _vm.Settings.Edge;
+        _dockDragging = true;
+        _hideTimer.Stop();
+        e.Pointer.Capture(MoveButton);
+        ShowSnapChip(_dragCursorOrigin);
+        e.Handled = true;
+    }
+
+    private void OnMoveButtonPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (!_dockDragging || !e.GetCurrentPoint(MoveButton).Properties.IsLeftButtonPressed)
+        {
+            return;
+        }
+
+        if (!NativeMethods.GetCursorPos(out NativeMethods.POINT cursor))
+        {
+            return;
+        }
+
+        var pointer = new PixelPoint(cursor.X, cursor.Y);
+        Position = new PixelPoint(
+            _dragWindowOrigin.X + pointer.X - _dragCursorOrigin.X,
+            _dragWindowOrigin.Y + pointer.Y - _dragCursorOrigin.Y);
+
+        _dragEdge = ResolveNearestEdge(pointer);
+        ShowSnapChip(pointer);
+        e.Handled = true;
+    }
+
+    private void OnMoveButtonPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        if (!_dockDragging)
+        {
+            return;
+        }
+
+        e.Pointer.Capture(null);
+        e.Handled = true;
+        FinishDockDrag();
+    }
+
+    private void OnMoveButtonPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        if (_dockDragging)
+        {
+            FinishDockDrag();
+        }
+    }
+
+    /// <summary>松手：吸附到拖动中判定的最近边；与当前边相同则只是把窗口摆回去。</summary>
+    private void FinishDockDrag()
+    {
+        _dockDragging = false;
+        HideSnapChip();
+
+        if (_vm is null)
+        {
+            return;
+        }
+
+        DockEdge edge = _dragEdge;
+        bool changed = _vm.Settings.Edge != edge;
+        _vm.SetEdgeCommand.Execute(edge);
+        if (!changed)
+        {
+            _vm.Toast("Dock 回到" + DockPlacement.Label(edge) + "边缘");
+            ScheduleReposition();
+        }
+    }
+
+    /// <summary>按窗口中心落在光标所在屏幕工作区的哪条边附近判定吸附边。</summary>
+    private DockEdge ResolveNearestEdge(PixelPoint cursor)
+    {
+        if (_vm is null)
+        {
+            return DockEdge.Top;
+        }
+
+        (PixelRect Work, double Scaling)? screen = null;
+        try
+        {
+            if (Screens.ScreenFromPoint(cursor) is { } byPoint)
+            {
+                screen = (byPoint.WorkingArea, byPoint.Scaling);
+            }
+            else if (Screens.Primary is { } primary)
+            {
+                screen = (primary.WorkingArea, primary.Scaling);
+            }
+        }
+        catch
+        {
+            screen = null;
+        }
+
+        if (screen is null)
+        {
+            return _vm.Settings.Edge;
+        }
+
+        PixelRect work = screen.Value.Work;
+        double scaling = screen.Value.Scaling <= 0 ? 1 : screen.Value.Scaling;
+        var center = new PixelPoint(
+            Position.X + (int)(ClientSize.Width * scaling / 2),
+            Position.Y + (int)(ClientSize.Height * scaling / 2));
+
+        return DockPlacement.NearestEdge(center.X, center.Y, work.X, work.Y, work.Width, work.Height);
+    }
+
+    private void ShowSnapChip(PixelPoint cursor)
+    {
+        if (_vm is null)
+        {
+            return;
+        }
+
+        if (_snapChip is null)
+        {
+            _snapChipText = new TextBlock { FontSize = 11, FontWeight = FontWeight.Medium };
+            var border = new Border
+            {
+                Background = _vm.AccentBrush,
+                CornerRadius = new CornerRadius(10),
+                Padding = new Thickness(10, 3),
+                Child = _snapChipText
+            };
+
+            _snapChip = new Window
+            {
+                WindowDecorations = WindowDecorations.None,
+                ShowInTaskbar = false,
+                ShowActivated = false,
+                CanResize = false,
+                Topmost = true,
+                Background = Brushes.Transparent,
+                TransparencyLevelHint = new[] { WindowTransparencyLevel.Transparent },
+                SizeToContent = SizeToContent.WidthAndHeight,
+                Content = border
+            };
+        }
+
+        // 先定位再显示，避免窗口在默认位置闪一帧
+        _snapChipText!.Text = "吸附到" + DockPlacement.Label(_dragEdge) + "边缘";
+        _snapChip.Position = new PixelPoint(cursor.X + 14, Math.Max(4, cursor.Y - 40));
+        if (!_snapChip.IsVisible)
+        {
+            _snapChip.Show();
+        }
+    }
+
+    private void HideSnapChip()
+    {
+        if (_snapChip is not null)
+        {
+            _snapChip.IsVisible = false;
+        }
+    }
+
     // ---------------- 显隐 ----------------
 
     private void OnPointerOverChanged(bool over)
@@ -594,7 +1161,17 @@ public partial class DockWindow : Window, IDockHost
             return;
         }
 
-        if (_vm is null || _vm.IsPinned)
+        ScheduleAutoHide();
+    }
+
+    /// <summary>
+    /// 未钉住时启动自动隐藏倒计时。
+    /// 触边唤出时鼠标停在热区、从没进入过 Dock，不会产生「离开」转换——
+    /// 所以唤出时也要开始计时，否则 Dock 会一直挂着不收。
+    /// </summary>
+    private void ScheduleAutoHide()
+    {
+        if (_vm is null || _vm.IsPinned || !_vm.IsDockVisible || _vm.IsPointerOver)
         {
             return;
         }
@@ -607,6 +1184,11 @@ public partial class DockWindow : Window, IDockHost
     private void SetDockVisible(bool visible, bool animate)
     {
         _isHidden = !visible;
+        if (visible)
+        {
+            ScheduleAutoHide();
+        }
+
         if (!animate)
         {
             _progress = visible ? 0 : 1;
@@ -635,9 +1217,10 @@ public partial class DockWindow : Window, IDockHost
     }
 
     /// <summary>光标贴到停靠边时把 Dock 唤出来。</summary>
+    /// <summary>光标贴到停靠边时把 Dock 唤出来。钉住只表示「不自动隐藏」，不影响触边唤出。</summary>
     private void CheckEdgeReveal()
     {
-        if (_vm is null || _vm.IsDockVisible || _vm.IsPinned || !_vm.Settings.RevealOnEdgeTouch)
+        if (_vm is null || _vm.IsDockVisible || !_vm.Settings.RevealOnEdgeTouch)
         {
             return;
         }
@@ -672,6 +1255,7 @@ public partial class DockWindow : Window, IDockHost
         _vm?.ApplySettings(paletteChanged: false, sizeChanged: true, save: false);
         UpdateCollapseIcon();
         SetFocused(null);
+        UpdateScrollChromeLayout();
         ScheduleReposition();
     }
 
@@ -681,7 +1265,8 @@ public partial class DockWindow : Window, IDockHost
 
     private void ApplyPosition(double progress)
     {
-        if (_vm is null)
+        // 拖动手柄期间窗口跟手，别的重定位来源一律让路
+        if (_vm is null || _dockDragging)
         {
             return;
         }
@@ -693,6 +1278,7 @@ public partial class DockWindow : Window, IDockHost
         }
 
         PixelRect work = screen.Value.Work;
+        PixelRect bounds = screen.Value.Bounds;
         double scaling = screen.Value.Scaling <= 0 ? 1 : screen.Value.Scaling;
 
         int dockWidth = (int)Math.Ceiling(ClientSize.Width * scaling);
@@ -702,7 +1288,17 @@ public partial class DockWindow : Window, IDockHost
             return;
         }
 
-        int hidden = DockPlacement.HiddenOffset(_vm.Settings.Edge, dockWidth, dockHeight);
+        // 工作区到屏幕边界的距离（任务栏占掉的部分），收起时要一并推出屏幕
+        int beyond = _vm.Settings.Edge switch
+        {
+            DockEdge.Top => Math.Max(0, work.Y - bounds.Y),
+            DockEdge.Bottom => Math.Max(0, bounds.Bottom - work.Bottom),
+            DockEdge.Left => Math.Max(0, work.X - bounds.X),
+            DockEdge.Right => Math.Max(0, bounds.Right - work.Right),
+            _ => 0
+        };
+
+        int hidden = DockPlacement.HiddenOffset(_vm.Settings.Edge, dockWidth, dockHeight, beyondEdge: beyond);
         int offset = DockPlacement.LerpOffset(0, hidden, progress);
 
         (int x, int y) = DockPlacement.Anchor(
@@ -717,10 +1313,10 @@ public partial class DockWindow : Window, IDockHost
     }
 
     /// <summary>
-    /// 取目标屏幕的工作区与缩放。返回元组而不是 Screen 类型，
+    /// 取目标屏幕的工作区、完整边界与缩放。返回元组而不是 Screen 类型，
     /// 免得依赖该类型落在哪个命名空间（Avalonia 大版本之间挪过位置）。
     /// </summary>
-    private (PixelRect Work, double Scaling)? ResolveScreen()
+    private (PixelRect Work, PixelRect Bounds, double Scaling)? ResolveScreen()
     {
         try
         {
@@ -734,18 +1330,18 @@ public partial class DockWindow : Window, IDockHost
             if (index >= 0 && index < screens.All.Count)
             {
                 var byIndex = screens.All[index];
-                return (byIndex.WorkingArea, byIndex.Scaling);
+                return (byIndex.WorkingArea, byIndex.Bounds, byIndex.Scaling);
             }
 
             if (screens.Primary is { } primary)
             {
-                return (primary.WorkingArea, primary.Scaling);
+                return (primary.WorkingArea, primary.Bounds, primary.Scaling);
             }
 
             if (NativeMethods.GetCursorPos(out NativeMethods.POINT point)
                 && screens.ScreenFromPoint(new PixelPoint(point.X, point.Y)) is { } fromPoint)
             {
-                return (fromPoint.WorkingArea, fromPoint.Scaling);
+                return (fromPoint.WorkingArea, fromPoint.Bounds, fromPoint.Scaling);
             }
 
             return null;
@@ -867,7 +1463,36 @@ public partial class DockWindow : Window, IDockHost
         });
     }
 
-    private async void OnAddClicked(object? sender, RoutedEventArgs e) => await AddFilesAsync();
+    private async void OnAddClicked(object? sender, RoutedEventArgs e)
+    {
+        // 原型：加号弹菜单（添加文件 / 添加命令行），不是直接开文件选择器
+        var flyout = new MenuFlyout();
+
+        var files = new MenuItem { Header = "添加文件…" };
+        files.Click += (_, _) => _ = AddFilesAsync();
+        flyout.Items.Add(files);
+
+        var command = new MenuItem { Header = "添加命令行…" };
+        command.Click += (_, _) => _ = AddCommandAsync();
+        flyout.Items.Add(command);
+
+        flyout.ShowAt(AddButton);
+    }
+
+    private async System.Threading.Tasks.Task AddCommandAsync()
+    {
+        if (_vm is null)
+        {
+            return;
+        }
+
+        (string Name, string Command)? result = await CommandDialogWindow.ShowAsync(this, _vm);
+        if (result is { } entry)
+        {
+            _vm.AddCommand(entry.Name, entry.Command);
+            ScheduleReposition();
+        }
+    }
 
     private async System.Threading.Tasks.Task AddFilesAsync()
     {
@@ -926,6 +1551,10 @@ public partial class DockWindow : Window, IDockHost
         settings.Click += (_, _) => ShowSettings();
         flyout.Items.Add(settings);
 
+        var addCommand = new MenuItem { Header = "添加命令行…" };
+        addCommand.Click += (_, _) => _ = AddCommandAsync();
+        flyout.Items.Add(addCommand);
+
         var check = new MenuItem { Header = "检查更新" };
         check.Click += (_, _) => _ = _vm.CheckUpdateAsync();
         flyout.Items.Add(check);
@@ -972,5 +1601,9 @@ public partial class DockWindow : Window, IDockHost
         }
     }
 
-    private void OnWindowResized(object? sender, SizeChangedEventArgs e) => ApplyPosition(_progress);
+    private void OnWindowResized(object? sender, SizeChangedEventArgs e)
+    {
+        ApplyPosition(_progress);
+        UpdateScrollChrome();
+    }
 }
