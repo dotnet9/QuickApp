@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <!-- 各项目 PublishProfile 的共享部分：输出路径与自包含/裁剪约定 -->
+  <PropertyGroup>
+    <PublishProtocol>FileSystem</PublishProtocol>
+    <PublishProvider>FileSystem</PublishProvider>
+    <WebPublishMethod>FileSystem</WebPublishMethod>
+    <Configuration>Release</Configuration>
+    <LastUsedBuildConfiguration>$(Configuration)</LastUsedBuildConfiguration>
+    <LastUsedPlatform>Any CPU</LastUsedPlatform>
+    <LastUsedTargetFramework>$(TargetFramework)</LastUsedTargetFramework>
+    <LastUsedRuntimeIdentifier>$(RuntimeIdentifier)</LastUsedRuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishTrimmed>true</PublishTrimmed>
+    <!-- AOT 默认会产出几百 MB 的 pdb（QuickApp.pdb 就 360MB），发布包不需要它们 -->
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <!-- 目录名与交付程序一致：artifacts\publish\{rid}\{tfm}\{AssemblyName}\ -->
+    <PublishDir>$(ArtifactsPath)publish\$(RuntimeIdentifier)\$(TargetFramework)\$(AssemblyName)\</PublishDir>
+    <PublishUrl>$(PublishDir)</PublishUrl>
+    <DeleteExistingFiles>true</DeleteExistingFiles>
+  </PropertyGroup>
+</Project>

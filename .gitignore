@@ -348,3 +348,10 @@ MigrationBackup/
 
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
+
+# QuickApp：构建/发布/打包产物（见 scripts/publish.bat 与 package.bat）
+artifacts/
+
+# 发布配置必须进仓库：publish.bat 与 CI 都依赖它（上面 VS 模板的 *.pubxml 规则会误伤）
+!**/Properties/PublishProfiles/*.pubxml
+

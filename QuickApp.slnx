@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="src/QuickApp.Core/QuickApp.Core.csproj" />
+  <Project Path="src/QuickApp/QuickApp.csproj" />
+  <Project Path="tests/QuickApp.Core.Tests/QuickApp.Core.Tests.csproj" />
+</Solution>

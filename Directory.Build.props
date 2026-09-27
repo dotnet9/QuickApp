@@ -1,0 +1,21 @@
+<Project>
+  <PropertyGroup>
+    <UseArtifactsOutput>true</UseArtifactsOutput>
+    <ArtifactsPath>$(MSBuildThisFileDirectory)artifacts\</ArtifactsPath>
+    <PackageOutputPath>$(ArtifactsPath)packages\</PackageOutputPath>
+
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <NeutralLanguage>zh-Hans</NeutralLanguage>
+
+    <!-- 版本号单一来源；CI 发布时用 -p:Version=<tag> 覆盖 -->
+    <VersionPrefix Condition="'$(VersionPrefix)' == ''">0.1.0</VersionPrefix>
+    <Company>QuickApp</Company>
+    <Product>QuickApp 快捷应用</Product>
+    <Authors>Dotnet9</Authors>
+    <RepositoryUrl>https://github.com/dotnet9/QuickApp</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+  </PropertyGroup>
+</Project>
