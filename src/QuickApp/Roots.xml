@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  NativeAOT 裁剪根描述符。
+  反射构造/解析的类型被裁掉会在运行期炸，所以对涉及 XAML、Rx、DI 的程序集整份保留。
+  参考 D:\github\company\xskj-component\src\SComponent.Client\Roots.xml 的做法：代价是体积，换来「发布出来的 exe 一定能跑」。
+  注意：这里只列真实存在的程序集，写不存在的名字会产生 IL2007 警告。
+-->
+<linker>
+  <assembly fullname="QuickApp" preserve="all" />
+  <assembly fullname="QuickApp.Core" preserve="all" />
+
+  <assembly fullname="Avalonia.Base" preserve="all" />
+  <assembly fullname="Avalonia.Controls" preserve="all" />
+  <assembly fullname="Avalonia.Desktop" preserve="all" />
+  <assembly fullname="Avalonia.Themes.Fluent" preserve="all" />
+  <assembly fullname="Avalonia.Win32" preserve="all" />
+  <assembly fullname="Avalonia.Skia" preserve="all" />
+  <assembly fullname="Avalonia.Markup.Xaml" preserve="all" />
+
+  <assembly fullname="ReactiveUI" preserve="all" />
+  <assembly fullname="ReactiveUI.Avalonia" preserve="all" />
+  <assembly fullname="ReactiveUI.Core" preserve="all" />
+  <assembly fullname="ReactiveUI.Primitives" preserve="all" />
+  <assembly fullname="ReactiveUI.Primitives.Avalonia" preserve="all" />
+  <assembly fullname="System.Reactive" preserve="all" />
+  <assembly fullname="Splat" preserve="all" />
+
+  <assembly fullname="Microsoft.Extensions.DependencyInjection" preserve="all" />
+  <assembly fullname="Microsoft.Extensions.DependencyInjection.Abstractions" preserve="all" />
+  <assembly fullname="System.Text.Json" preserve="all" />
+</linker>

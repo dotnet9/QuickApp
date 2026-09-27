@@ -1,0 +1,222 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:QuickApp.ViewModels"
+        x:Class="QuickApp.Views.DockWindow"
+        x:DataType="vm:DockViewModel"
+        Title="QuickApp"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        WindowDecorations="None"
+        CanResize="False"
+        Topmost="True"
+        SizeToContent="WidthAndHeight"
+        WindowStartupLocation="Manual"
+        Background="Transparent"
+        TransparencyLevelHint="AcrylicBlur,Blur,Transparent">
+
+  <Window.Resources>
+    <!-- 一个图标：图标 + 名称（名称按设置显隐），左/右边缘时自动变成横向排列 -->
+    <DataTemplate x:Key="TileTemplate" x:DataType="vm:ItemViewModel">
+      <StackPanel Orientation="{Binding ItemOrientation}" Spacing="6" Margin="1">
+        <Button Classes="tile"
+                Width="{Binding TileSize}"
+                Height="{Binding TileSize}"
+                CornerRadius="{Binding TileRadius}"
+                Background="{Binding Placeholder}"
+                ToolTip.Tip="{Binding Tooltip}"
+                Command="{Binding ActivateCommand}">
+          <Panel>
+            <Image Source="{Binding Icon}"
+                   Width="{Binding IconSize}"
+                   Height="{Binding IconSize}"
+                   IsVisible="{Binding HasIcon}"
+                   Stretch="Uniform" />
+            <TextBlock Text="{Binding Initial}"
+                       IsVisible="{Binding !HasIcon}"
+                       Foreground="White"
+                       FontSize="16"
+                       FontWeight="SemiBold"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center" />
+            <Border Classes="hover" CornerRadius="{Binding TileRadius}" />
+            <TextBlock Text="✓"
+                       IsVisible="{Binding IsRunning}"
+                       Foreground="White"
+                       FontSize="18"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center" />
+            <Button Classes="remove"
+                    Content="×"
+                    IsVisible="False"
+                    Command="{Binding RemoveCommand}"
+                    ToolTip.Tip="移除" />
+          </Panel>
+        </Button>
+        <TextBlock Classes="label"
+                   Text="{Binding Name}"
+                   IsVisible="{Binding ShowLabel}"
+                   MaxWidth="96"
+                   TextTrimming="CharacterEllipsis" />
+      </StackPanel>
+    </DataTemplate>
+  </Window.Resources>
+
+  <Window.Styles>
+    <Style Selector="Button.tile">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.tile Border.hover">
+      <Setter Property="Background" Value="#33FFFFFF" />
+      <Setter Property="Opacity" Value="0" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.15" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Button.tile:pointerover Border.hover">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+
+    <Style Selector="TextBlock.label">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="TextAlignment" Value="Center" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+
+    <!-- 操作按钮 -->
+    <Style Selector="Button.action">
+      <Setter Property="Width" Value="32" />
+      <Setter Property="Height" Value="32" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+
+    <Style Selector="Button.remove">
+      <Setter Property="Width" Value="18" />
+      <Setter Property="Height" Value="18" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="CornerRadius" Value="9" />
+      <Setter Property="HorizontalAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+      <Setter Property="Background" Value="#CC101319" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+  </Window.Styles>
+
+  <!-- 外留白给窗口阴影/缩放留空间 -->
+  <Grid Margin="12">
+    <Border Name="Panel"
+            Background="{Binding PanelBrush}"
+            BorderBrush="{Binding PanelBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="{Binding PanelRadius}"
+            Padding="8,4,8,6">
+      <StackPanel Orientation="Vertical" Spacing="2">
+
+        <!-- 搜索行 -->
+        <Grid ColumnDefinitions="Auto,*,Auto,Auto"
+              IsVisible="{Binding IsSearchOpen}"
+              Margin="4,2,4,4">
+          <TextBlock Grid.Column="0" Text="🔍" FontSize="12" VerticalAlignment="Center" Margin="2,0,6,0" />
+          <TextBox Grid.Column="1"
+                   Name="SearchBox"
+                   Text="{Binding SearchQuery}"
+                   PlaceholderText="搜索应用、网址、命令…"
+                   FontSize="13"
+                   Background="Transparent"
+                   BorderThickness="0" />
+          <TextBlock Grid.Column="2"
+                     Text="{Binding CountText}"
+                     FontSize="11"
+                     VerticalAlignment="Center"
+                     Margin="6,0"
+                     Foreground="{Binding TextDimBrush}" />
+          <Button Grid.Column="3" Classes="action" Content="×"
+                  Command="{Binding ClearSearchCommand}" ToolTip.Tip="清空搜索" />
+        </Grid>
+
+        <!-- 搜索无结果 / Dock 为空 -->
+        <TextBlock IsVisible="{Binding IsSearchEmpty}"
+                   Text="没有匹配的项目"
+                   FontSize="12"
+                   Margin="12,10"
+                   Foreground="{Binding TextDimBrush}" />
+
+        <!-- 主体：图标条 | 分隔线 | 操作区（左/右边缘时整列改成竖向） -->
+        <StackPanel Orientation="{Binding BodyOrientation}" Spacing="8">
+
+          <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                        VerticalScrollBarVisibility="Auto"
+                        MaxWidth="{Binding ListMaxWidth}"
+                        MaxHeight="{Binding ListMaxHeight}">
+            <ItemsControl Name="ItemsHost"
+                          ItemsSource="{Binding Items}"
+                          ItemTemplate="{StaticResource TileTemplate}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <StackPanel Orientation="{Binding ListOrientation}" Spacing="{Binding ListSpacing}" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+            </ItemsControl>
+          </ScrollViewer>
+
+          <Border Width="{Binding DividerWidth}"
+                  Height="{Binding DividerHeight}"
+                  Background="{Binding PanelBorderBrush}" />
+
+          <StackPanel Orientation="{Binding BodyOrientation}" Spacing="2" VerticalAlignment="Center">
+            <Button Classes="action" Content="搜" Command="{Binding ToggleSearchCommand}" ToolTip.Tip="搜索（S）" />
+            <Button Classes="action" Content="改" Command="{Binding ToggleEditCommand}" ToolTip.Tip="编辑模式（E）" />
+            <Button Classes="action" Content="＋" ToolTip.Tip="添加文件（把文件拖进来也行）" Name="AddButton" />
+            <Button Classes="action" Content="⋯" Name="MoreButton" ToolTip.Tip="更多" />
+            <Button Classes="action" Content="钉" Command="{Binding TogglePinCommand}" ToolTip.Tip="钉住 Dock" />
+            <Button Classes="action" Content="{Binding CollapseGlyph}" Command="{Binding HideCommand}" ToolTip.Tip="收起" />
+          </StackPanel>
+        </StackPanel>
+
+        <!-- 更新提示 -->
+        <Border IsVisible="{Binding UpdateAvailable}"
+                Background="{Binding HoverBrush}"
+                CornerRadius="8"
+                Padding="8,4"
+                Margin="2,2,2,0">
+          <Grid ColumnDefinitions="*,Auto,Auto">
+            <TextBlock Grid.Column="0" Text="{Binding UpdateText}" FontSize="12" VerticalAlignment="Center" />
+            <Button Grid.Column="1" Classes="link" Content="去下载"
+                    Command="{Binding OpenUpdateCommand}" FontSize="12" Margin="8,0" />
+            <Button Grid.Column="2" Classes="link" Content="忽略"
+                    Command="{Binding DismissUpdateCommand}" FontSize="12" />
+          </Grid>
+        </Border>
+
+        <!-- 编辑模式工具条 -->
+        <StackPanel Orientation="Horizontal"
+                    Spacing="8"
+                    IsVisible="{Binding IsEditMode}"
+                    Margin="6,2,6,0">
+          <TextBlock Text="点 × 移除 · 拖文件进来添加"
+                     FontSize="11"
+                     VerticalAlignment="Center"
+                     Foreground="{Binding TextDimBrush}" />
+          <Button Classes="link" Content="完成" Command="{Binding ToggleEditCommand}" FontSize="12" />
+        </StackPanel>
+
+        <!-- 提示条 -->
+        <TextBlock IsVisible="{Binding StatusMessage, Converter={x:Static ObjectConverters.IsNotNull}}"
+                   Text="{Binding StatusMessage}"
+                   FontSize="11"
+                   Margin="6,2,6,0"
+                   Foreground="{Binding TextDimBrush}" />
+      </StackPanel>
+    </Border>
+  </Grid>
+</Window>
