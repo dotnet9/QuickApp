@@ -1,0 +1,163 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!--
+    自己写 ControlTheme 而不用 Fluent 的按钮模板：
+    原型上的圆角、悬停放大、按下缩放都要精确控制，主题模板会把 Background/CornerRadius 盖掉。
+  -->
+
+  <!-- Dock 上的一个图标 -->
+  <ControlTheme x:Key="TileButton" TargetType="Button">
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Margin" Value="0" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="RenderTransformOrigin" Value="50%,50%" />
+    <Setter Property="Transitions">
+      <Transitions>
+        <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.16" Easing="CubicEaseOut" />
+      </Transitions>
+    </Setter>
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Panel>
+          <Border Name="PART_Bg"
+                  Background="{TemplateBinding Background}"
+                  CornerRadius="{TemplateBinding CornerRadius}" />
+          <Border Name="PART_Hover"
+                  Background="#2EFFFFFF"
+                  CornerRadius="{TemplateBinding CornerRadius}"
+                  Opacity="0">
+            <Border.Transitions>
+              <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.12" />
+              </Transitions>
+            </Border.Transitions>
+          </Border>
+          <Border Name="PART_Press"
+                  Background="#14000000"
+                  CornerRadius="{TemplateBinding CornerRadius}"
+                  Opacity="0" />
+          <ContentPresenter Name="PART_Content"
+                            Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center" />
+        </Panel>
+      </ControlTemplate>
+    </Setter>
+
+    <Style Selector="^:pointerover /template/ Border#PART_Hover">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="^:pointerover">
+      <Setter Property="RenderTransform" Value="scale(1.08)" />
+    </Style>
+    <Style Selector="^:pressed">
+      <Setter Property="RenderTransform" Value="scale(0.94)" />
+    </Style>
+    <Style Selector="^:pressed /template/ Border#PART_Press">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+  </ControlTheme>
+
+  <!-- Dock 右侧的操作按钮 / 窗口上的小按钮：32x32 圆角方块，内容由 XAML 给的 Path 提供 -->
+  <ControlTheme x:Key="IconButton" TargetType="Button">
+    <Setter Property="Width" Value="30" />
+    <Setter Property="Height" Value="30" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Foreground" Value="#9AA4B3" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="PART_Bg"
+                Background="Transparent"
+                CornerRadius="8">
+          <ContentPresenter Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+
+    <Style Selector="^:pointerover /template/ Border#PART_Bg">
+      <Setter Property="Background" Value="#1AFFFFFF" />
+    </Style>
+    <Style Selector="^:pointerover">
+      <Setter Property="Foreground" Value="#EEF1F6" />
+    </Style>
+    <Style Selector="^:pressed /template/ Border#PART_Bg">
+      <Setter Property="Background" Value="#28FFFFFF" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 编辑模式里图标右上角的移除按钮：深色圆底 + 白 ×（原型样式），不随图标尺寸缩放 -->
+  <ControlTheme x:Key="RemoveButton" TargetType="Button">
+    <Setter Property="Width" Value="18" />
+    <Setter Property="Height" Value="18" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="PART_Bg" Background="#CC0B0E13" CornerRadius="9">
+          <ContentPresenter Content="{TemplateBinding Content}"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover /template/ Border#PART_Bg">
+      <Setter Property="Background" Value="#E5484D" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 分段选择（设置窗口的主题/风格/停靠边）：选中项用强调色填充，对应原型的 seg -->
+  <ControlTheme x:Key="Segment" TargetType="Button">
+    <Setter Property="Height" Value="28" />
+    <Setter Property="Padding" Value="12,0" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Foreground" Value="#9AA4B3" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="PART_Bg"
+                Background="Transparent"
+                CornerRadius="7"
+                Padding="{TemplateBinding Padding}">
+          <ContentPresenter Content="{TemplateBinding Content}"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover /template/ Border#PART_Bg">
+      <Setter Property="Background" Value="#1F3A6BFF" />
+    </Style>
+    <Style Selector="^.active /template/ Border#PART_Bg">
+      <Setter Property="Background" Value="#FF3B82F6" />
+    </Style>
+    <Style Selector="^.active">
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 文字按钮（设置窗口里的「打开目录」「立即检查」等） -->
+  <ControlTheme x:Key="LinkButton" TargetType="Button">
+    <Setter Property="Padding" Value="8,3" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="PART_Bg" Background="#14000000" CornerRadius="6" Padding="{TemplateBinding Padding}">
+          <ContentPresenter Content="{TemplateBinding Content}"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover /template/ Border#PART_Bg">
+      <Setter Property="Background" Value="#28FFFFFF" />
+    </Style>
+  </ControlTheme>
+
+</ResourceDictionary>

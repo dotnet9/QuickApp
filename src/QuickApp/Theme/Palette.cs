@@ -1,6 +1,7 @@
 using System;
 using System.Globalization;
 using Avalonia.Media;
+using QuickApp.Core.Models;
 
 namespace QuickApp.Theme;
 
@@ -38,7 +39,7 @@ public sealed record Palette(
 
     public static Palette Light { get; } = new(
         Panel: Color.Parse("#FFFFFF"),
-        PanelBorder: Color.Parse("#1F111826"),
+        PanelBorder: Color.Parse("#14111826"),
         Text: Color.Parse("#111826"),
         TextDim: Color.Parse("#5C6675"),
         Accent: Color.Parse("#2563EB"),
@@ -70,18 +71,29 @@ public static class PaletteBrushes
 
     public static IBrush TextDim(Palette palette) => Brush(palette.TextDim);
 
-    /// <summary>图标底色：按名称哈希取色，和原型一致（图标文件还没加载出来时的占位）。</summary>
-    public static IBrush TilePlaceholder(string name)
+    /// <summary>
+    /// 图标底色（真实图标提取出来之前的占位）。
+    /// 应用按名称哈希取色，网页与命令行用固定色相，方便一眼区分类型。
+    /// </summary>
+    public static IBrush TileBrush(string name, ItemKind kind, double tileSize)
     {
-        int hash = 0;
-        foreach (char ch in name ?? string.Empty)
+        double hue = kind switch
         {
-            hash = (hash * 31 + ch) % 360;
+            ItemKind.Command => 210,
+            ItemKind.Web => 258,
+            _ => Hue(name)
+        };
+
+        double saturation = kind == ItemKind.App ? 0.52 : 0.5;
+        Color from = FromHsl(hue, saturation, 0.46);
+
+        // 小图标用纯色更干净，大图标给一点渐变层次
+        if (tileSize < 30)
+        {
+            return new SolidColorBrush(from);
         }
 
-        double hue = hash;
-        Color from = FromHsl(hue, 0.52, 0.46);
-        Color to = FromHsl((hue + 18) % 360, 0.52, 0.34);
+        Color to = FromHsl((hue + 18) % 360, saturation, 0.34);
 
         return new LinearGradientBrush
         {
@@ -93,6 +105,17 @@ public static class PaletteBrushes
                 new GradientStop(to, 1)
             }
         };
+    }
+
+    private static double Hue(string name)
+    {
+        int hash = 0;
+        foreach (char ch in name ?? string.Empty)
+        {
+            hash = (hash * 31 + ch) % 360;
+        }
+
+        return hash;
     }
 
     private static Color FromHsl(double h, double s, double l)

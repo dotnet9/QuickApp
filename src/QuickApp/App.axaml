@@ -6,4 +6,12 @@
     <FluentTheme />
     <StyleInclude Source="avares://QuickApp/Styles/Common.axaml" />
   </Application.Styles>
+
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceInclude Source="avares://QuickApp/Styles/Controls.axaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </Application.Resources>
 </Application>
