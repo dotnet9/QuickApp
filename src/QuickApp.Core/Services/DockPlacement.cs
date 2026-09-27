@@ -57,16 +57,18 @@ public static class DockPlacement
 
     /// <summary>
     /// 收起时的位移量（带符号，直接交给 Anchor 相加）：
-    /// 上边向上移出、下边向下移出、左边向左、右边向右，位移量保证窗口整块离开工作区。
+    /// 上边向上移出、下边向下移出、左边向左、右边向右。
+    /// <paramref name="beyondEdge"/> 是工作区边界到屏幕边界的距离（任务栏高度）——
+    /// 只推出工作区还不够，窗口被屏幕边「托住」的部分会压在任务栏上显示出来，必须一并推出屏幕。
     /// </summary>
-    public static int HiddenOffset(Models.DockEdge edge, int dockWidth, int dockHeight, int gap = 22)
+    public static int HiddenOffset(Models.DockEdge edge, int dockWidth, int dockHeight, int gap = 22, int beyondEdge = 0)
         => edge switch
         {
-            Models.DockEdge.Top => -(dockHeight + gap),
-            Models.DockEdge.Bottom => dockHeight + gap,
-            Models.DockEdge.Left => -(dockWidth + gap),
-            Models.DockEdge.Right => dockWidth + gap,
-            _ => -(dockHeight + gap)
+            Models.DockEdge.Top => -(dockHeight + gap + beyondEdge),
+            Models.DockEdge.Bottom => dockHeight + gap + beyondEdge,
+            Models.DockEdge.Left => -(dockWidth + gap + beyondEdge),
+            Models.DockEdge.Right => dockWidth + gap + beyondEdge,
+            _ => -(dockHeight + gap + beyondEdge)
         };
 
     /// <summary>左/右边缘是竖向 Dock。</summary>

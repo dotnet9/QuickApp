@@ -123,6 +123,19 @@ public static class ItemQuery
     public static LauncherItem? At(IReadOnlyList<LauncherItem> items, int index)
         => items is not null && index >= 0 && index < items.Count ? items[index] : null;
 
+    /// <summary>「复制为命令」：能直接粘到 cmd / Win+R 里用的形式，网页补 start 前缀。</summary>
+    public static string ToCommandText(LauncherItem item)
+    {
+        if (item is null || string.IsNullOrWhiteSpace(item.Target))
+        {
+            return string.Empty;
+        }
+
+        return item.Kind == ItemKind.Web && !item.Target.StartsWith("start ", StringComparison.OrdinalIgnoreCase)
+            ? "start " + item.Target
+            : item.Target;
+    }
+
     /// <summary>把 from 位置的项移动到 to 位置（拖拽排序，纯列表操作）。</summary>
     public static void Move(IList<LauncherItem> items, int from, int to)
     {

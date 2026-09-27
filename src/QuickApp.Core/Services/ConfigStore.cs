@@ -86,6 +86,47 @@ public sealed class ConfigStore
         }
     }
 
+    /// <summary>导出配置到指定文件（同样的 JSON 格式），用于设置窗口的「导出」。</summary>
+    public bool Export(AppConfig config, string filePath)
+    {
+        try
+        {
+            string json = System.Text.Json.JsonSerializer.Serialize(config, AppJsonContext.Default.AppConfig);
+            File.WriteAllText(filePath, json);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _log?.Invoke($"导出配置失败：{ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>从文件读入一份配置并做规范化；文件无效返回 null。</summary>
+    public AppConfig? Import(string filePath)
+    {
+        try
+        {
+            if (!File.Exists(filePath))
+            {
+                return null;
+            }
+
+            string text = File.ReadAllText(filePath);
+            if (string.IsNullOrWhiteSpace(text))
+            {
+                return null;
+            }
+
+            AppConfig? config = System.Text.Json.JsonSerializer.Deserialize(text, AppJsonContext.Default.AppConfig);
+            return config is null ? null : Normalize(config);
+        }
+        catch (Exception ex)
+        {
+            _log?.Invoke($"导入配置失败：{ex.Message}");
+            return null;
+        }
+    }
     /// <summary>补齐字段、去重 Id、清掉非法项，避免坏配置把 UI 带崩。</summary>
     public static AppConfig Normalize(AppConfig config)
     {
@@ -119,6 +160,11 @@ public sealed class ConfigStore
         config.Settings.CornerRadius = Math.Clamp(config.Settings.CornerRadius, 0, 40);
         config.Settings.PanelOpacity = Math.Clamp(config.Settings.PanelOpacity, 0.2, 1);
         config.Settings.AutoHideDelayMs = Math.Clamp(config.Settings.AutoHideDelayMs, 0, 5000);
+        if (string.IsNullOrWhiteSpace(config.Settings.Hotkey))
+        {
+            config.Settings.Hotkey = "Ctrl+Alt+Space";
+        }
+
         return config;
     }
 

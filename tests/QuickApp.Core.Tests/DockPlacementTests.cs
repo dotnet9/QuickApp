@@ -98,6 +98,21 @@ public sealed class DockPlacementTests
         Assert.True(Math.Abs(DockPlacement.HiddenOffset(DockEdge.Right, DockW, DockH)) >= DockW);
     }
 
+    /// <summary>下边缘收起时必须把任务栏高度也算进去，否则窗口被屏幕底边托住、压在任务栏上露出一条。</summary>
+    [Fact]
+    public void Bottom_edge_clears_the_taskbar_when_hiding()
+    {
+        const int taskbarHeight = 48;
+        int offset = DockPlacement.HiddenOffset(DockEdge.Bottom, DockW, DockH, beyondEdge: taskbarHeight);
+
+        // 可见位置在工作区底部上方 10px；收起位置顶部必须不低于屏幕底边
+        (int x, int y) = DockPlacement.Anchor(
+            WorkX, WorkY, WorkW, WorkH, DockW, DockH, DockEdge.Bottom, DockPlacement.DefaultMargin, offset);
+
+        int screenBottom = WorkY + WorkH + taskbarHeight;
+        Assert.True(y >= screenBottom, $"收起位置 y={y} 应完全离开屏幕（屏幕底边 {screenBottom}）");
+    }
+
     [Theory]
     [InlineData(DockEdge.Left, true)]
     [InlineData(DockEdge.Right, true)]

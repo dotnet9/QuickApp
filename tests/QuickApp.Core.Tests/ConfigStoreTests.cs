@@ -104,6 +104,33 @@ public sealed class ConfigStoreTests : IDisposable
     }
 
     [Fact]
+    public void Export_then_import_round_trips()
+    {
+        ConfigStore store = CreateStore();
+        AppConfig config = store.Load();
+        config.Settings.Edge = DockEdge.Right;
+        config.Items.Add(new LauncherItem { Id = "exp1", Name = "导出项", Kind = ItemKind.App, Target = @"C:\a.exe" });
+
+        string exportPath = Path.Combine(_dir, "export.json");
+        Assert.True(store.Export(config, exportPath));
+
+        AppConfig? imported = store.Import(exportPath);
+        Assert.NotNull(imported);
+        Assert.Equal(DockEdge.Right, imported!.Settings.Edge);
+        Assert.Contains(imported.Items, i => i.Id == "exp1" && i.Name == "导出项");
+    }
+
+    [Fact]
+    public void Import_rejects_invalid_files()
+    {
+        string bad = Path.Combine(_dir, "bad.json");
+        File.WriteAllText(bad, "not json at all");
+        Assert.Null(CreateStore().Import(bad));
+
+        Assert.Null(CreateStore().Import(Path.Combine(_dir, "missing.json")));
+    }
+
+    [Fact]
     public void Portable_marker_switches_config_location()
     {
         File.WriteAllText(Path.Combine(_dir, "portable.txt"), "");
