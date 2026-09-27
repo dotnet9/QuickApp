@@ -1,0 +1,42 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="QuickApp.Views.ToastWindow"
+        Title="Toast"
+        ShowInTaskbar="False"
+        ShowActivated="False"
+        CanResize="False"
+        Topmost="True"
+        SizeToContent="WidthAndHeight"
+        WindowDecorations="None"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent">
+
+  <Window.Styles>
+    <Style Selector="TextBlock.toast-text">
+      <Setter Property="FontSize" Value="12.5" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+  </Window.Styles>
+
+  <!-- 对应原型 .toast：菜单底色卡片，左侧文案 + 右侧强调色动作按钮；外层留白给投影 -->
+  <Grid Margin="12">
+    <Border Name="ToastCard"
+            Background="{DynamicResource QAMenuBrush}"
+            BorderBrush="{DynamicResource QALineBrush}"
+            BorderThickness="1"
+            CornerRadius="10"
+            Padding="14,9"
+            BoxShadow="0 8 20 0 #66000000, 0 2 8 0 #44000000">
+      <StackPanel Name="ContentRow" Orientation="Horizontal" Spacing="12">
+        <TextBlock Name="MessageText"
+                   Classes="toast-text"
+                   Foreground="{DynamicResource QATextBrush}" />
+        <Button Name="ActionButton"
+                Theme="{StaticResource LinkButton}"
+                Classes="primary"
+                IsVisible="False"
+                Height="22" />
+      </StackPanel>
+    </Border>
+  </Grid>
+</Window>

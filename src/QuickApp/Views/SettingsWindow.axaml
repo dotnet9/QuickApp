@@ -11,7 +11,8 @@
         WindowDecorations="None"
         WindowStartupLocation="CenterScreen"
         Background="Transparent"
-        TransparencyLevelHint="Transparent">
+        TransparencyLevelHint="Transparent"
+        TransparencyBackgroundFallback="Transparent">
 
   <Window.Styles>
     <Style Selector="ComboBox">
@@ -28,59 +29,78 @@
     <Style Selector="TextBlock.section">
       <Setter Property="FontSize" Value="12" />
       <Setter Property="FontWeight" Value="SemiBold" />
-      <Setter Property="Margin" Value="0,14,0,4" />
+      <Setter Property="Margin" Value="0,14,0,8" />
+      <Setter Property="Foreground" Value="{DynamicResource QATextDimBrush}" />
     </Style>
     <Style Selector="TextBlock.row">
       <Setter Property="FontSize" Value="13" />
       <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{DynamicResource QATextBrush}" />
     </Style>
     <Style Selector="TextBlock.hint">
       <Setter Property="FontSize" Value="11" />
       <Setter Property="TextWrapping" Value="Wrap" />
-      <Setter Property="Opacity" Value="0.9" />
+      <Setter Property="Foreground" Value="{DynamicResource QATextDimBrush}" />
+    </Style>
+    <!-- 输入框（原型 .stack input：hover 底 + 1px 边线 + r8 + 34 高） -->
+    <Style Selector="TextBox">
+      <Setter Property="Background" Value="{DynamicResource QAHoverBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource QALineBrush}" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="MinHeight" Value="32" />
+      <Setter Property="Foreground" Value="{DynamicResource QATextBrush}" />
+    </Style>
+    <!-- 分组分隔线 -->
+    <Style Selector="Border.groupsep">
+      <Setter Property="Height" Value="1" />
+      <Setter Property="Background" Value="{DynamicResource QALineBrush}" />
+      <Setter Property="Margin" Value="0,12,0,2" />
     </Style>
   </Window.Styles>
 
-  <!-- 外留白给卡片阴影/圆角留空间；整窗透明，只有卡片是实底 -->
+  <!-- 外留白给卡片阴影/圆角留空间；整窗透明，只有卡片是实底（原型 .modal-card r14） -->
   <Grid Margin="16">
     <Border Background="{Binding BackgroundBrush}"
             BorderBrush="{Binding PanelBorderBrush}"
             BorderThickness="1"
-            CornerRadius="{Binding PanelRadius}">
+            CornerRadius="14"
+            BoxShadow="0 18 40 0 #73000000, 0 2 8 0 #59000000">
       <DockPanel>
 
-        <!-- 自绘标题栏（可拖动窗口），替代系统标题栏 -->
-        <Border Name="HeaderBar"
-                DockPanel.Dock="Top"
-                Background="Transparent"
-                Padding="18,12,12,10"
-                Cursor="SizeAll">
-          <Grid ColumnDefinitions="*,Auto">
-            <TextBlock Grid.Column="0"
-                       Text="设置"
-                       FontSize="15"
-                       FontWeight="SemiBold"
-                       VerticalAlignment="Center"
-                       Foreground="{Binding TextBrush}" />
-            <Button Grid.Column="1"
-                    Theme="{StaticResource IconButton}"
-                    Name="CloseButton"
-                    Width="30"
-                    Height="30"
-                    ToolTip.Tip="关闭">
-              <Path Data="M6,6 L18,18 M18,6 L6,18"
-                    Stroke="{Binding TextDimBrush}"
-                    StrokeThickness="1.8"
-                    StrokeLineCap="Round"
-                    Width="12"
-                    Height="12"
-                    Stretch="Uniform" />
-            </Button>
-          </Grid>
-        </Border>
+        <!-- 自绘标题栏（原型 .modal-head：14px 600 + 底边线） -->
+        <StackPanel DockPanel.Dock="Top">
+          <Border Name="HeaderBar"
+                  Background="Transparent"
+                  Padding="16,14,12,10"
+                  Cursor="SizeAll">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Grid.Column="0"
+                         Text="设置"
+                         FontSize="14"
+                         FontWeight="SemiBold"
+                         VerticalAlignment="Center"
+                         Foreground="{Binding TextBrush}" />
+              <Button Grid.Column="1"
+                      Theme="{StaticResource IconButton}"
+                      Name="CloseButton"
+                      Width="30"
+                      Height="30"
+                      ToolTip.Tip="关闭">
+                <Path Data="M6,6 L18,18 M18,6 L6,18"
+                      Stroke="{Binding TextDimBrush}"
+                      StrokeThickness="1.8"
+                      StrokeLineCap="Round"
+                      Width="12"
+                      Height="12"
+                      Stretch="Uniform" />
+              </Button>
+            </Grid>
+          </Border>
+          <Border Height="1" Background="{Binding PanelBorderBrush}" />
+        </StackPanel>
 
         <ScrollViewer>
-          <StackPanel Margin="18,0,18,18" Spacing="2">
+          <StackPanel Margin="16,6,16,16" Spacing="2">
 
             <TextBlock Classes="section" Text="常规" Foreground="{Binding TextDimBrush}" />
             <ToggleSwitch Content="鼠标触到所在边缘时滑出" IsChecked="{Binding RevealOnEdgeTouch}" Foreground="{Binding TextBrush}" />
@@ -95,21 +115,26 @@
               </StackPanel>
             </Grid>
 
+            <Border Classes="groupsep" />
             <TextBlock Classes="section" Text="外观" Foreground="{Binding TextDimBrush}" />
             <Grid ColumnDefinitions="160,*" Margin="0,2,0,2">
               <TextBlock Grid.Column="0" Classes="row" Text="主题" Foreground="{Binding TextBrush}" />
-              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+              <Border Grid.Column="1" HorizontalAlignment="Left" Background="{DynamicResource QAHoverBrush}" CornerRadius="9" Padding="2">
+              <StackPanel Orientation="Horizontal" Spacing="2">
                 <Button Theme="{StaticResource Segment}" Content="跟随系统" Classes.active="{Binding IsThemeSystem}" Command="{Binding SetThemeCommand}" CommandParameter="system" />
                 <Button Theme="{StaticResource Segment}" Content="深色" Classes.active="{Binding IsThemeDark}" Command="{Binding SetThemeCommand}" CommandParameter="dark" />
                 <Button Theme="{StaticResource Segment}" Content="浅色" Classes.active="{Binding IsThemeLight}" Command="{Binding SetThemeCommand}" CommandParameter="light" />
               </StackPanel>
+              </Border>
             </Grid>
             <Grid ColumnDefinitions="160,*" Margin="0,2,0,2">
               <TextBlock Grid.Column="0" Classes="row" Text="风格" Foreground="{Binding TextBrush}" />
-              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+              <Border Grid.Column="1" HorizontalAlignment="Left" Background="{DynamicResource QAHoverBrush}" CornerRadius="9" Padding="2">
+              <StackPanel Orientation="Horizontal" Spacing="2">
                 <Button Theme="{StaticResource Segment}" Content="毛玻璃" Classes.active="{Binding IsStyleGlass}" Command="{Binding SetStyleCommand}" CommandParameter="glass" />
                 <Button Theme="{StaticResource Segment}" Content="扁平" Classes.active="{Binding IsStyleFlat}" Command="{Binding SetStyleCommand}" CommandParameter="flat" />
               </StackPanel>
+              </Border>
             </Grid>
             <ToggleSwitch Content="在图标下显示名称" IsChecked="{Binding ShowLabels}" Foreground="{Binding TextBrush}" />
             <Grid ColumnDefinitions="160,*" Margin="0,6,0,0">
@@ -127,30 +152,34 @@
               </StackPanel>
             </Grid>
             <Grid ColumnDefinitions="160,*" Margin="0,6,0,0">
-              <TextBlock Grid.Column="0" Classes="row" Text="面板不透明度" Foreground="{Binding TextBrush}" />
+              <TextBlock Grid.Column="0" Classes="row" Text="窗体不透明度" Foreground="{Binding TextBrush}" />
               <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
                 <Slider Minimum="20" Maximum="100" TickFrequency="1" Value="{Binding OpacityPercent}" />
                 <TextBlock Classes="row" Width="60" Text="{Binding OpacityPercent}" Foreground="{Binding TextDimBrush}" />
               </StackPanel>
             </Grid>
             <TextBlock Classes="hint"
-                       Text="毛玻璃在部分系统或 Avalonia 后端上会退化成纯色，此时请把不透明度调到 100%。"
+                       Text="透明度直接作用于整个 Dock 窗体（面板背景与桌面混合）；扁平风格固定不透明。"
                        Foreground="{Binding TextDimBrush}" />
 
+            <Border Classes="groupsep" />
             <TextBlock Classes="section" Text="停靠" Foreground="{Binding TextDimBrush}" />
             <Grid ColumnDefinitions="160,*" Margin="0,2,0,2">
               <TextBlock Grid.Column="0" Classes="row" Text="停靠边缘" Foreground="{Binding TextBrush}" />
-              <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+              <Border Grid.Column="1" HorizontalAlignment="Left" Background="{DynamicResource QAHoverBrush}" CornerRadius="9" Padding="2">
+              <StackPanel Orientation="Horizontal" Spacing="2">
                 <Button Theme="{StaticResource Segment}" Content="上" Classes.active="{Binding IsEdgeTop}" Command="{Binding SetEdgeCommand}" CommandParameter="top" />
                 <Button Theme="{StaticResource Segment}" Content="下" Classes.active="{Binding IsEdgeBottom}" Command="{Binding SetEdgeCommand}" CommandParameter="bottom" />
                 <Button Theme="{StaticResource Segment}" Content="左" Classes.active="{Binding IsEdgeLeft}" Command="{Binding SetEdgeCommand}" CommandParameter="left" />
                 <Button Theme="{StaticResource Segment}" Content="右" Classes.active="{Binding IsEdgeRight}" Command="{Binding SetEdgeCommand}" CommandParameter="right" />
               </StackPanel>
+              </Border>
             </Grid>
             <TextBlock Classes="hint"
                        Text="左/右边缘为竖向 Dock；收起时向各自所在边滑出。"
                        Foreground="{Binding TextDimBrush}" />
 
+            <Border Classes="groupsep" />
             <TextBlock Classes="section" Text="数据" Foreground="{Binding TextDimBrush}" />
             <Grid ColumnDefinitions="160,*">
               <TextBlock Grid.Column="0" Classes="row" Text="配置文件" Foreground="{Binding TextBrush}" />
@@ -160,6 +189,12 @@
                         Command="{Binding OpenConfigFolderCommand}" CommandParameter="{Binding ConfigFilePath}" />
               </StackPanel>
             </Grid>
+            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+              <Button Theme="{StaticResource LinkButton}" Name="ExportButton" Content="导出配置…" />
+              <Button Theme="{StaticResource LinkButton}" Name="ImportButton" Content="导入配置…" />
+              <TextBlock Classes="hint" VerticalAlignment="Center"
+                         Text="导入会整体替换当前的设置与列表" Foreground="{Binding TextDimBrush}" />
+            </StackPanel>
             <StackPanel Spacing="4" Margin="0,8,0,0">
               <TextBlock Classes="row" Text="添加命令行" Foreground="{Binding TextBrush}" />
               <TextBox Name="CmdName" PlaceholderText="名称，例如 远程桌面" />
@@ -170,6 +205,7 @@
               </StackPanel>
             </StackPanel>
 
+            <Border Classes="groupsep" />
             <TextBlock Classes="section" Text="更新" Foreground="{Binding TextDimBrush}" />
             <ToggleSwitch Content="启动时检查更新" IsChecked="{Binding CheckUpdates}" Foreground="{Binding TextBrush}" />
             <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
@@ -181,6 +217,20 @@
                        Text="更新来自 GitHub Releases（dotnet9/QuickApp），发现新版本会在 Dock 上提示。"
                        Foreground="{Binding TextDimBrush}" />
 
+            <Border Classes="groupsep" />
+            <TextBlock Classes="section" Text="快捷键" Foreground="{Binding TextDimBrush}" />
+            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,4">
+              <TextBlock Classes="row" Text="全局热键" Foreground="{Binding TextBrush}" />
+              <TextBlock Classes="row" Text="{Binding HotkeyText}" Foreground="{Binding TextDimBrush}" />
+            </StackPanel>
+            <TextBlock Classes="hint"
+                       Text="全局热键在 Dock 收起时唤出、显示时收回；收起后也可触边滑出或从托盘唤出。"
+                       Foreground="{Binding TextDimBrush}" />
+            <TextBlock Classes="hint"
+                       Text="Dock 内：← → ↑ ↓ 移动 · Enter 运行 · 1–9 快启前九项 · S / Ctrl+K 搜索 · E 编辑模式 · Esc 逐层关闭。"
+                       Foreground="{Binding TextDimBrush}" />
+
+            <Border Classes="groupsep" />
             <TextBlock Classes="section" Text="关于" Foreground="{Binding TextDimBrush}" />
             <TextBlock Classes="hint" Text="QuickApp 快捷应用 · Avalonia + ReactiveUI 重写版" Foreground="{Binding TextDimBrush}" />
             <TextBlock Classes="hint" Text="界面原型：design/index.html（四边停靠、深浅主题、毛玻璃/扁平）" Foreground="{Binding TextDimBrush}" />
