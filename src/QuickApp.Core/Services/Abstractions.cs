@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using QuickApp.Core.Models;
@@ -48,6 +49,13 @@ public interface IIconProvider
 {
     /// <summary>返回图标缓存文件的绝对路径；取不到时返回 null。</summary>
     Task<string?> GetIconFileAsync(LauncherItem item, CancellationToken cancellationToken = default);
+}
+
+/// <summary>枚举操作系统中可启动、但尚未加入 QuickApp 配置的应用。</summary>
+public interface IInstalledAppProvider
+{
+    /// <summary>返回一份稳定排序的系统应用快照；无法访问系统目录时返回空集合。</summary>
+    IReadOnlyList<LauncherItem> GetInstalledApps();
 }
 
 /// <summary>检查 GitHub Releases 更新。</summary>

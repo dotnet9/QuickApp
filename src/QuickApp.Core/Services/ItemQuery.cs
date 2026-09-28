@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Text;
 using QuickApp.Core.Models;
 
 namespace QuickApp.Core.Services;
@@ -8,6 +9,23 @@ namespace QuickApp.Core.Services;
 /// <summary>搜索、名称推断、气泡副标题等纯逻辑，便于单元测试。</summary>
 public static class ItemQuery
 {
+    private static readonly IReadOnlyDictionary<char, string> Pinyin =
+        new Dictionary<char, string>
+        {
+            ['微'] = "wei", ['信'] = "xin", ['公'] = "gong", ['众'] = "zhong", ['号'] = "hao",
+            ['钉'] = "ding", ['腾'] = "teng", ['讯'] = "xun", ['视'] = "shi", ['频'] = "pin",
+            ['会'] = "hui", ['议'] = "yi", ['百'] = "bai", ['度'] = "du", ['网'] = "wang",
+            ['盘'] = "pan", ['魔'] = "mo", ['音'] = "yin", ['向'] = "xiang", ['日'] = "ri",
+            ['葵'] = "kui", ['启'] = "qi", ['动'] = "dong", ['有'] = "you", ['道'] = "dao",
+            ['云'] = "yun", ['笔'] = "bi", ['记'] = "ji", ['格'] = "ge", ['式'] = "shi",
+            ['化'] = "hua", ['软'] = "ruan", ['件'] = "jian", ['管'] = "guan", ['家'] = "jia",
+            ['事'] = "shi", ['本'] = "ben", ['远'] = "yuan", ['程'] = "cheng", ['桌'] = "zhuo",
+            ['面'] = "mian", ['应'] = "ying", ['用'] = "yong", ['页'] = "ye",
+            ['命'] = "ming", ['令'] = "ling", ['文'] = "wen", ['资'] = "zi", ['源'] = "yuan",
+            ['理'] = "li", ['器'] = "qi", ['计'] = "ji", ['算'] = "suan", ['提'] = "ti",
+            ['示'] = "shi", ['符'] = "fu", ['路'] = "lu", ['径'] = "jing"
+        };
+
     /// <summary>按当前搜索词过滤，顺序保持不变。</summary>
     public static IReadOnlyList<LauncherItem> Filter(IReadOnlyList<LauncherItem> items, string? query)
     {
@@ -41,9 +59,72 @@ public static class ItemQuery
             return false;
         }
 
-        return Contains(item.Name, query)
-            || Contains(item.Target, query)
-            || Contains(KindLabel(item.Kind), query);
+        string[] tokens = query.Trim().Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+        foreach (string token in tokens)
+        {
+            if (!MatchesToken(item, token))
+            {
+                return false;
+            }
+        }
+
+        return tokens.Length > 0;
+    }
+
+    private static bool MatchesToken(LauncherItem item, string token)
+    {
+        if (Contains(item.Target, token))
+        {
+            return true;
+        }
+
+        if (ContainsAnyForm(item.Name, token) || ContainsAnyForm(KindLabel(item.Kind), token))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool ContainsAnyForm(string? source, string token)
+    {
+        foreach (string form in SearchForms(source))
+        {
+            if (Contains(form, token))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>返回原文、全拼和首字母三种形式，保持搜索零依赖。</summary>
+    public static IReadOnlyList<string> SearchForms(string? source)
+    {
+        string text = (source ?? string.Empty).Trim().ToLowerInvariant();
+        if (text.Length == 0)
+        {
+            return Array.Empty<string>();
+        }
+
+        var full = new StringBuilder(text.Length * 2);
+        var initials = new StringBuilder(text.Length);
+        foreach (char character in text)
+        {
+            if (Pinyin.TryGetValue(character, out string? pinyin))
+            {
+                full.Append(pinyin);
+                initials.Append(pinyin[0]);
+            }
+            else
+            {
+                full.Append(character);
+                initials.Append(character);
+            }
+        }
+
+        return new[] { text, full.ToString(), initials.ToString() };
     }
 
     private static bool Contains(string? source, string query)

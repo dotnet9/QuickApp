@@ -35,10 +35,13 @@ public sealed class DockViewModel : ViewModelBase
     private readonly ConfigStore _store;
     private readonly ILauncher _launcher;
     private readonly IIconProvider _icons;
+    private readonly IInstalledAppProvider _installedAppProvider;
     private readonly IUpdateChecker _updates;
     private readonly IAutoStartService _autoStart;
     private readonly AppConfig _config;
     private readonly List<ItemViewModel> _allItems = new();
+    private readonly List<LauncherItem> _installedCatalog = new();
+    private readonly Dictionary<string, ItemViewModel> _installedViewModels = new(StringComparer.OrdinalIgnoreCase);
 
     private IDockHost? _host;
     private string _searchQuery = string.Empty;
@@ -56,6 +59,7 @@ public sealed class DockViewModel : ViewModelBase
         ConfigStore store,
         ILauncher launcher,
         IIconProvider icons,
+        IInstalledAppProvider installedAppProvider,
         IUpdateChecker updates,
         IAutoStartService autoStart,
         string appName)
@@ -63,6 +67,7 @@ public sealed class DockViewModel : ViewModelBase
         _store = store;
         _launcher = launcher;
         _icons = icons;
+        _installedAppProvider = installedAppProvider;
         _updates = updates;
         _autoStart = autoStart;
         AppName = appName;
@@ -70,6 +75,7 @@ public sealed class DockViewModel : ViewModelBase
 
         RunCommand = ReactiveCommand.Create<ItemViewModel>(RunItem);
         RemoveCommand = ReactiveCommand.Create<ItemViewModel>(RemoveItem);
+        AddInstalledCommand = ReactiveCommand.Create<ItemViewModel>(AddInstalledItem);
         UndoRemoveCommand = ReactiveCommand.Create(UndoRemove);
         ClearSearchCommand = ReactiveCommand.Create(() => SearchQuery = string.Empty);
         ToggleSearchCommand = ReactiveCommand.Create(() => IsSearchOpen = !IsSearchOpen);
@@ -86,6 +92,7 @@ public sealed class DockViewModel : ViewModelBase
         DismissUpdateCommand = ReactiveCommand.Create(DismissUpdate);
 
         LoadItems();
+        LoadInstalledApps();
         RefreshPalette();
     }
 
@@ -95,6 +102,9 @@ public sealed class DockViewModel : ViewModelBase
         "v" + (System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "0.1.0");
 
     public ObservableCollection<ItemViewModel> Items { get; } = new();
+
+    /// <summary>搜索时显示的系统应用候选，不会混入默认 Dock 列表。</summary>
+    public ObservableCollection<ItemViewModel> InstalledItems { get; } = new();
 
     public AppSettings Settings => _config.Settings;
 
@@ -130,6 +140,9 @@ public sealed class DockViewModel : ViewModelBase
     public double TileRadius => Math.Round(Settings.TileSize * 0.28, 1);
 
     public double PanelRadius => Settings.CornerRadius;
+
+    /// <summary>Avalonia 的 CornerRadius 没有从 double 的隐式转换，给 XAML 提供明确类型。</summary>
+    public CornerRadius PanelCornerRadius => new(Settings.CornerRadius);
 
     /// <summary>左/右边缘 = 竖向 Dock。</summary>
     public bool IsVertical => DockPlacement.IsVertical(Settings.Edge);
@@ -171,10 +184,31 @@ public sealed class DockViewModel : ViewModelBase
 
     public double DividerHeight => IsVertical ? 1 : Math.Round(Settings.TileSize * 1.2, 1);
 
-    /// <summary>图标区上限：横向 Dock 限制总宽（超出滚动），竖向 Dock 限制高度。</summary>
-    public double ListMaxWidth => IsVertical ? double.PositiveInfinity : 1180;
+    /// <summary>图标区上限：默认完整容纳 10 项和悬浮安全留白，超出后沿停靠方向滚动。</summary>
+    public double ListMaxWidth => IsVertical
+        ? double.PositiveInfinity
+        : Math.Round(Settings.TileSize * 10 + 122);
 
-    public double ListMaxHeight => IsVertical ? 640 : double.PositiveInfinity;
+    public double ListMaxHeight => IsVertical
+        ? Math.Round(Settings.TileSize * 10 + 104)
+        : double.PositiveInfinity;
+
+    /// <summary>
+    /// 空状态仍保留原型中的图标区空间，避免提示文字把分隔线和操作区挤到一边。
+    /// 横向 Dock 预留约四个图标的宽度，竖向 Dock 预留一个图标行的高度。
+    /// </summary>
+    public double ListMinWidth => IsVertical
+        ? 0
+        : Math.Round(Settings.TileSize * 4 + 44);
+
+    public double ListMinHeight => IsVertical
+        ? Math.Round(Settings.TileSize + 40)
+        : 0;
+
+    /// <summary>操作区横向停靠为三列，纵向停靠为两列，按钮保持轻量紧凑。</summary>
+    public double ActionMaxWidth => IsVertical ? 60 : 88;
+
+    public double ActionMaxHeight => IsVertical ? 88 : double.PositiveInfinity;
 
     /// <summary>收起按钮的箭头方向随停靠边变化。</summary>
     public string CollapseGlyph => Settings.Edge switch
@@ -185,26 +219,26 @@ public sealed class DockViewModel : ViewModelBase
         _ => "▲"
     };
 
-    /// <summary>图标悬停放大时向屏幕外侧偏移（对应原型 --pop-x/--pop-y）。</summary>
+    /// <summary>图标悬停放大时朝桌面内部偏移，避免贴边放大被裁切。</summary>
     public string TileHoverTransform => Settings.Edge switch
     {
-        DockEdge.Bottom => "translateY(4px) scale(1.18)",
-        DockEdge.Left => "translateX(-4px) scale(1.18)",
-        DockEdge.Right => "translateX(4px) scale(1.18)",
-        _ => "translateY(-4px) scale(1.18)"
+        DockEdge.Bottom => "translateY(-5px) scale(1.44)",
+        DockEdge.Left => "translateX(5px) scale(1.44)",
+        DockEdge.Right => "translateX(-5px) scale(1.44)",
+        _ => "translateY(5px) scale(1.44)"
     };
 
     /// <summary>按下回缩（原型 tile:active 的 scale .94），偏移方向同悬停。</summary>
     public string TilePressedTransform => Settings.Edge switch
     {
-        DockEdge.Bottom => "translateY(4px) scale(0.94)",
-        DockEdge.Left => "translateX(-4px) scale(0.94)",
-        DockEdge.Right => "translateX(4px) scale(0.94)",
-        _ => "translateY(-4px) scale(0.94)"
+        DockEdge.Bottom => "translateY(-5px) scale(0.94)",
+        DockEdge.Left => "translateX(5px) scale(0.94)",
+        DockEdge.Right => "translateX(-5px) scale(0.94)",
+        _ => "translateY(5px) scale(0.94)"
     };
 
-    /// <summary>图标区留白：对应原型 .dock-items 的 padding（横排 6px 14px，竖排 14px 6px）。</summary>
-    public Thickness ListPadding => IsVertical ? new Thickness(14, 6) : new Thickness(6, 14);
+    /// <summary>为悬浮放大和两端 peek 留出缓冲，滚动视口只包住应用图标。</summary>
+    public Thickness ListPadding => new(24);
 
     // ---------------- 更新状态 ----------------
 
@@ -320,6 +354,8 @@ public sealed class DockViewModel : ViewModelBase
                 return;
             }
 
+            this.RaisePropertyChanged(nameof(IsPanelExpanded));
+
             if (value)
             {
                 IsDockVisible = true;
@@ -343,9 +379,25 @@ public sealed class DockViewModel : ViewModelBase
         }
     }
 
-    public string CountText => Items.Count + " / " + _allItems.Count;
+    public bool IsSearchGrouped => SearchQuery.Trim().Length > 0;
 
-    public bool IsSearchEmpty => Items.Count == 0 && SearchQuery.Length > 0;
+    public string ConfiguredGroupTitle => "已配置 · " + Items.Count;
+
+    public bool HasConfiguredResults => IsSearchGrouped && Items.Count > 0;
+
+    public string InstalledGroupTitle => "系统已安装 · " + InstalledItems.Count;
+
+    public bool HasInstalledResults => IsSearchGrouped && InstalledItems.Count > 0;
+
+    public string CountText => SearchQuery.Trim().Length > 0
+        ? (Items.Count + InstalledItems.Count) + " 个结果"
+        : Items.Count + " / " + _allItems.Count;
+
+    public bool IsSearchEmpty => Items.Count == 0 && InstalledItems.Count == 0 && SearchQuery.Trim().Length > 0;
+
+    public string EmptyStateText => SearchQuery.Trim().Length > 0
+        ? "没有匹配「" + SearchQuery.Trim() + "」的项目"
+        : "Dock 是空的 · 点右侧 + 添加第一个应用";
 
     /// <summary>Dock 一个项都没有（与「搜索无结果」区分开，给出添加引导）。</summary>
     public bool IsDockEmpty => Items.Count == 0 && SearchQuery.Trim().Length == 0;
@@ -362,6 +414,8 @@ public sealed class DockViewModel : ViewModelBase
                 return;
             }
 
+            this.RaisePropertyChanged(nameof(IsPanelExpanded));
+
             if (value)
             {
                 IsDockVisible = true;
@@ -372,11 +426,16 @@ public sealed class DockViewModel : ViewModelBase
         }
     }
 
+    /// <summary>搜索或编辑时才显示完整背景面板，普通状态让应用图标悬浮在桌面上。</summary>
+    public bool IsPanelExpanded => IsSearchOpen || IsEditMode;
+
     // ---------------- 命令 ----------------
 
     public ICommand RunCommand { get; }
 
     public ICommand RemoveCommand { get; }
+
+    public ICommand AddInstalledCommand { get; }
 
     public ICommand UndoRemoveCommand { get; }
 
@@ -409,6 +468,21 @@ public sealed class DockViewModel : ViewModelBase
     // ---------------- 数据 ----------------
 
     private void LoadItems() => RebuildItems();
+
+    private void LoadInstalledApps()
+    {
+        try
+        {
+            _installedCatalog.Clear();
+            _installedCatalog.AddRange(_installedAppProvider.GetInstalledApps());
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("读取系统已安装应用失败", ex);
+        }
+
+        RefreshFilter();
+    }
 
     /// <summary>用 _config.Items 重建视图列表（首次载入与导入配置共用）。</summary>
     private void RebuildItems()
@@ -447,6 +521,17 @@ public sealed class DockViewModel : ViewModelBase
             item.PressedTransform = pressed;
             ItemVisualRequested?.Invoke(item);
         }
+
+        foreach (ItemViewModel item in _installedViewModels.Values)
+        {
+            item.ShowLabel = Settings.ShowLabels;
+            item.ShowRemove = false;
+            item.TileSize = Settings.TileSize;
+            item.ItemOrientation = orientation;
+            item.HoverTransform = hover;
+            item.PressedTransform = pressed;
+            ItemVisualRequested?.Invoke(item);
+        }
     }
 
     private void RefreshFilter()
@@ -469,9 +554,59 @@ public sealed class DockViewModel : ViewModelBase
             }
         }
 
+        InstalledItems.Clear();
+        if (SearchQuery.Trim().Length > 0)
+        {
+            var configuredTargets = new HashSet<string>(
+                _config.Items.Select(item => NormalizeTarget(item.Target)),
+                StringComparer.OrdinalIgnoreCase);
+            var configuredNames = new HashSet<string>(
+                _config.Items.Select(item => item.Name),
+                StringComparer.OrdinalIgnoreCase);
+
+            foreach (LauncherItem model in ItemQuery.Filter(_installedCatalog, SearchQuery))
+            {
+                if (configuredTargets.Contains(NormalizeTarget(model.Target))
+                    || configuredNames.Contains(model.Name))
+                {
+                    continue;
+                }
+
+                if (!_installedViewModels.TryGetValue(model.Id, out ItemViewModel? vm))
+                {
+                    vm = new ItemViewModel(model, RunItem, RemoveItem, AddInstalledItem, isSystemResult: true);
+                    _installedViewModels[model.Id] = vm;
+                    _ = LoadIconAsync(vm);
+                    ApplyItemLayoutTo(vm);
+                }
+
+                InstalledItems.Add(vm);
+            }
+        }
+
         this.RaisePropertyChanged(nameof(IsSearchEmpty));
         this.RaisePropertyChanged(nameof(IsDockEmpty));
         this.RaisePropertyChanged(nameof(CountText));
+        this.RaisePropertyChanged(nameof(EmptyStateText));
+        this.RaisePropertyChanged(nameof(IsSearchGrouped));
+        this.RaisePropertyChanged(nameof(ConfiguredGroupTitle));
+        this.RaisePropertyChanged(nameof(HasConfiguredResults));
+        this.RaisePropertyChanged(nameof(InstalledGroupTitle));
+        this.RaisePropertyChanged(nameof(HasInstalledResults));
+    }
+
+    private static string NormalizeTarget(string target)
+        => (target ?? string.Empty).Trim().TrimEnd('\\', '/');
+
+    private void ApplyItemLayoutTo(ItemViewModel item)
+    {
+        item.ShowLabel = Settings.ShowLabels;
+        item.ShowRemove = IsEditMode && !item.IsSystemResult;
+        item.TileSize = Settings.TileSize;
+        item.ItemOrientation = IsVertical ? Orientation.Horizontal : Orientation.Vertical;
+        item.HoverTransform = TileHoverTransform;
+        item.PressedTransform = TilePressedTransform;
+        ItemVisualRequested?.Invoke(item);
     }
 
     private async Task LoadIconAsync(ItemViewModel vm)
@@ -517,6 +652,42 @@ public sealed class DockViewModel : ViewModelBase
         {
             IsDockVisible = false;
         }
+    }
+
+    /// <summary>把搜索结果里的系统应用复制到自定义配置并立即持久化。</summary>
+    private void AddInstalledItem(ItemViewModel? vm)
+    {
+        if (vm is null || !vm.IsSystemResult)
+        {
+            return;
+        }
+
+        string target = NormalizeTarget(vm.Model.Target);
+        if (_config.Items.Any(item => string.Equals(NormalizeTarget(item.Target), target, StringComparison.OrdinalIgnoreCase)))
+        {
+            Toast(vm.Name + " 已在自定义配置中");
+            return;
+        }
+
+        LauncherItem model = new()
+        {
+            Id = "i" + Guid.NewGuid().ToString("N")[..8],
+            Name = vm.Model.Name,
+            Kind = vm.Model.Kind,
+            Target = vm.Model.Target,
+            Arguments = vm.Model.Arguments,
+            WorkingDirectory = vm.Model.WorkingDirectory,
+            IconKey = vm.Model.IconKey
+        };
+
+        _config.Items.Add(model);
+        var configured = new ItemViewModel(model, RunItem, RemoveItem);
+        _allItems.Add(configured);
+        _ = LoadIconAsync(configured);
+        ApplyItemLayout();
+        RefreshFilter();
+        Save();
+        Toast("已添加 " + model.Name + " 到 Dock");
     }
 
     private static async Task ResetRunningAsync(ItemViewModel vm)
@@ -725,6 +896,7 @@ public sealed class DockViewModel : ViewModelBase
             this.RaisePropertyChanged(nameof(TileSize));
             this.RaisePropertyChanged(nameof(TileRadius));
             this.RaisePropertyChanged(nameof(PanelRadius));
+            this.RaisePropertyChanged(nameof(PanelCornerRadius));
             this.RaisePropertyChanged(nameof(IsVertical));
             this.RaisePropertyChanged(nameof(BodyOrientation));
             this.RaisePropertyChanged(nameof(ListOrientation));
@@ -734,6 +906,10 @@ public sealed class DockViewModel : ViewModelBase
             this.RaisePropertyChanged(nameof(DividerHeight));
             this.RaisePropertyChanged(nameof(ListMaxWidth));
             this.RaisePropertyChanged(nameof(ListMaxHeight));
+            this.RaisePropertyChanged(nameof(ListMinWidth));
+            this.RaisePropertyChanged(nameof(ListMinHeight));
+            this.RaisePropertyChanged(nameof(ActionMaxWidth));
+            this.RaisePropertyChanged(nameof(ActionMaxHeight));
             this.RaisePropertyChanged(nameof(TileHoverTransform));
             this.RaisePropertyChanged(nameof(CollapseGlyph));
             ApplyItemLayout();

@@ -81,6 +81,7 @@ public partial class App : Application
         services.AddSingleton(_ => new ConfigStore(AppContext.BaseDirectory, AppLog.Info));
         services.AddSingleton<ILauncher, ProcessLauncher>();
         services.AddSingleton<IAutoStartService, AutoStartService>();
+        services.AddSingleton<IInstalledAppProvider>(_ => new InstalledAppProvider(AppLog.Info));
         services.AddSingleton<IIconProvider>(_ => new IconProvider(AppPaths.IconCacheDirectory(), AppLog.Info));
         services.AddSingleton<IUpdateChecker>(_ => new UpdateChecker(
             new HttpClient { Timeout = TimeSpan.FromSeconds(12) },
@@ -91,6 +92,7 @@ public partial class App : Application
             sp.GetRequiredService<ConfigStore>(),
             sp.GetRequiredService<ILauncher>(),
             sp.GetRequiredService<IIconProvider>(),
+            sp.GetRequiredService<IInstalledAppProvider>(),
             sp.GetRequiredService<IUpdateChecker>(),
             sp.GetRequiredService<IAutoStartService>(),
             appName: "QuickApp"));

@@ -42,6 +42,33 @@ public sealed class ItemQueryTests
         Assert.Single(ItemQuery.Filter(Sample(), "DOTNET9"));
     }
 
+    [Theory]
+    [InlineData("jishiben", "a")]
+    [InlineData("jsb", "a")]
+    [InlineData("yuancheng zhuomian", "c")]
+    public void Query_matches_pinyin_and_multi_token_input(string query, string expectedId)
+    {
+        IReadOnlyList<LauncherItem> result = ItemQuery.Filter(Sample(), query);
+
+        Assert.Contains(result, item => item.Id == expectedId);
+    }
+
+    [Theory]
+    [InlineData("weixin", "微信")]
+    [InlineData("wx", "微信")]
+    [InlineData("dingding", "钉钉")]
+    [InlineData("dd", "钉钉")]
+    public void Query_matches_common_pinyin_forms(string query, string expectedName)
+    {
+        var items = new List<LauncherItem>
+        {
+            new() { Id = "wx", Name = "微信", Kind = ItemKind.App, Target = "wechat.exe" },
+            new() { Id = "dd", Name = "钉钉", Kind = ItemKind.App, Target = "dingtalk.exe" }
+        };
+
+        Assert.Contains(ItemQuery.Filter(items, query), item => item.Name == expectedName);
+    }
+
     [Fact]
     public void Unknown_query_returns_empty()
         => Assert.Empty(ItemQuery.Filter(Sample(), "不存在的关键字"));
