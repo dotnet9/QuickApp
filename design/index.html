@@ -8,7 +8,7 @@
   QuickApp 界面原型（单文件、零依赖、离线可用）
   - 用途：为 Avalonia 重构定稿视觉与交互，不属于产品代码
   - 演示数据取自仓库 src/QuickApp/menu.json（30 条）
-  - Dock 可停靠上/下/左/右四边：拖动手柄吸附，或控制台/设置里直接切换
+  - Dock 可停靠上/下/左/右四边：通过「更多操作」或控制台/设置直接切换
   - 所有设置只在内存中生效，刷新即回到初始态（上边缘 · 深色 · 毛玻璃）
 -->
 <style>
@@ -162,7 +162,7 @@ html[data-label="icon"] .tile-name{display:none}
 .fade.show{opacity:1}
 
 .dock-divider{width:1px;height:calc(var(--tile-size) * 1.2);background:var(--line);flex:0 0 auto}
-.dock-actions{display:flex;align-items:center;gap:2px;flex:0 0 auto}
+.dock-actions{display:flex;align-items:center;gap:4px;flex:0 0 auto}
 
 .icon-btn{
   width:32px;height:32px;border-radius:9px;display:grid;place-items:center;color:var(--text-dim);
@@ -171,6 +171,8 @@ html[data-label="icon"] .tile-name{display:none}
 .icon-btn:hover{background:var(--hover);color:var(--text)}
 .icon-btn:active{transform:scale(.92)}
 .icon-btn.active{color:var(--accent);background:var(--hover)}
+.icon-btn.low-priority{opacity:.68}
+.icon-btn.low-priority:hover,.icon-btn.low-priority:focus-visible{opacity:1}
 .icon-btn[aria-pressed="false"] svg{transform:rotate(42deg)}
 .icon-btn svg{transition:transform 180ms var(--ease-pop)}
 .icon-btn.grip{cursor:grab;touch-action:none}
@@ -238,7 +240,7 @@ html[data-label="icon"] .tile-name{display:none}
 
 /* ============================ 5. 菜单 / 托盘 ============================ */
 .menu{
-  position:fixed;min-width:196px;padding:6px;border-radius:11px;z-index:320;
+  position:fixed;min-width:196px;max-height:min(70vh,520px);overflow:auto;padding:6px;border-radius:11px;z-index:320;
   background:var(--menu-bg);border:1px solid var(--line);box-shadow:var(--shadow);
   backdrop-filter:var(--panel-blur);-webkit-backdrop-filter:var(--panel-blur);
   animation:popIn 110ms var(--ease-out);
@@ -285,6 +287,27 @@ html[data-label="icon"] .tile-name{display:none}
 .modal-head h2{margin:0;font-size:14px;font-weight:600}
 .modal-head .icon-btn{margin-left:auto}
 .modal-body{padding:6px 16px 16px}
+.settings-card{width:700px;max-width:94vw;overflow:hidden}
+.settings-layout{display:flex;min-height:430px;max-height:calc(86vh - 58px)}
+.settings-nav{width:136px;flex:0 0 auto;padding:8px 0;background:var(--hover);border-right:1px solid var(--line);display:flex;flex-direction:column;gap:2px}
+.settings-tab{
+  position:relative;display:flex;align-items:center;width:100%;height:38px;padding:0 18px;
+  color:var(--text-dim);font-size:13px;text-align:left;border-radius:0;transition:background 140ms linear,color 140ms linear;
+}
+.settings-tab .tab-icon{width:16px;height:16px;margin-right:9px;display:grid;place-items:center;line-height:0}
+.settings-tab .tab-icon svg{width:16px;height:16px}
+.settings-tab:hover{background:var(--active);color:var(--text)}
+.settings-tab.active{background:var(--accent);color:var(--accent-ink);font-weight:600}
+.settings-tab.active::before{content:"";position:absolute;left:0;top:7px;bottom:7px;width:3px;border-radius:0 3px 3px 0;background:currentColor;opacity:.7}
+.settings-content{flex:1;min-width:0;overflow:auto;padding:4px 18px 18px}
+.settings-panel .group:first-child{padding-top:12px}
+.about-hero{display:flex;align-items:center;gap:12px;padding:20px 0 14px;border-bottom:1px solid var(--line)}
+.about-mark{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;color:#fff;background:linear-gradient(145deg,#4a6cf7,#2f49c9);box-shadow:0 4px 12px rgba(0,0,0,.22)}
+.about-mark svg{width:25px;height:25px}
+.about-hero strong,.about-hero span{display:block}
+.about-hero strong{font-size:16px;font-weight:600}
+.about-hero span{margin-top:3px;font-size:12px;color:var(--text-dim)}
+.about-links{display:flex;gap:8px;padding-top:14px}
 .group{padding:12px 0 6px;border-bottom:1px solid var(--line)}
 .group:last-child{border-bottom:0}
 .group h3{margin:0 0 8px;font-size:12px;font-weight:600;color:var(--text-dim)}
@@ -479,8 +502,14 @@ body.dragging-dock .dock{box-shadow:0 26px 60px rgba(0,0,0,.5)}
 @media (max-width:640px){
   .dock{max-width:96vw}
   .dock-actions{gap:0}
-  /* 窄视口下操作区折叠进「更多」菜单 */
-  #btnSearch,#btnEdit,#btnAdd{display:none}
+  /* 窄视口下仍保留搜索，添加操作折叠进「更多」菜单 */
+  #btnAdd{display:none}
+  .settings-card{max-width:calc(100vw - 16px)}
+  .settings-layout{display:block;min-height:0;max-height:calc(86vh - 58px)}
+  .settings-nav{width:auto;flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding:4px 6px}
+  .settings-tab{width:auto;flex:0 0 auto;height:34px;padding:0 14px;border-radius:7px}
+  .settings-tab.active::before{top:auto;right:7px;bottom:2px;left:7px;width:auto;height:2px;border-radius:2px}
+  .settings-content{max-height:calc(86vh - 104px);padding:0 14px 14px}
   .bubble{max-width:min(240px,60vw)}
 }
 
@@ -519,13 +548,10 @@ body.dragging-dock .dock{box-shadow:0 26px 60px rgba(0,0,0,.5)}
     </div>
     <div class="dock-divider"></div>
     <div class="dock-actions">
-      <button class="icon-btn grip" id="btnMove" data-icon="grip" title="按住拖到任意一边吸附" aria-label="拖动 Dock 到其他边缘"></button>
       <button class="icon-btn" id="btnSearch" data-icon="search" title="搜索（S）" aria-label="搜索"></button>
-      <button class="icon-btn" id="btnEdit" data-icon="pencil" title="编辑模式（E）" aria-label="编辑模式"></button>
       <button class="icon-btn" id="btnAdd" data-icon="plus" title="添加" aria-label="添加"></button>
-      <button class="icon-btn" id="btnMenu" data-icon="grid" title="更多" aria-label="更多"></button>
-      <button class="icon-btn" id="btnPin" data-icon="pin" title="钉住 Dock" aria-label="钉住 Dock" aria-pressed="false"></button>
-      <button class="icon-btn" id="btnHide" data-icon="chevron-up" title="收起" aria-label="收起"></button>
+      <button class="icon-btn" id="btnMenu" data-icon="more" title="更多操作" aria-label="更多操作" aria-haspopup="menu" aria-expanded="false"></button>
+      <button class="icon-btn low-priority" id="btnHide" data-icon="chevron-up" title="收起" aria-label="收起"></button>
     </div>
   </div>
 
@@ -582,79 +608,99 @@ body.dragging-dock .dock{box-shadow:0 26px 60px rgba(0,0,0,.5)}
 <div class="modal-layer" id="modalLayer" hidden>
   <div class="scrim" id="scrim"></div>
 
-  <div class="modal-card" id="settingsCard" role="dialog" aria-modal="true" aria-label="设置" hidden>
+  <div class="modal-card settings-card" id="settingsCard" role="dialog" aria-modal="true" aria-label="设置" hidden>
     <div class="modal-head">
       <h2>设置</h2>
       <button class="icon-btn" id="settingsClose" data-icon="x" title="关闭" aria-label="关闭"></button>
     </div>
-    <div class="modal-body">
-      <div class="group">
-        <h3>常规</h3>
-        <div class="row"><label class="row-label" for="swAutoStart">开机启动</label><span class="spacer"></span>
-          <button class="switch" id="swAutoStart" data-switch="autoStart" role="switch" aria-checked="true" aria-label="开机启动"><i></i></button></div>
-        <div class="row"><label class="row-label" for="swEdgeReveal">触边滑出</label><span class="row-note">鼠标移到所在边缘唤出 Dock</span><span class="spacer"></span>
-          <button class="switch" id="swEdgeReveal" data-switch="edgeReveal" role="switch" aria-checked="true" aria-label="触边滑出"><i></i></button></div>
-        <div class="row"><label class="row-label" for="swPinned">钉住显示</label><span class="spacer"></span>
-          <button class="switch" id="swPinned" data-switch="pinned" role="switch" aria-checked="false" aria-label="钉住显示"><i></i></button></div>
-        <div class="row"><span class="row-label">停靠边缘</span><span class="row-note">也可按住 Dock 里的 ⠿ 手柄拖动吸附</span><span class="spacer"></span>
-          <div class="seg" data-control="edge" role="group" aria-label="停靠边缘">
-            <button data-value="top">上</button><button data-value="bottom">下</button>
-            <button data-value="left">左</button><button data-value="right">右</button>
-          </div></div>
-        <div class="row"><label class="row-label" for="rgAutoHide">自动隐藏延时</label><span class="spacer"></span>
-          <input type="range" id="rgAutoHide" data-range="autoHideDelay" min="0" max="2000" step="100" aria-label="自动隐藏延时">
-          <output data-out="autoHideDelay"></output></div>
-        <div class="row"><label class="row-label" for="swAutoCollapse">点击执行后自动收起</label><span class="spacer"></span>
-          <button class="switch" id="swAutoCollapse" data-switch="autoCollapse" role="switch" aria-checked="true" aria-label="点击执行后自动收起"><i></i></button></div>
-      </div>
+    <div class="settings-layout">
+      <nav class="settings-nav" role="tablist" aria-label="设置分类">
+        <button class="settings-tab active" id="tabGeneral" type="button" role="tab" aria-selected="true" aria-controls="settingsGeneral" data-settings-tab="general"><span class="tab-icon" data-icon="gear"></span>常规</button>
+        <button class="settings-tab" id="tabAppearance" type="button" role="tab" aria-selected="false" aria-controls="settingsAppearance" data-settings-tab="appearance"><span class="tab-icon" data-icon="app"></span>外观</button>
+        <button class="settings-tab" id="tabData" type="button" role="tab" aria-selected="false" aria-controls="settingsData" data-settings-tab="data"><span class="tab-icon" data-icon="database"></span>数据</button>
+        <button class="settings-tab" id="tabAbout" type="button" role="tab" aria-selected="false" aria-controls="settingsAbout" data-settings-tab="about"><span class="tab-icon" data-icon="info"></span>关于</button>
+      </nav>
 
-      <div class="group">
-        <h3>外观</h3>
-        <div class="row"><span class="row-label">主题</span><span class="spacer"></span>
-          <div class="seg" data-control="themePref">
-            <button data-value="system">跟随系统</button><button data-value="dark">深色</button><button data-value="light">浅色</button>
-          </div></div>
-        <div class="row"><span class="row-label">风格</span><span class="spacer"></span>
-          <div class="seg" data-control="style"><button data-value="glass">毛玻璃</button><button data-value="flat">扁平</button></div></div>
-        <div class="row"><span class="row-label">图标标签</span><span class="spacer"></span>
-          <div class="seg" data-control="label"><button data-value="icon">仅图标</button><button data-value="iconText">图标 + 名称</button></div></div>
-        <div class="row"><span class="row-label">图标尺寸</span><span class="spacer"></span>
-          <input type="range" data-range="tileSize" min="32" max="64" step="2" aria-label="图标尺寸">
-          <output data-out="tileSize"></output></div>
-        <div class="row"><span class="row-label">面板圆角</span><span class="spacer"></span>
-          <input type="range" data-range="radius" min="8" max="32" step="1" aria-label="面板圆角">
-          <output data-out="radius"></output></div>
-        <div class="row"><span class="row-label">面板不透明度</span><span class="spacer"></span>
-          <input type="range" data-range="alpha" min="40" max="100" step="1" aria-label="面板不透明度">
-          <output data-out="alpha"></output></div>
-        <div class="row"><span class="row-note">毛玻璃在部分系统 / Avalonia 端可能退化为纯色</span></div>
-      </div>
+      <div class="settings-content">
+        <section class="settings-panel" id="settingsGeneral" role="tabpanel" aria-labelledby="tabGeneral" data-settings-panel="general">
+          <div class="group">
+            <h3>启动与显示</h3>
+            <div class="row"><label class="row-label" for="swAutoStart">开机启动</label><span class="spacer"></span>
+              <button class="switch" id="swAutoStart" data-switch="autoStart" role="switch" aria-checked="true" aria-label="开机启动"><i></i></button></div>
+            <div class="row"><label class="row-label" for="swEdgeReveal">触边滑出</label><span class="row-note">鼠标移到所在边缘唤出 Dock</span><span class="spacer"></span>
+              <button class="switch" id="swEdgeReveal" data-switch="edgeReveal" role="switch" aria-checked="true" aria-label="触边滑出"><i></i></button></div>
+            <div class="row"><label class="row-label" for="swPinned">钉住显示</label><span class="spacer"></span>
+              <button class="switch" id="swPinned" data-switch="pinned" role="switch" aria-checked="false" aria-label="钉住显示"><i></i></button></div>
+            <div class="row"><span class="row-label">停靠边缘</span><span class="row-note">也可从「更多操作」里选择</span><span class="spacer"></span>
+              <div class="seg" data-control="edge" role="group" aria-label="停靠边缘">
+                <button data-value="top">上</button><button data-value="bottom">下</button>
+                <button data-value="left">左</button><button data-value="right">右</button>
+              </div></div>
+            <div class="row"><label class="row-label" for="rgAutoHide">自动隐藏延时</label><span class="spacer"></span>
+              <input type="range" id="rgAutoHide" data-range="autoHideDelay" min="0" max="2000" step="100" aria-label="自动隐藏延时">
+              <output data-out="autoHideDelay"></output></div>
+            <div class="row"><label class="row-label" for="swAutoCollapse">执行后自动收起</label><span class="spacer"></span>
+              <button class="switch" id="swAutoCollapse" data-switch="autoCollapse" role="switch" aria-checked="true" aria-label="执行后自动收起"><i></i></button></div>
+          </div>
+          <div class="group">
+            <h3>快捷键</h3>
+            <div class="row"><span class="row-label">全局唤起</span><span class="spacer"></span><span class="row-note">Ctrl + Alt + Space</span></div>
+            <div class="row"><span class="row-note">← → ↑ ↓ 移动 · Enter 运行 · 1–9 快速启动 · S / Ctrl+K 搜索 · E 编辑 · Esc 关闭</span></div>
+          </div>
+        </section>
 
-      <div class="group">
-        <h3>交互</h3>
-        <div class="row"><span class="row-label">全局唤起热键</span><span class="spacer"></span>
-          <span class="row-note">Ctrl + Alt + Space</span></div>
-        <div class="row"><span class="row-note">全局热键、托盘、开机启动需在 Avalonia 重构阶段实现</span></div>
-        <div class="row"><span class="row-note">键盘：← → ↑ ↓ 移动 · Enter 运行 · 1–9 启动前九项 · S 搜索 · E 编辑 · Esc 关闭</span></div>
-      </div>
+        <section class="settings-panel" id="settingsAppearance" role="tabpanel" aria-labelledby="tabAppearance" data-settings-panel="appearance" hidden>
+          <div class="group">
+            <h3>界面与显示</h3>
+            <div class="row"><span class="row-label">主题</span><span class="spacer"></span>
+              <div class="seg" data-control="themePref">
+                <button data-value="system">跟随系统</button><button data-value="dark">深色</button><button data-value="light">浅色</button>
+              </div></div>
+            <div class="row"><span class="row-label">风格</span><span class="spacer"></span>
+              <div class="seg" data-control="style"><button data-value="glass">毛玻璃</button><button data-value="flat">扁平</button></div></div>
+            <div class="row"><span class="row-label">图标标签</span><span class="spacer"></span>
+              <div class="seg" data-control="label"><button data-value="icon">仅图标</button><button data-value="iconText">图标 + 名称</button></div></div>
+            <div class="row"><span class="row-label">图标尺寸</span><span class="spacer"></span>
+              <input type="range" data-range="tileSize" min="32" max="64" step="2" aria-label="图标尺寸">
+              <output data-out="tileSize"></output></div>
+            <div class="row"><span class="row-label">面板圆角</span><span class="spacer"></span>
+              <input type="range" data-range="radius" min="8" max="32" step="1" aria-label="面板圆角">
+              <output data-out="radius"></output></div>
+            <div class="row"><span class="row-label">面板不透明度</span><span class="spacer"></span>
+              <input type="range" data-range="alpha" min="40" max="100" step="1" aria-label="面板不透明度">
+              <output data-out="alpha"></output></div>
+            <div class="row"><span class="row-note">毛玻璃在部分系统上可能退化为纯色</span></div>
+          </div>
+        </section>
 
-      <div class="group">
-        <h3>数据</h3>
-        <div class="row"><span class="row-label">配置文件位置</span><span class="spacer"></span>
-          <span class="row-note">%APPDATA%\QuickApp\config.json</span></div>
-        <div class="row"><span class="row-note">重构阶段重新设计格式，旧 menu.json 不迁移（提案值，待定）</span></div>
-        <div class="row">
-          <button class="chip" id="btnImport">导入</button>
-          <button class="chip" id="btnExport">导出</button>
-          <span class="row-note">重构阶段实现</span>
-        </div>
-      </div>
+        <section class="settings-panel" id="settingsData" role="tabpanel" aria-labelledby="tabData" data-settings-panel="data" hidden>
+          <div class="group">
+            <h3>配置</h3>
+            <div class="row"><span class="row-label">配置文件位置</span><span class="spacer"></span>
+              <span class="row-note">%APPDATA%\QuickApp\config.json</span></div>
+            <div class="row"><span class="row-note">导入配置会替换当前的快捷项与设置</span></div>
+            <div class="row">
+              <button class="chip" id="btnImport">导入配置</button>
+              <button class="chip" id="btnExport">导出配置</button>
+            </div>
+          </div>
+        </section>
 
-      <div class="group">
-        <h3>关于</h3>
-        <div class="row"><span class="row-label">QuickApp 快捷应用</span><span class="spacer"></span>
-          <span class="row-note">原型 0.1.0 · WPF 0.1 → Avalonia 重构</span></div>
-        <div class="row"><span class="row-note">界面原型仅用于视觉与交互评审，不代表最终实现</span></div>
+        <section class="settings-panel" id="settingsAbout" role="tabpanel" aria-labelledby="tabAbout" data-settings-panel="about" hidden>
+          <div class="about-hero">
+            <div class="about-mark" data-icon="app"></div>
+            <div><strong>QuickApp</strong><span>快捷应用启动器</span></div>
+          </div>
+          <div class="group">
+            <div class="row"><span class="row-label">版本</span><span class="spacer"></span><span class="row-note">0.1.0 原型</span></div>
+            <div class="row"><span class="row-label">定位</span><span class="spacer"></span><span class="row-note">快速打开应用、网页与命令</span></div>
+            <div class="row"><span class="row-note">界面原型用于视觉与交互评审。</span></div>
+          </div>
+          <div class="about-links">
+            <button class="chip" type="button" id="aboutCheckUpdate">检查更新</button>
+            <button class="chip" type="button" id="aboutLicense">许可证</button>
+          </div>
+        </section>
       </div>
     </div>
   </div>
@@ -707,7 +753,7 @@ body.dragging-dock .dock{box-shadow:0 26px 60px rgba(0,0,0,.5)}
         <button data-value="top">上</button><button data-value="bottom">下</button>
         <button data-value="left">左</button><button data-value="right">右</button>
       </div></div>
-    <div class="proto-note">按住 Dock 里的 ⠿ 手柄拖到任意一边，松手吸附；左/右为竖向 Dock</div>
+    <div class="proto-note">从「更多操作」或这里选择停靠边缘；左/右为竖向 Dock</div>
     <div class="proto-row"><span>图标尺寸</span>
       <input type="range" data-range="tileSize" min="32" max="64" step="2" aria-label="图标尺寸">
       <output data-out="tileSize"></output></div>
@@ -761,6 +807,7 @@ const GLYPHS = {
   search:'<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
   pencil:'<path d="M4 20l4-1 10-10-3-3L5 16z"/><path d="M14.5 5.5l3 3"/>',
   plus:'<path d="M12 5v14M5 12h14"/>',
+  more:'<circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"/>',
   grid:'<rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/>',
   grip:'<circle cx="9" cy="6" r="1.1"/><circle cx="15" cy="6" r="1.1"/><circle cx="9" cy="12" r="1.1"/><circle cx="15" cy="12" r="1.1"/><circle cx="9" cy="18" r="1.1"/><circle cx="15" cy="18" r="1.1"/>',
   pin:'<path d="M9.5 3h5l-.8 5.2 3.3 3.3H7L10.3 8.2z"/><path d="M12 11.5V21"/>',
@@ -1049,10 +1096,10 @@ function applyTokens(){
   els.hint.hidden = STATE.dockVisible || STATE.pinned;
   els.search.hidden = !STATE.searchOpen;
   els.editbar.hidden = !STATE.edit;
-  $('#btnPin').setAttribute('aria-pressed', String(STATE.pinned));
-  $('#btnPin').classList.toggle('active', STATE.pinned);
-  $('#btnSearch').classList.toggle('active', STATE.searchOpen);
-  $('#btnEdit').classList.toggle('active', STATE.edit);
+  const searchButton = $('#btnSearch');
+  if(searchButton) searchButton.classList.toggle('active', STATE.searchOpen);
+  const menuButton = $('#btnMenu');
+  if(menuButton) menuButton.setAttribute('aria-expanded', String(menuOpen));
   requestAnimationFrame(() => {
     updateScrollChrome();
     if(!els.keysCard.hidden) positionKeysCard();
@@ -1357,11 +1404,15 @@ function openMenu(spec, x, y){
   els.menu.style.left = left + 'px';
   els.menu.style.top = top + 'px';
   menuOpen = true;
+  const menuButton = $('#btnMenu');
+  if(menuButton) menuButton.setAttribute('aria-expanded', 'true');
 }
 function closeMenu(){
-  if(els.menu.hidden && els.iconPicker.hidden) return;
+  menuOpen = false;
   els.menu.hidden = true;
   els.iconPicker.hidden = true;
+  const menuButton = $('#btnMenu');
+  if(menuButton) menuButton.setAttribute('aria-expanded', 'false');
 }
 function itemMenuSpec(it){
   return [
@@ -1378,12 +1429,14 @@ function itemMenuSpec(it){
 }
 function dockMenuSpec(){
   return [
+    {title:'添加快捷项'},
     {label:'添加文件…', icon:'upload', action:openFilePicker},
     {label:'添加命令行…', icon:'terminal', action:openCmdDialog},
     {sep:true},
+    {title:'管理'},
     {label:'进入编辑模式', icon:'pencil', action:() => setEdit(true)},
-    {label:'打开设置', icon:'gear', action:openSettings},
-    {label:'关于', icon:'info', action:openSettings},
+    {label: STATE.pinned ? '取消钉住' : '钉住 Dock', icon:'pin', note: STATE.pinned ? '已开启' : '未开启',
+      action:() => setPinned(!STATE.pinned)},
     {sep:true},
     {title:'停靠到边缘'},
     {label:'上边缘', icon:'chevron-up', note: STATE.edge === 'top' ? '当前' : '',
@@ -1394,6 +1447,10 @@ function dockMenuSpec(){
       action:() => { if(setEdge('left')) toast('Dock 已停靠到左边缘'); }},
     {label:'右边缘', icon:'list', note: STATE.edge === 'right' ? '当前' : '',
       action:() => { if(setEdge('right')) toast('Dock 已停靠到右边缘'); }},
+    {sep:true},
+    {title:'设置'},
+    {label:'打开设置', icon:'gear', action:openSettings},
+    {label:'关于', icon:'info', action:() => openSettings('about')},
     {sep:true},
     {label:'退出工具', icon:'power', danger:true, action:() => toast('重构阶段实现：退出应用 / Alt+F4')}
   ];
@@ -1559,11 +1616,25 @@ function openCmdDialog(){
   $('#cmdValue').value = '';
   $('#cmdName').focus();
 }
-function openSettings(){
+const SETTINGS_TABS = ['general','appearance','data','about'];
+function selectSettingsTab(key){
+  const active = SETTINGS_TABS.includes(key) ? key : 'general';
+  $$('[data-settings-tab]').forEach(tab => {
+    const selected = tab.dataset.settingsTab === active;
+    tab.classList.toggle('active', selected);
+    tab.setAttribute('aria-selected', String(selected));
+    tab.tabIndex = selected ? 0 : -1;
+  });
+  $$('[data-settings-panel]').forEach(panel => {
+    panel.hidden = panel.dataset.settingsPanel !== active;
+  });
+}
+function openSettings(tab = 'general'){
   modalKind = 'settings';
   els.modalLayer.hidden = false;
   els.settingsCard.hidden = false;
   els.cmdCard.hidden = true;
+  selectSettingsTab(tab);
   syncControls();
   $('#settingsClose').focus();
 }
@@ -1758,9 +1829,7 @@ function bindEvents(){
   });
 
   /* Dock 操作区 */
-  $('#btnMove').addEventListener('pointerdown', startDockDrag);
   $('#btnSearch').addEventListener('click', () => setSearch(!STATE.searchOpen));
-  $('#btnEdit').addEventListener('click', () => setEdit(!STATE.edit));
   $('#btnAdd').addEventListener('click', e => {
     const r = e.currentTarget.getBoundingClientRect();
     openAddMenu(r.left - 40, r.bottom + 8);
@@ -1769,7 +1838,6 @@ function bindEvents(){
     const r = e.currentTarget.getBoundingClientRect();
     openMenu(dockMenuSpec(), r.left - 120, r.bottom + 8);
   });
-  $('#btnPin').addEventListener('click', () => setPinned(!STATE.pinned));
   $('#btnHide').addEventListener('click', () => setDockVisible(false));
   $('#editDone').addEventListener('click', () => setEdit(false));
   $('#editReset').addEventListener('click', () => { resetSeed(STATE.count); toast('演示数据已重置（' + STATE.items.length + ' 项）'); });
@@ -1809,7 +1877,7 @@ function bindEvents(){
   /* 点击外部关闭菜单 / 托盘 */
   document.addEventListener('mousedown', e => {
     if(e.target.closest('.menu') || e.target.closest('.icon-picker') || e.target.closest('.tray-preview')) return;
-    if(e.target.closest('#btnMenu') || e.target.closest('#btnAdd') || e.target.closest('#btnMove')) return;
+    if(e.target.closest('#btnMenu') || e.target.closest('#btnAdd')) return;
     closeMenu();
     toggleTray(false);
   });
@@ -1818,6 +1886,19 @@ function bindEvents(){
   $('#trayClose').addEventListener('click', () => toggleTray(false));
 
   /* 弹窗 */
+  $$('[data-settings-tab]').forEach(tab => {
+    tab.addEventListener('click', () => selectSettingsTab(tab.dataset.settingsTab));
+    tab.addEventListener('keydown', e => {
+      if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) return;
+      const tabs = $$('[data-settings-tab]');
+      const index = tabs.indexOf(tab);
+      const step = e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 1;
+      const next = tabs[(index + step + tabs.length) % tabs.length];
+      selectSettingsTab(next.dataset.settingsTab);
+      next.focus();
+      e.preventDefault();
+    });
+  });
   $('#settingsClose').addEventListener('click', closeModal);
   $('#cmdClose').addEventListener('click', closeModal);
   $('#cmdCancel').addEventListener('click', closeModal);
@@ -1825,8 +1906,10 @@ function bindEvents(){
   $('#cmdSubmit').addEventListener('click', submitCmd);
   $('#cmdName').addEventListener('keydown', e => { e.stopPropagation(); if(e.key === 'Enter') $('#cmdValue').focus(); });
   $('#cmdValue').addEventListener('keydown', e => { e.stopPropagation(); if(e.key === 'Enter') submitCmd(); });
-  $('#btnImport').addEventListener('click', () => toast('重构阶段实现：从配置文件导入'));
-  $('#btnExport').addEventListener('click', () => toast('重构阶段实现：导出配置到文件'));
+  $('#btnImport').addEventListener('click', () => toast('导入配置：原型演示'));
+  $('#btnExport').addEventListener('click', () => toast('导出配置：原型演示'));
+  $('#aboutCheckUpdate').addEventListener('click', () => toast('正在检查更新…'));
+  $('#aboutLicense').addEventListener('click', () => toast('许可证：MIT'));
 
   /* 开关 / 分段 / 滑块（原型控制台与设置面板共用） */
   document.addEventListener('click', e => {
@@ -2043,6 +2126,7 @@ function pushState(kind){
    ===================================================================== */
 function init(){
   bindEvents();
+  selectSettingsTab('general');
   resetSeed(30);
   setEdit(false);
   applyTokens();
