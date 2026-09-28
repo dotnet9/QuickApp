@@ -98,4 +98,5 @@ public sealed record UpdateInfo(
     string? Notes,
     string PageUrl,
     string? AssetUrl,
-    string? AssetName);
+    string? AssetName,
+    string? ChecksumUrl = null);

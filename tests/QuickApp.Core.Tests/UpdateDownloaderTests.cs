@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using QuickApp.Core.Services;
@@ -28,7 +29,8 @@ public sealed class UpdateDownloaderTests
                 null,
                 "https://example.test/release",
                 "https://example.test/asset",
-                fileName),
+                fileName,
+                "https://example.test/asset.sha256"),
             new Progress<UpdateDownloadProgress>(progress.Add));
 
         try
@@ -61,7 +63,26 @@ public sealed class UpdateDownloaderTests
                 null,
                 "https://example.test/release",
                 "https://example.test/asset",
-                "QuickApp-test.deb")));
+                "QuickApp-test.deb",
+                "https://example.test/asset.sha256")));
+    }
+
+    [Fact]
+    public async Task Rejects_asset_when_checksum_does_not_match()
+    {
+        byte[] payload = { 1, 2, 3, 4 };
+        var downloader = new UpdateDownloader(new HttpClient(new MismatchedChecksumHandler(payload)));
+
+        await Assert.ThrowsAsync<System.IO.InvalidDataException>(() => downloader.DownloadAsync(
+            new UpdateInfo(
+                new Version(9, 9, 9),
+                "v9.9.9",
+                "QuickApp v9.9.9",
+                null,
+                "https://example.test/release",
+                "https://example.test/asset",
+                "QuickApp-test-" + Guid.NewGuid().ToString("N") + ".deb",
+                "https://example.test/asset.sha256")));
     }
 
     private sealed class StubHandler : HttpMessageHandler
@@ -77,10 +98,34 @@ public sealed class UpdateDownloaderTests
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
+            if (request.RequestUri?.AbsolutePath.EndsWith(".sha256", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                string hash = Convert.ToHexString(SHA256.HashData(_payload));
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+                {
+                    Content = new StringContent(hash + "  QuickApp-test.deb")
+                });
+            }
+
             return Task.FromResult(new HttpResponseMessage(_statusCode)
             {
                 Content = new ByteArrayContent(_payload)
             });
+        }
+    }
+
+    private sealed class MismatchedChecksumHandler : HttpMessageHandler
+    {
+        private readonly byte[] _payload;
+
+        public MismatchedChecksumHandler(byte[] payload) => _payload = payload;
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            HttpContent content = request.RequestUri?.AbsolutePath.EndsWith(".sha256", StringComparison.OrdinalIgnoreCase) == true
+                ? new StringContent(new string('0', 64))
+                : new ByteArrayContent(_payload);
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = content });
         }
     }
 }

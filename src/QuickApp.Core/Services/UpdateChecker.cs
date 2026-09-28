@@ -74,7 +74,7 @@ public sealed class UpdateChecker : IUpdateChecker
                 return UpdateCheckResult.Latest();
             }
 
-            (string? assetUrl, string? assetName) = PickAsset(
+            (string? assetUrl, string? assetName, string? checksumUrl) = PickAsset(
                 release,
                 _runtimeIdentifier ?? CurrentRuntimeIdentifier(),
                 _preferInstaller);
@@ -87,7 +87,8 @@ public sealed class UpdateChecker : IUpdateChecker
                 release.Body,
                 release.HtmlUrl ?? $"https://github.com/{_owner}/{_repo}/releases",
                 assetUrl,
-                assetName), true, null);
+                assetName,
+                checksumUrl), true, null);
         }
         catch (OperationCanceledException)
         {
@@ -104,19 +105,19 @@ public sealed class UpdateChecker : IUpdateChecker
     /// 选择当前系统/架构的可下载资产。Windows 使用安装器，Linux 使用 deb，macOS 使用 pkg/dmg；
     /// 对旧版本保留 zip 回退。没有匹配包时交给用户打开 Release 页面。
     /// </summary>
-    private static (string? Url, string? Name) PickAsset(
+    private static (string? Url, string? Name, string? ChecksumUrl) PickAsset(
         GitHubRelease release,
         string? runtimeIdentifier,
         bool preferInstaller)
     {
         if (release.Assets is null || release.Assets.Length == 0)
         {
-            return (null, null);
+            return (null, null, null);
         }
 
         if (string.IsNullOrWhiteSpace(runtimeIdentifier))
         {
-            return (null, null);
+            return (null, null, null);
         }
 
         string marker = "-" + runtimeIdentifier;
@@ -153,7 +154,14 @@ public sealed class UpdateChecker : IUpdateChecker
             IsAssetForRuntime(a, marker) &&
             a.Name!.EndsWith(".zip", StringComparison.OrdinalIgnoreCase));
 
-        return preferred is null ? (null, null) : (preferred.BrowserDownloadUrl, preferred.Name);
+        if (preferred is null)
+        {
+            return (null, null, null);
+        }
+
+        GitHubAsset? checksum = release.Assets.FirstOrDefault(asset =>
+            string.Equals(asset.Name, preferred.Name + ".sha256", StringComparison.OrdinalIgnoreCase));
+        return (preferred.BrowserDownloadUrl, preferred.Name, checksum?.BrowserDownloadUrl);
     }
 
     private static bool IsAssetForRuntime(GitHubAsset asset, string marker)

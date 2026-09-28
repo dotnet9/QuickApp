@@ -26,7 +26,8 @@ public sealed class UpdateCheckerTests
 
         string json = $"{{\"tag_name\":\"v9.9.9\",\"name\":\"QuickApp v9.9.9\",\"html_url\":\"https://example.test/release\",\"assets\":[" +
             "{\"name\":\"QuickApp-v9.9.9-win-x64.zip\",\"browser_download_url\":\"https://example.test/win.zip\"}," +
-            $"{{\"name\":\"{expectedName}\",\"browser_download_url\":\"https://example.test/current\"}}]}}";
+            $"{{\"name\":\"{expectedName}\",\"browser_download_url\":\"https://example.test/current\"}}," +
+            $"{{\"name\":\"{expectedName}.sha256\",\"browser_download_url\":\"https://example.test/current.sha256\"}}]}}";
 
         var checker = CreateChecker(json);
 
@@ -37,6 +38,7 @@ public sealed class UpdateCheckerTests
         Assert.NotNull(update);
         Assert.Equal(expectedName, update!.AssetName);
         Assert.Equal("https://example.test/current", update.AssetUrl);
+        Assert.Equal("https://example.test/current.sha256", update.ChecksumUrl);
     }
 
     [Fact]
@@ -112,6 +114,7 @@ public sealed class UpdateCheckerTests
     {
         string json = $"{{\"tag_name\":\"v9.9.9\",\"assets\":[" +
             $"{{\"name\":\"{expectedName}\",\"browser_download_url\":\"https://example.test/native\"}}," +
+            $"{{\"name\":\"{expectedName}.sha256\",\"browser_download_url\":\"https://example.test/native.sha256\"}}," +
             $"{{\"name\":\"QuickApp-v9.9.9-{rid}.dmg\",\"browser_download_url\":\"https://example.test/dmg\"}}]}}";
         var checker = new UpdateChecker(
             new HttpClient(new StubHandler(json)),
@@ -124,6 +127,7 @@ public sealed class UpdateCheckerTests
 
         Assert.True(result.Succeeded);
         Assert.Equal(expectedName, result.Update!.AssetName);
+        Assert.Equal("https://example.test/native.sha256", result.Update.ChecksumUrl);
     }
 
     private static UpdateChecker CreateChecker(string json)

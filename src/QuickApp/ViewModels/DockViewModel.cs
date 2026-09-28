@@ -270,12 +270,14 @@ public sealed class DockViewModel : ViewModelBase
     public bool CanDownloadUpdate => UpdateAvailable &&
         !_isDownloadingUpdate &&
         !IsUpdateReady &&
-        !string.IsNullOrWhiteSpace(_pendingUpdate?.AssetUrl);
+        !string.IsNullOrWhiteSpace(_pendingUpdate?.AssetUrl) &&
+        !string.IsNullOrWhiteSpace(_pendingUpdate?.ChecksumUrl);
 
     public bool NeedsUpdatePage => UpdateAvailable &&
         !_isDownloadingUpdate &&
         !IsUpdateReady &&
-        string.IsNullOrWhiteSpace(_pendingUpdate?.AssetUrl);
+        (string.IsNullOrWhiteSpace(_pendingUpdate?.AssetUrl) ||
+         string.IsNullOrWhiteSpace(_pendingUpdate?.ChecksumUrl));
 
     public double DownloadProgress => _downloadProgress;
 
@@ -1231,7 +1233,7 @@ public sealed class DockViewModel : ViewModelBase
 
     private void OpenUpdatePage()
     {
-        string? url = _pendingUpdate?.AssetUrl ?? _pendingUpdate?.PageUrl;
+        string? url = _pendingUpdate?.PageUrl;
         if (!string.IsNullOrWhiteSpace(url))
         {
             _host?.OpenUrl(url);

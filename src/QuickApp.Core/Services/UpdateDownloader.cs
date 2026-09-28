@@ -1,6 +1,8 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -32,8 +34,16 @@ public sealed class UpdateDownloader : IUpdateDownloader
         {
             throw new InvalidOperationException("更新没有可下载的资产。");
         }
+        if (string.IsNullOrWhiteSpace(update.ChecksumUrl))
+        {
+            throw new InvalidOperationException("更新资产缺少 SHA-256 校验文件。");
+        }
+        if (!IsHttpsUrl(update.AssetUrl) || !IsHttpsUrl(update.ChecksumUrl))
+        {
+            throw new InvalidOperationException("更新地址必须使用 HTTPS。");
+        }
 
-        string fileName = Path.GetFileName(update.AssetName ?? string.Empty);
+        string fileName = Path.GetFileName((update.AssetName ?? string.Empty).Replace('\\', '/'));
         if (string.IsNullOrWhiteSpace(fileName) ||
             fileName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
         {
@@ -79,6 +89,31 @@ public sealed class UpdateDownloader : IUpdateDownloader
 
                 await target.FlushAsync(cancellationToken).ConfigureAwait(false);
             }
+
+            using var checksumRequest = new HttpRequestMessage(HttpMethod.Get, update.ChecksumUrl);
+            checksumRequest.Headers.TryAddWithoutValidation("Accept", "application/octet-stream");
+            checksumRequest.Headers.TryAddWithoutValidation("User-Agent", "QuickApp-UpdateDownloader");
+            using HttpResponseMessage checksumResponse = await _http.SendAsync(
+                checksumRequest,
+                cancellationToken).ConfigureAwait(false);
+            checksumResponse.EnsureSuccessStatusCode();
+            string checksumText = await checksumResponse.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            string[] checksumTokens = checksumText.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+            if (checksumTokens.Length == 0 || checksumTokens[0].Length != 64 || !checksumTokens[0].All(Uri.IsHexDigit))
+            {
+                throw new InvalidDataException("SHA-256 校验文件格式无效。");
+            }
+
+            await using (FileStream downloaded = File.OpenRead(partialPath))
+            {
+                byte[] actualHash = await SHA256.HashDataAsync(downloaded, cancellationToken).ConfigureAwait(false);
+                string actualHashText = Convert.ToHexString(actualHash);
+                if (!string.Equals(actualHashText, checksumTokens[0], StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new InvalidDataException("更新文件 SHA-256 校验失败。");
+                }
+            }
+
             File.Move(partialPath, finalPath, overwrite: true);
         }
         catch
@@ -105,4 +140,7 @@ public sealed class UpdateDownloader : IUpdateDownloader
             // A stale partial file is harmless and will be overwritten next time.
         }
     }
+
+    private static bool IsHttpsUrl(string url)
+        => Uri.TryCreate(url, UriKind.Absolute, out Uri? parsed) && parsed.Scheme == Uri.UriSchemeHttps;
 }
