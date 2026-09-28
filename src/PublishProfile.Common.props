@@ -11,7 +11,8 @@
     <LastUsedTargetFramework>$(TargetFramework)</LastUsedTargetFramework>
     <LastUsedRuntimeIdentifier>$(RuntimeIdentifier)</LastUsedRuntimeIdentifier>
     <SelfContained>true</SelfContained>
-    <PublishTrimmed>true</PublishTrimmed>
+    <!-- AOT Windows profiles opt into trimming; portable profiles explicitly disable it. -->
+    <PublishTrimmed Condition="'$(PublishTrimmed)' == ''">true</PublishTrimmed>
     <!-- AOT 默认会产出几百 MB 的 pdb（QuickApp.pdb 就 360MB），发布包不需要它们 -->
     <DebugType>none</DebugType>
     <DebugSymbols>false</DebugSymbols>

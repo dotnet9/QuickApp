@@ -990,6 +990,12 @@ public partial class DockWindow : Window, IDockHost
 
     private void CopyToClipboard(string text)
     {
+        if (!OperatingSystem.IsWindows())
+        {
+            _vm?.Toast("当前平台暂不支持复制到剪贴板");
+            return;
+        }
+
         IntPtr handle = TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
         if (ClipboardInterop.TrySetText(text, handle))
         {
@@ -1034,12 +1040,12 @@ public partial class DockWindow : Window, IDockHost
             return;
         }
 
-        if (!NativeMethods.GetCursorPos(out NativeMethods.POINT cursor))
+        if (!TryGetPointerPixel(e, out PixelPoint cursor))
         {
             return;
         }
 
-        _dragCursorOrigin = new PixelPoint(cursor.X, cursor.Y);
+        _dragCursorOrigin = cursor;
         _dragWindowOrigin = Position;
         _dragEdge = _vm.Settings.Edge;
         _dragMonitorIndex = _vm.Settings.MonitorIndex;
@@ -1057,12 +1063,11 @@ public partial class DockWindow : Window, IDockHost
             return;
         }
 
-        if (!NativeMethods.GetCursorPos(out NativeMethods.POINT cursor))
+        if (!TryGetPointerPixel(e, out PixelPoint pointer))
         {
             return;
         }
 
-        var pointer = new PixelPoint(cursor.X, cursor.Y);
         if (!_dockDragStarted)
         {
             int distance = Math.Abs(pointer.X - _dragCursorOrigin.X) + Math.Abs(pointer.Y - _dragCursorOrigin.Y);
@@ -1363,13 +1368,15 @@ public partial class DockWindow : Window, IDockHost
     /// <summary>光标贴到停靠边时把 Dock 唤出来。钉住只表示「不自动隐藏」，不影响触边唤出。</summary>
     private void CheckEdgeReveal()
     {
-        if (_vm is null || _vm.IsDockVisible || !_vm.Settings.RevealOnEdgeTouch)
+        if (!OperatingSystem.IsWindows()
+            || _vm is null || _vm.IsDockVisible || !_vm.Settings.RevealOnEdgeTouch)
         {
             return;
         }
 
         var screen = ResolveScreen();
-        if (screen is null || !NativeMethods.GetCursorPos(out NativeMethods.POINT point))
+        if (screen is null || !OperatingSystem.IsWindows()
+            || !NativeMethods.GetCursorPos(out NativeMethods.POINT point))
         {
             return;
         }
@@ -1483,7 +1490,8 @@ public partial class DockWindow : Window, IDockHost
                 return (primary.WorkingArea, primary.Bounds, primary.Scaling);
             }
 
-            if (NativeMethods.GetCursorPos(out NativeMethods.POINT point)
+            if (OperatingSystem.IsWindows()
+                && NativeMethods.GetCursorPos(out NativeMethods.POINT point)
                 && screens.ScreenFromPoint(new PixelPoint(point.X, point.Y)) is { } fromPoint)
             {
                 return (fromPoint.WorkingArea, fromPoint.Bounds, fromPoint.Scaling);
@@ -1496,6 +1504,23 @@ public partial class DockWindow : Window, IDockHost
             AppLog.Error("解析屏幕失败", ex);
             return null;
         }
+    }
+
+    private bool TryGetPointerPixel(PointerEventArgs e, out PixelPoint point)
+    {
+        if (OperatingSystem.IsWindows()
+            && NativeMethods.GetCursorPos(out NativeMethods.POINT cursor))
+        {
+            point = new PixelPoint(cursor.X, cursor.Y);
+            return true;
+        }
+
+        Point local = e.GetPosition(this);
+        double scaling = RenderScaling;
+        point = new PixelPoint(
+            Position.X + (int)Math.Round(local.X * scaling, MidpointRounding.AwayFromZero),
+            Position.Y + (int)Math.Round(local.Y * scaling, MidpointRounding.AwayFromZero));
+        return true;
     }
 
     // ---------------- 窗口级输入 ----------------

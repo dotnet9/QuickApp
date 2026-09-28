@@ -10,7 +10,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Microsoft.Extensions.DependencyInjection;
 using QuickApp.Core.Services;
-using QuickApp.Platform.Windows;
+using QuickApp.Platform;
 using QuickApp.ViewModels;
 using QuickApp.Views;
 
@@ -19,8 +19,8 @@ namespace QuickApp;
 public partial class App : Application
 {
     private ServiceProvider? _services;
-    private SingleInstanceService? _singleInstance;
-    private HotkeyService? _hotkey;
+    private ISingleInstance? _singleInstance;
+    private IHotkeyService? _hotkey;
     private DockWindow? _dock;
     private SettingsWindow? _settings;
     private TrayIcon? _tray;
@@ -36,7 +36,7 @@ public partial class App : Application
         }
 
         // 单实例必须在建窗口之前判断
-        _singleInstance = new SingleInstanceService(AppLog.Info);
+        _singleInstance = PlatformServices.CreateSingleInstance(AppLog.Info);
         if (!_singleInstance.IsFirstInstance)
         {
             _singleInstance.SignalExistingInstance();
@@ -80,9 +80,9 @@ public partial class App : Application
 
         services.AddSingleton(_ => new ConfigStore(AppContext.BaseDirectory, AppLog.Info));
         services.AddSingleton<ILauncher, ProcessLauncher>();
-        services.AddSingleton<IAutoStartService, AutoStartService>();
-        services.AddSingleton<IInstalledAppProvider>(_ => new InstalledAppProvider(AppLog.Info));
-        services.AddSingleton<IIconProvider>(_ => new IconProvider(AppPaths.IconCacheDirectory(), AppLog.Info));
+        services.AddSingleton<IAutoStartService>(_ => PlatformServices.CreateAutoStartService(AppLog.Info));
+        services.AddSingleton<IInstalledAppProvider>(_ => PlatformServices.CreateInstalledAppProvider(AppLog.Info));
+        services.AddSingleton<IIconProvider>(_ => PlatformServices.CreateIconProvider(AppPaths.IconCacheDirectory(), AppLog.Info));
         services.AddSingleton<IUpdateChecker>(_ => new UpdateChecker(
             new HttpClient { Timeout = TimeSpan.FromSeconds(12) },
             owner: "dotnet9",
@@ -105,7 +105,7 @@ public partial class App : Application
     {
         try
         {
-            _hotkey = new HotkeyService(AppLog.Info);
+            _hotkey = PlatformServices.CreateHotkeyService(AppLog.Info);
             if (_hotkey.TryRegister(viewModel.Settings.Hotkey, () => ToggleDockFromHotkey(viewModel), out string? error))
             {
                 AppLog.Info("全局热键已注册：" + viewModel.Settings.Hotkey);
