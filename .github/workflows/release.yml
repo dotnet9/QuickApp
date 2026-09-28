@@ -44,8 +44,8 @@ jobs:
         run: dotnet test QuickApp.slnx -c Release
 
       - name: AOT 发布（win-x64）
-        shell: pwsh
-        run: pwsh scripts/publish.bat win-x64 $env:APP_VERSION
+        shell: cmd
+        run: scripts\publish.bat win-x64 %APP_VERSION%
 
       - name: 打包 zip + sha256
         shell: pwsh
