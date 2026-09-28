@@ -18,7 +18,11 @@ public sealed class SettingsViewModel : ViewModelBase
     public SettingsViewModel(DockViewModel dock)
     {
         _dock = dock;
-        CheckUpdateCommand = ReactiveCommand.CreateFromTask(() => _dock.CheckUpdateAsync());
+        CheckUpdateCommand = ReactiveCommand.CreateFromTask(async () =>
+        {
+            await _dock.CheckUpdateAsync();
+            this.RaisePropertyChanged(nameof(CheckResult));
+        });
         OpenConfigFolderCommand = ReactiveCommand.Create<string>(OpenConfigFolder);
 
         SetThemeCommand = ReactiveCommand.Create<string>(value =>
@@ -31,6 +35,12 @@ public sealed class SettingsViewModel : ViewModelBase
         {
             Settings.Style = value;
             ApplyChange(palette: true, size: false);
+        });
+
+        SetLabelsCommand = ReactiveCommand.Create<string>(value =>
+        {
+            Settings.ShowLabels = value == "iconText";
+            ApplyChange(palette: false, size: true);
         });
 
         SetEdgeCommand = ReactiveCommand.Create<string>(value =>
@@ -60,6 +70,8 @@ public sealed class SettingsViewModel : ViewModelBase
 
     public ICommand SetStyleCommand { get; }
 
+    public ICommand SetLabelsCommand { get; }
+
     public ICommand SetEdgeCommand { get; }
 
     /// <summary>卡片外观复用 Dock 的调色板，保证两个窗口同一套配色。</summary>
@@ -78,6 +90,10 @@ public sealed class SettingsViewModel : ViewModelBase
     public bool IsStyleGlass => Settings.Style != "flat";
 
     public bool IsStyleFlat => Settings.Style == "flat";
+
+    public bool IsLabelsOnly => !Settings.ShowLabels;
+
+    public bool IsLabelsWithText => Settings.ShowLabels;
 
     public bool IsEdgeTop => Settings.Edge == DockEdge.Top;
 
@@ -218,8 +234,13 @@ public sealed class SettingsViewModel : ViewModelBase
             Settings.AutoHideDelayMs = (int)Math.Clamp(Math.Round(value / 100) * 100, 0, 3000);
             ApplyChange(palette: false, size: false);
             this.RaisePropertyChanged();
+            this.RaisePropertyChanged(nameof(AutoHideDelayText));
         }
     }
+
+    public string AutoHideDelayText => Settings.AutoHideDelayMs <= 0
+        ? "不自动隐藏"
+        : $"{Settings.AutoHideDelayMs} ms";
 
     public bool CollapseAfterLaunch
     {
@@ -283,6 +304,40 @@ public sealed class SettingsViewModel : ViewModelBase
 
     public bool ImportConfigFrom(string filePath) => _dock.ImportConfigFrom(filePath);
 
+    /// <summary>导入完整配置后刷新当前设置窗口的所有绑定值。</summary>
+    public void RefreshFromDock()
+    {
+        this.RaisePropertyChanged(nameof(BackgroundBrush));
+        this.RaisePropertyChanged(nameof(TextBrush));
+        this.RaisePropertyChanged(nameof(TextDimBrush));
+        this.RaisePropertyChanged(nameof(PanelBorderBrush));
+        this.RaisePropertyChanged(nameof(IsThemeSystem));
+        this.RaisePropertyChanged(nameof(IsThemeDark));
+        this.RaisePropertyChanged(nameof(IsThemeLight));
+        this.RaisePropertyChanged(nameof(IsStyleGlass));
+        this.RaisePropertyChanged(nameof(IsStyleFlat));
+        this.RaisePropertyChanged(nameof(IsLabelsOnly));
+        this.RaisePropertyChanged(nameof(IsLabelsWithText));
+        this.RaisePropertyChanged(nameof(IsEdgeTop));
+        this.RaisePropertyChanged(nameof(IsEdgeBottom));
+        this.RaisePropertyChanged(nameof(IsEdgeLeft));
+        this.RaisePropertyChanged(nameof(IsEdgeRight));
+        this.RaisePropertyChanged(nameof(ShowLabels));
+        this.RaisePropertyChanged(nameof(TileSize));
+        this.RaisePropertyChanged(nameof(CornerRadius));
+        this.RaisePropertyChanged(nameof(OpacityPercent));
+        this.RaisePropertyChanged(nameof(RevealOnEdgeTouch));
+        this.RaisePropertyChanged(nameof(Pinned));
+        this.RaisePropertyChanged(nameof(AutoHideDelayMs));
+        this.RaisePropertyChanged(nameof(AutoHideDelayText));
+        this.RaisePropertyChanged(nameof(CollapseAfterLaunch));
+        this.RaisePropertyChanged(nameof(AutoStartEnabled));
+        this.RaisePropertyChanged(nameof(CheckUpdates));
+        this.RaisePropertyChanged(nameof(HotkeyText));
+        this.RaisePropertyChanged(nameof(ConfigFilePath));
+        this.RaisePropertyChanged(nameof(CheckResult));
+    }
+
     private static void OpenConfigFolder(string? path)
     {
         try
@@ -323,6 +378,8 @@ public sealed class SettingsViewModel : ViewModelBase
         this.RaisePropertyChanged(nameof(IsThemeLight));
         this.RaisePropertyChanged(nameof(IsStyleGlass));
         this.RaisePropertyChanged(nameof(IsStyleFlat));
+        this.RaisePropertyChanged(nameof(IsLabelsOnly));
+        this.RaisePropertyChanged(nameof(IsLabelsWithText));
         this.RaisePropertyChanged(nameof(IsEdgeTop));
         this.RaisePropertyChanged(nameof(IsEdgeBottom));
         this.RaisePropertyChanged(nameof(IsEdgeLeft));

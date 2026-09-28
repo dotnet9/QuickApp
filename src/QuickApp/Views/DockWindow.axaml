@@ -282,15 +282,15 @@
                   Height="{Binding DividerHeight}"
                   Background="{Binding PanelBorderBrush}" />
 
-          <!-- 操作区：全部图形按钮（图标在视图层由代码塞进去） -->
+          <!-- 操作区：默认只保留高频操作；低频设置收进「更多」菜单 -->
           <StackPanel Orientation="{Binding BodyOrientation}" Spacing="2" VerticalAlignment="Center">
-            <Button Theme="{StaticResource IconButton}" Name="MoveButton" Width="32" Height="32" ToolTip.Tip="按住拖到任意一边吸附" />
+            <Button Theme="{StaticResource IconButton}" Name="MoveButton" Width="32" Height="32" IsVisible="False" ToolTip.Tip="按住拖到任意一边吸附" />
             <Button Theme="{StaticResource IconButton}" Name="SearchButton" Width="32" Height="32" Command="{Binding ToggleSearchCommand}" ToolTip.Tip="搜索（S）" />
-            <Button Theme="{StaticResource IconButton}" Name="EditButton" Width="32" Height="32" Command="{Binding ToggleEditCommand}" ToolTip.Tip="编辑模式（E）" />
+            <Button Theme="{StaticResource IconButton}" Name="EditButton" Width="32" Height="32" IsVisible="False" Command="{Binding ToggleEditCommand}" ToolTip.Tip="编辑模式（E）" />
             <Button Theme="{StaticResource IconButton}" Name="AddButton" Width="32" Height="32" ToolTip.Tip="添加文件或命令行" />
-            <Button Theme="{StaticResource IconButton}" Name="MoreButton" Width="32" Height="32" ToolTip.Tip="更多" />
-            <Button Theme="{StaticResource IconButton}" Name="PinButton" Width="32" Height="32" Command="{Binding TogglePinCommand}" ToolTip.Tip="钉住 Dock" />
-            <Button Theme="{StaticResource IconButton}" Name="CollapseButton" Width="32" Height="32" Command="{Binding HideCommand}" ToolTip.Tip="收起" />
+            <Button Theme="{StaticResource IconButton}" Name="MoreButton" Width="32" Height="32" ToolTip.Tip="更多操作" />
+            <Button Theme="{StaticResource IconButton}" Name="PinButton" Width="32" Height="32" IsVisible="False" Command="{Binding TogglePinCommand}" ToolTip.Tip="钉住 Dock" />
+            <Button Theme="{StaticResource IconButton}" Classes="low-priority" Name="CollapseButton" Width="32" Height="32" Command="{Binding HideCommand}" ToolTip.Tip="收起" />
           </StackPanel>
         </StackPanel>
 

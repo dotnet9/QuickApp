@@ -14,12 +14,22 @@ public partial class SettingsWindow : Window
     public SettingsWindow()
     {
         InitializeComponent();
-        AddCmdButton.Click += OnAddCommand;
-        AddFileButton.Click += OnAddFiles;
         ExportButton.Click += OnExportConfig;
         ImportButton.Click += OnImportConfig;
         CloseButton.Click += (_, _) => Close();
         HeaderBar.PointerPressed += OnHeaderPressed;
+    }
+
+    /// <summary>切换设置分类；由 Dock 的“关于”入口直接打开对应 Tab。</summary>
+    public void ShowTab(string? tab)
+    {
+        SettingsTabs.SelectedIndex = tab?.ToLowerInvariant() switch
+        {
+            "appearance" => 1,
+            "data" => 2,
+            "about" => 3,
+            _ => 0
+        };
     }
 
     /// <summary>自绘标题栏拖动整窗（无系统装饰时用它替代标题栏）。</summary>
@@ -35,25 +45,6 @@ public partial class SettingsWindow : Window
     {
         _vm = new SettingsViewModel(dock);
         DataContext = _vm;
-    }
-
-    private void OnAddCommand(object? sender, RoutedEventArgs e)
-    {
-        if (_vm is null)
-        {
-            return;
-        }
-
-        string name = CmdName.Text ?? string.Empty;
-        string command = CmdValue.Text ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(command))
-        {
-            return;
-        }
-
-        _vm.AddCommand(name, command);
-        CmdName.Text = string.Empty;
-        CmdValue.Text = string.Empty;
     }
 
     private async void OnExportConfig(object? sender, RoutedEventArgs e)
@@ -115,7 +106,10 @@ public partial class SettingsWindow : Window
 
             if (files.Count > 0 && !string.IsNullOrWhiteSpace(files[0].Path?.LocalPath))
             {
-                _vm.ImportConfigFrom(files[0].Path!.LocalPath);
+                if (_vm.ImportConfigFrom(files[0].Path!.LocalPath))
+                {
+                    _vm.RefreshFromDock();
+                }
             }
         }
         catch (Exception ex)
@@ -124,38 +118,4 @@ public partial class SettingsWindow : Window
         }
     }
 
-    private async void OnAddFiles(object? sender, RoutedEventArgs e)
-    {
-        if (_vm is null)
-        {
-            return;
-        }
-
-        try
-        {
-            IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-            {
-                Title = "选择要添加的程序或文件",
-                AllowMultiple = true
-            });
-
-            var paths = new List<string>();
-            foreach (IStorageFile file in files)
-            {
-                if (!string.IsNullOrWhiteSpace(file.Path?.LocalPath))
-                {
-                    paths.Add(file.Path!.LocalPath);
-                }
-            }
-
-            if (paths.Count > 0)
-            {
-                _vm.AddFiles(paths);
-            }
-        }
-        catch (Exception ex)
-        {
-            AppLog.Error("选择文件失败", ex);
-        }
-    }
 }

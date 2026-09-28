@@ -93,6 +93,8 @@ public partial class DockWindow : Window, IDockHost
 
     public event EventHandler? SettingsRequested;
 
+    public event EventHandler? AboutRequested;
+
     public void Attach(DockViewModel viewModel)
     {
         _vm = viewModel;
@@ -1532,7 +1534,7 @@ public partial class DockWindow : Window, IDockHost
         }
     }
 
-    /// <summary>「更多」菜单：停靠边缘、设置、检查更新、退出。</summary>
+    /// <summary>「更多」菜单：低频管理操作、停靠边缘、设置与关于。</summary>
     private void OnMoreClicked(object? sender, RoutedEventArgs e)
     {
         if (_vm is null)
@@ -1541,6 +1543,27 @@ public partial class DockWindow : Window, IDockHost
         }
 
         var flyout = new MenuFlyout();
+
+        var addFile = new MenuItem { Header = "添加文件…" };
+        addFile.Click += (_, _) => _ = AddFilesAsync();
+        flyout.Items.Add(addFile);
+
+        var addCommand = new MenuItem { Header = "添加命令行…" };
+        addCommand.Click += (_, _) => _ = AddCommandAsync();
+        flyout.Items.Add(addCommand);
+
+        flyout.Items.Add(new Separator());
+
+        var edit = new MenuItem { Header = "进入编辑模式" };
+        edit.Click += (_, _) => _vm.ToggleEditCommand.Execute(null);
+        flyout.Items.Add(edit);
+
+        var pin = new MenuItem { Header = _vm.IsPinned ? "取消钉住" : "钉住 Dock" };
+        pin.Click += (_, _) => _vm.TogglePinCommand.Execute(null);
+        flyout.Items.Add(pin);
+
+        flyout.Items.Add(new Separator());
+
         flyout.Items.Add(CreateEdgeItem("停靠到上边缘", DockEdge.Top));
         flyout.Items.Add(CreateEdgeItem("停靠到下边缘", DockEdge.Bottom));
         flyout.Items.Add(CreateEdgeItem("停靠到左边缘（竖向）", DockEdge.Left));
@@ -1551,13 +1574,9 @@ public partial class DockWindow : Window, IDockHost
         settings.Click += (_, _) => ShowSettings();
         flyout.Items.Add(settings);
 
-        var addCommand = new MenuItem { Header = "添加命令行…" };
-        addCommand.Click += (_, _) => _ = AddCommandAsync();
-        flyout.Items.Add(addCommand);
-
-        var check = new MenuItem { Header = "检查更新" };
-        check.Click += (_, _) => _ = _vm.CheckUpdateAsync();
-        flyout.Items.Add(check);
+        var about = new MenuItem { Header = "关于" };
+        about.Click += (_, _) => AboutRequested?.Invoke(this, EventArgs.Empty);
+        flyout.Items.Add(about);
 
         flyout.Items.Add(new Separator());
 
@@ -1570,7 +1589,8 @@ public partial class DockWindow : Window, IDockHost
 
     private MenuItem CreateEdgeItem(string header, DockEdge edge)
     {
-        var item = new MenuItem { Header = header };
+        bool current = _vm?.Settings.Edge == edge;
+        var item = new MenuItem { Header = current ? header + "（当前）" : header, IsEnabled = !current };
         item.Click += (_, _) => _vm?.SetEdgeCommand.Execute(edge);
         return item;
     }

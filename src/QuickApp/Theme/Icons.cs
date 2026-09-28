@@ -19,11 +19,9 @@ public static class Icons
 
     public static Geometry Plus { get; } = Geometry.Parse("M12,5 L12,19 M5,12 L19,12");
 
-    /// <summary>「更多」：2x2 实心方块（原型的网格图标）。用闭合矩形 + Fill 渲染，
-    /// 不用零长线段——那种画法在 Uniform 拉伸下会塌成一个点。</summary>
+    /// <summary>「更多」：三个横向圆点，避免和应用网格混淆。</summary>
     public static Geometry More { get; } = Geometry.Parse(
-        "M6,6 L11,6 L11,11 L6,11 Z M13,6 L18,6 L18,11 L13,11 Z " +
-        "M6,13 L11,13 L11,18 L6,18 Z M13,13 L18,13 L18,18 L13,18 Z");
+        "M4.8,12 L7.2,12 M10.8,12 L13.2,12 M16.8,12 L19.2,12");
 
     public static Geometry Pin { get; } = Geometry.Parse(
         "M9.5,3 L14.5,3 L13.7,8.2 L17,11.5 L7,11.5 L10.3,8.2 Z M12,11.5 L12,21");
@@ -35,6 +33,12 @@ public static class Icons
         "M7.7,16.7 L10.3,16.7 L10.3,19.3 L7.7,19.3 Z M13.7,16.7 L16.3,16.7 L16.3,19.3 L13.7,19.3 Z");
 
     public static Geometry Close { get; } = Geometry.Parse("M6,6 L18,18 M18,6 L6,18");
+
+    public static Geometry Gear { get; } = Geometry.Parse(
+        "M9.8,3.2 L14.2,3.2 L14.8,5.6 C15.3,5.8 15.8,6.1 16.3,6.4 L18.6,5.3 L20.8,7.5 L19.7,9.8 C20,10.3 20.2,10.8 20.4,11.3 L22.8,12 L22.8,16.4 L20.4,17.1 C20.2,17.6 20,18.1 19.7,18.6 L20.8,20.9 L18.6,23.1 L16.3,22 C15.8,22.3 15.3,22.6 14.8,22.8 L14.2,25.2 L9.8,25.2 L9.2,22.8 C8.7,22.6 8.2,22.3 7.7,22 L5.4,23.1 L3.2,20.9 L4.3,18.6 C4,18.1 3.8,17.6 3.6,17.1 L1.2,16.4 L1.2,12 L3.6,11.3 C3.8,10.8 4,10.3 4.3,9.8 L3.2,7.5 L5.4,5.3 L7.7,6.4 C8.2,6.1 8.7,5.8 9.2,5.6 Z M12,9 C13.7,9 15,10.3 15,12 C15,13.7 13.7,15 12,15 C10.3,15 9,13.7 9,12 C9,10.3 10.3,9 12,9 Z");
+
+    public static Geometry Info { get; } = Geometry.Parse(
+        "M12,3 C16.97,3 21,7.03 21,12 C21,16.97 16.97,21 12,21 C7.03,21 3,16.97 3,12 C3,7.03 7.03,3 12,3 Z M12,10.5 L12,17 M12,7 L12.01,7");
 
     public static Geometry Check { get; } = Geometry.Parse("M5,12.5 L9.5,17 L19,7");
 

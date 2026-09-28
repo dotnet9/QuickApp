@@ -159,6 +159,15 @@
     <Style Selector="^.active /template/ Border#PART_Bg">
       <Setter Property="Background" Value="{DynamicResource QAHoverBrush}" />
     </Style>
+    <Style Selector="^.low-priority">
+      <Setter Property="Opacity" Value="0.68" />
+    </Style>
+    <Style Selector="^.low-priority:pointerover">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
+    <Style Selector="^.low-priority:focus-visible">
+      <Setter Property="Opacity" Value="1" />
+    </Style>
   </ControlTheme>
 
   <!-- 编辑模式里图标右上角的移除按钮：原型 .remove 17px 圆底白 ×，悬停危险色并放大 1.12 -->

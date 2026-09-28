@@ -54,6 +54,7 @@ public partial class App : Application
         _dock.Attach(viewModel);
         _dock.Icon = appIcon;
         _dock.SettingsRequested += (_, _) => ShowSettings();
+        _dock.AboutRequested += (_, _) => ShowSettings("about");
 
         _singleInstance.Listen(() => _dock.ActivateFromExternal());
 
@@ -221,7 +222,7 @@ public partial class App : Application
         return new WindowIcon(stream);
     }
 
-    private void ShowSettings()
+    private void ShowSettings(string? tab = null)
     {
         if (_services is null)
         {
@@ -231,12 +232,14 @@ public partial class App : Application
         DockViewModel viewModel = _services.GetRequiredService<DockViewModel>();
         if (_settings is not null)
         {
+            _settings.ShowTab(tab);
             _settings.Activate();
             return;
         }
 
         _settings = new SettingsWindow();
         _settings.Attach(viewModel);
+        _settings.ShowTab(tab);
         _settings.Icon = CreateAppIcon();
         _settings.Closed += (_, _) =>
         {
