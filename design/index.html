@@ -133,6 +133,30 @@ body:not(.dock-visible) .dock{transform:translateY(calc(-100% - 22px));opacity:0
 .dock-item.dragging{opacity:.35}
 .dock-item.renaming .tile{opacity:.3}
 
+/* 搜索结果同时展示自定义配置与操作系统应用，分组后保持结果区域稳定 */
+.dock-items.searching{
+  display:flex;flex-direction:column;align-items:stretch;gap:10px;
+  min-height:calc(var(--tile-size) + 42px);padding:10px 8px;overflow:auto;
+}
+.search-group{display:flex;flex-direction:column;gap:6px;min-width:0}
+.search-group-title{display:flex;align-items:center;gap:7px;color:var(--text-dim);font-size:11px;line-height:1.2;padding:0 2px}
+.search-group-title strong{font-weight:600;color:var(--text)}
+.search-group-title .search-group-count{font-variant-numeric:tabular-nums;opacity:.75}
+.search-result-row{display:flex;align-items:flex-start;gap:8px;min-width:0;flex-wrap:wrap}
+.search-installed-list{display:flex;flex-direction:column;gap:6px;min-width:0}
+.search-installed-item{
+  display:flex;align-items:center;gap:9px;min-height:48px;padding:5px 7px;
+  border:1px solid var(--line);border-radius:10px;background:rgba(var(--surface),.3);
+}
+.search-installed-item .tile{width:36px;height:36px;border-radius:10px;flex:0 0 auto;box-shadow:0 2px 5px rgba(0,0,0,.24)}
+.search-installed-copy{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1 1 auto}
+.search-installed-copy strong{font-size:12px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.search-installed-copy span{font-size:11px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.search-installed-status{font-size:10px;color:var(--accent);border:1px solid color-mix(in srgb,var(--accent) 50%,transparent);border-radius:999px;padding:2px 6px;white-space:nowrap}
+.search-result-add{height:28px;padding:0 9px;border-radius:8px;flex:0 0 auto;white-space:nowrap}
+.search-result-add .chip-icon{color:currentColor}
+.dock-items.searching .dock-empty{align-self:stretch;min-height:64px;display:grid;place-items:center;padding:12px 18px;text-align:center}
+
 .tile{
   position:relative;width:var(--tile-size);height:var(--tile-size);
   border-radius:calc(var(--tile-size) * .28);display:grid;place-items:center;
@@ -773,6 +797,7 @@ body.dragging-dock .dock{box-shadow:0 26px 60px rgba(0,0,0,.5)}
       <div class="proto-btns">
         <button data-state="hidden">触边滑出</button>
         <button data-state="search">搜索</button>
+        <button data-state="installedSearch">未配置应用</button>
         <button data-state="edit">编辑模式</button>
         <button data-state="itemMenu">项右键菜单</button>
         <button data-state="dockMenu">空白右键菜单</button>
@@ -865,6 +890,12 @@ const SEED_ITEMS = [
   {name:'向日葵',type:'app',target:'C:\\Program Files (x86)\\Oray\\SunLogin\\SunloginClient\\SunloginClient.exe',icon:'monitor-alt'},
   {name:'启动有道云笔记',type:'app',target:'I:\\Program Files (x86)\\Youdao\\YoudaoNote\\YoudaoNote.exe',icon:'note'}
 ];
+/* 模拟操作系统已安装应用：未出现在 STATE.items 时归入「系统已安装」结果组。 */
+const INSTALLED_ITEMS = [
+  {id:'installed-typora',name:'Typora',type:'app',target:'C:\\Program Files\\Typora\\Typora.exe',icon:'note'},
+  {id:'installed-obsidian',name:'Obsidian',type:'app',target:'C:\\Users\\Public\\Obsidian\\Obsidian.exe',icon:'note'},
+  {id:'installed-vscode',name:'Visual Studio Code',type:'app',target:'I:\\Users\\Administrator\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe',icon:'code'}
+];
 const TYPE_LABEL = {app:'应用',web:'网页',cmd:'命令'};
 const EDGE_LABEL = {top:'上',bottom:'下',left:'左',right:'右'};
 /* 零依赖拼音索引：支持全拼与首字母，英文/数字仍按原文搜索。 */
@@ -949,18 +980,27 @@ function targetSummary(it){
   const parts = it.target.split(/[\\/]/).filter(Boolean);
   return '…\\' + parts.slice(-2).join('\\');
 }
-function visibleItems(){
-  const tokens = STATE.query.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  if(!tokens.length) return STATE.items;
-  return STATE.items.filter(it => {
-    const forms = [
-      ...pinyinForms(it.name),
-      it.target.toLowerCase(),
-      ...pinyinForms(typeLabel(it.type))
-    ];
-    return tokens.every(token => forms.some(form => form.includes(token)));
-  });
+function itemMatchesQuery(it, tokens){
+  const forms = [
+    ...pinyinForms(it.name),
+    it.target.toLowerCase(),
+    ...pinyinForms(typeLabel(it.type))
+  ];
+  return tokens.every(token => forms.some(form => form.includes(token)));
 }
+function searchResults(){
+  const tokens = STATE.query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if(!tokens.length) return {configured:STATE.items, installed:[]};
+  const configured = STATE.items.filter(it => itemMatchesQuery(it, tokens));
+  const installed = INSTALLED_ITEMS.filter(it => {
+    if(!itemMatchesQuery(it, tokens)) return false;
+    return !STATE.items.some(configuredItem =>
+      configuredItem.target.toLowerCase() === it.target.toLowerCase() ||
+      configuredItem.name.toLowerCase() === it.name.toLowerCase());
+  });
+  return {configured, installed};
+}
+function visibleItems(){ return searchResults().configured; }
 function inTypingTarget(node){
   return !!node && (node.tagName === 'INPUT' || node.tagName === 'TEXTAREA' || node.isContentEditable);
 }
@@ -989,38 +1029,85 @@ const els = {
 /* =====================================================================
    5. 渲染：Dock
    ===================================================================== */
+function createDockItemNode(it){
+  const tile = h('button', {
+    class:'tile', type:'button', 'data-id':it.id, title:it.name,
+    'aria-label':it.name + '，' + typeLabel(it.type)
+  });
+  const hue = hueOf(it.name);
+  tile.style.background = 'linear-gradient(145deg,hsl(' + hue + ' 52% 46%),hsl(' + ((hue + 18) % 360) + ' 52% 34%))';
+  tile.append(h('span', {class:'tile-icon', html:svg(it.icon, Math.round(STATE.tileSize * 0.5))}));
+
+  const item = h('div', {class:'dock-item', role:'listitem', 'data-id':it.id}, tile);
+  if(STATE.label === 'iconText') item.append(h('span', {class:'tile-name', text:it.name, title:it.name}));
+  if(STATE.edit){
+    item.append(h('button', {
+      class:'remove', type:'button', 'data-id':it.id,
+      title:'移除 ' + it.name, 'aria-label':'移除 ' + it.name, html:svg('x', 12, 2.6)
+    }));
+  }
+  tile.draggable = STATE.edit;
+  return item;
+}
+function createSearchGroup(title, items, installed = false){
+  const group = h('section', {class:'search-group', 'aria-label':title});
+  group.append(h('div', {class:'search-group-title'},
+    h('strong', {text:title}),
+    h('span', {class:'search-group-count', text:String(items.length)})
+  ));
+  if(installed){
+    const list = h('div', {class:'search-installed-list'});
+    for(const it of items){
+      const tile = h('span', {class:'tile', 'aria-hidden':'true'});
+      const hue = hueOf(it.name);
+      tile.style.background = 'linear-gradient(145deg,hsl(' + hue + ' 52% 46%),hsl(' + ((hue + 18) % 360) + ' 52% 34%))';
+      tile.append(h('span', {class:'tile-icon', html:svg(it.icon, 18)}));
+      const add = h('button', {
+        class:'chip primary search-result-add', type:'button',
+        'data-installed-id':it.id, title:'添加到 Dock', 'aria-label':'添加 ' + it.name + ' 到 Dock'
+      }, h('span', {class:'chip-icon', html:svg('plus', 14, 2)}), h('span', {text:'添加到 Dock'}));
+      list.append(h('article', {class:'search-installed-item', 'data-installed-id':it.id},
+        tile,
+        h('div', {class:'search-installed-copy'},
+          h('strong', {text:it.name, title:it.name}),
+          h('span', {text:'系统已安装 · ' + typeLabel(it.type), title:it.target})
+        ),
+        h('span', {class:'search-installed-status', text:'未配置'}),
+        add
+      ));
+    }
+    group.append(list);
+  }else{
+    const row = h('div', {class:'search-result-row'});
+    for(const it of items) row.append(createDockItemNode(it));
+    group.append(row);
+  }
+  return group;
+}
 function renderDock(){
   const vertical = verticalDock();
   const prevScroll = vertical ? els.dockItems.scrollTop : els.dockItems.scrollLeft;
   const hadFocus = els.dockItems.contains(document.activeElement);
-  const list = visibleItems();
+  const searching = STATE.query.trim().length > 0;
+  const results = searchResults();
+  const list = results.configured;
 
   const frag = document.createDocumentFragment();
-  if(!list.length){
+  els.dockItems.classList.toggle('searching', searching);
+  if(searching){
+    if(list.length) frag.append(createSearchGroup('已配置', list));
+    if(results.installed.length) frag.append(createSearchGroup('系统已安装', results.installed, true));
+    if(!list.length && !results.installed.length) frag.append(h('div', {
+      class:'dock-empty', role:'status',
+      text:'没有匹配「' + STATE.query + '」的项目'
+    }));
+  }else if(!list.length){
     frag.append(h('div', {
       class:'dock-empty', role:'status',
-      text: STATE.query ? '没有匹配「' + STATE.query + '」的项目' : 'Dock 是空的 · 添加第一个应用'
+      text:'Dock 是空的 · 添加第一个应用'
     }));
-  }
-  for(const it of list){
-    const tile = h('button', {
-      class:'tile', type:'button', 'data-id':it.id, title:it.name,
-      'aria-label':it.name + '，' + typeLabel(it.type)
-    });
-    const hue = hueOf(it.name);
-    tile.style.background = 'linear-gradient(145deg,hsl(' + hue + ' 52% 46%),hsl(' + ((hue + 18) % 360) + ' 52% 34%))';
-    tile.append(h('span', {class:'tile-icon', html:svg(it.icon, Math.round(STATE.tileSize * 0.5))}));
-
-    const item = h('div', {class:'dock-item', role:'listitem', 'data-id':it.id}, tile);
-    if(STATE.label === 'iconText') item.append(h('span', {class:'tile-name', text:it.name, title:it.name}));
-    if(STATE.edit){
-      item.append(h('button', {
-        class:'remove', type:'button', 'data-id':it.id,
-        title:'移除 ' + it.name, 'aria-label':'移除 ' + it.name, html:svg('x', 12, 2.6)
-      }));
-    }
-    tile.draggable = STATE.edit;
-    frag.append(item);
+  }else{
+    for(const it of list) frag.append(createDockItemNode(it));
   }
   els.dockItems.replaceChildren(frag);
 
@@ -1032,7 +1119,9 @@ function renderDock(){
 
   els.dockItems.scrollLeft = vertical ? 0 : prevScroll;
   els.dockItems.scrollTop = vertical ? prevScroll : 0;
-  els.searchCount.textContent = list.length + ' / ' + STATE.items.length;
+  els.searchCount.textContent = searching
+    ? (list.length + results.installed.length) + ' 个结果'
+    : list.length + ' / ' + STATE.items.length;
   if(hadFocus && STATE.focusId){
     const tile = $('.tile[data-id="' + STATE.focusId + '"]');
     if(tile) tile.focus({preventScroll:true});
@@ -1230,6 +1319,16 @@ function addItem(data){
     if(tile) tile.scrollIntoView({inline:'nearest', block:'nearest'});
   });
   return item;
+}
+function addInstalledItem(id){
+  const source = INSTALLED_ITEMS.find(it => it.id === id);
+  if(!source) return;
+  const alreadyConfigured = STATE.items.some(it =>
+    it.target.toLowerCase() === source.target.toLowerCase() ||
+    it.name.toLowerCase() === source.name.toLowerCase());
+  if(alreadyConfigured){ toast(source.name + ' 已在自定义配置中'); return; }
+  addItem(source);
+  toast('已添加 ' + source.name + ' 到自定义配置');
 }
 function resetSeed(count){
   STATE.items = cloneSeed(SEED_ITEMS).slice(0, count || STATE.count);
@@ -1758,6 +1857,8 @@ function bindEvents(){
 
   /* 图标：点击运行 / 悬停气泡 / 双击改名 / 移除 */
   els.dockItems.addEventListener('click', e => {
+    const installedAdd = e.target.closest('.search-result-add');
+    if(installedAdd){ addInstalledItem(installedAdd.dataset.installedId); return; }
     const remove = e.target.closest('.remove');
     if(remove){ removeItem(remove.dataset.id); return; }
     const tile = e.target.closest('.tile');
@@ -1887,7 +1988,11 @@ function bindEvents(){
   els.searchInput.addEventListener('keydown', e => {
     e.stopPropagation();
     if(e.key === 'Escape') setSearch(false);
-    if(e.key === 'Enter' && visibleItems()[0]) runItem(visibleItems()[0]);
+    if(e.key === 'Enter'){
+      const results = searchResults();
+      if(results.configured[0]) runItem(results.configured[0]);
+      else if(results.installed[0]) addInstalledItem(results.installed[0].id);
+    }
   });
 
   /* 右键菜单 */
@@ -2116,6 +2221,13 @@ function pushState(kind){
       setSearch(true);
       STATE.query = '微';
       els.searchInput.value = '微';
+      renderDock();
+      break;
+    case 'installedSearch':
+      setDockVisible(true);
+      setSearch(true);
+      STATE.query = 'Typora';
+      els.searchInput.value = 'Typora';
       renderDock();
       break;
     case 'edit':
