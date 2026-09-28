@@ -61,7 +61,15 @@ public interface IInstalledAppProvider
 /// <summary>检查 GitHub Releases 更新。</summary>
 public interface IUpdateChecker
 {
-    Task<UpdateInfo?> CheckAsync(Version current, CancellationToken cancellationToken = default);
+    Task<UpdateCheckResult> CheckAsync(Version current, CancellationToken cancellationToken = default);
+}
+
+/// <summary>更新检查结果，区分无更新和网络/API 失败。</summary>
+public sealed record UpdateCheckResult(UpdateInfo? Update, bool Succeeded, string? Error)
+{
+    public static UpdateCheckResult Latest() => new(null, true, null);
+
+    public static UpdateCheckResult Failed(string error) => new(null, false, error);
 }
 
 /// <summary>开机自检更新的结果。</summary>

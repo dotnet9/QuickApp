@@ -57,6 +57,14 @@ powershell -ExecutionPolicy Bypass -File scripts/package_quickapp.ps1 `
 
 发布文件位于 `artifacts/publish`，压缩包和 SHA-256 校验文件位于 `artifacts/release`。
 
+Windows x64 也会生成 Inno Setup 安装包。安装包默认安装到 `Program Files\\QuickApp`，升级时只替换程序文件，不会覆盖 `%APPDATA%\\QuickApp\\config.json`；便携版仍可在程序目录放置 `portable.txt`。本地生成安装包需要先安装 Inno Setup 6：
+
+```powershell
+pwsh scripts/build_installer.ps1 -Version 0.2.2 -Force
+```
+
+安装包和对应的 `.sha256` 文件会写入 `artifacts/release`。推送 `v*` 标签时，GitHub Release 会同时上传 Windows 安装包、各平台 ZIP 及其校验文件；Linux/macOS 当前仍使用 ZIP 分发。
+
 Linux/macOS 的自包含单文件发布（不启用 NativeAOT）：
 
 ```powershell
@@ -66,7 +74,13 @@ pwsh scripts/package_quickapp.ps1 -RuntimeIdentifier linux-x64 -Version 0.2.2 -F
 
 可用 RID：`win-x64`、`win-x86`、`linux-x64`、`linux-arm64`、`osx-x64`、`osx-arm64`。`scripts/publish.bat` 支持一次发布多个 RID；Windows x64 使用 NativeAOT，其余 RID 使用自包含单文件。
 
-GitHub Actions 会在推送 `v*` 标签时分别构建 Windows、Linux 和 macOS 包，并创建包含 ZIP 与 SHA-256 校验文件的 Release。常规推送和 Pull Request 会执行构建与测试工作流。
+GitHub Actions 会在推送 `v*` 标签时分别构建 Windows、Linux 和 macOS 包，并创建包含 Windows 安装包、各平台 ZIP 与 SHA-256 校验文件的 Release。常规推送和 Pull Request 会执行构建与测试工作流。
+
+## 更新检查
+
+程序默认在启动时检查 GitHub Releases 的最新稳定版本，也可以在设置页手动检查，或关闭自动检查。更新提示会按当前系统和 CPU 架构选择下载资产：Windows x64 优先打开安装包，Linux/macOS 打开对应 ZIP；没有匹配资产时打开 Release 页面，避免下载错误平台的文件。当前版本不会静默下载、校验并替换正在运行的程序，安装包或压缩包仍需用户确认后安装；每个发布文件旁边的 `.sha256` 可用于完整性校验。
+
+这种设计把检查更新和安装更新分开，避免覆盖便携模式、运行中的文件或用户配置。Windows 安装器升级时保留 `%APPDATA%\QuickApp\config.json`，卸载也不会删除该配置目录。
 
 ## 使用说明
 
@@ -95,7 +109,7 @@ src/QuickApp.Core   平台无关的模型、搜索、启动计划、配置和停
 src/QuickApp        Avalonia 桌面应用、窗口、视图模型和 Windows 平台服务
 design              HTML 原型和交互参考
 tests               Core 层单元测试
-scripts             发布和打包脚本
+scripts             发布、打包和 Windows 安装包脚本
 ```
 
 Core 层保持平台无关并可单测；Windows API 集中在 `src/QuickApp/Platform/Windows`。配置使用源生成的 `System.Text.Json` 上下文，保存时采用临时文件和备份文件策略。

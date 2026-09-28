@@ -282,7 +282,7 @@ public sealed class SettingsViewModel : ViewModelBase
 
     public string HotkeyText => Settings.Hotkey;
 
-    public string CheckResult => _dock.UpdateText.Length > 0 ? _dock.UpdateText : "已是最新版本";
+    public string CheckResult => _dock.UpdateResultText;
 
     // ---------------- 数据 ----------------
 

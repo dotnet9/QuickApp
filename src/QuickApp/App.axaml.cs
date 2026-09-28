@@ -87,7 +87,8 @@ public partial class App : Application
             new HttpClient { Timeout = TimeSpan.FromSeconds(12) },
             owner: "dotnet9",
             repo: "QuickApp",
-            log: AppLog.Info));
+            log: AppLog.Info,
+            preferInstaller: !AppPaths.IsPortable(AppContext.BaseDirectory)));
         services.AddSingleton(sp => new DockViewModel(
             sp.GetRequiredService<ConfigStore>(),
             sp.GetRequiredService<ILauncher>(),

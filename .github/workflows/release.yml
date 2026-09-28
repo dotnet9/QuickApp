@@ -78,6 +78,28 @@ jobs:
         shell: pwsh
         run: pwsh scripts/package_quickapp.ps1 -RuntimeIdentifier '${{ matrix.rid }}' -Version $env:APP_VERSION -Force
 
+      - name: 构建 Windows 安装包
+        if: matrix.rid == 'win-x64'
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
+        with:
+          path: scripts/QuickApp.iss
+          options: >-
+            /DAppVersion=${{ env.APP_VERSION }}
+            /DSourceDir=${{ github.workspace }}\artifacts\publish\win-x64\net10.0-windows\QuickApp
+            /DOutputDir=${{ github.workspace }}\artifacts\release
+
+      - name: 计算安装包 SHA-256
+        if: matrix.rid == 'win-x64'
+        shell: pwsh
+        run: |
+          $installerName = "QuickApp-v$env:APP_VERSION-win-x64-setup.exe"
+          $installerPath = Join-Path "artifacts/release" $installerName
+          if (-not (Test-Path -LiteralPath $installerPath -PathType Leaf)) {
+            throw "Installer was not produced: $installerPath"
+          }
+          $sha = (Get-FileHash -LiteralPath $installerPath -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$sha  $installerName" | Set-Content -LiteralPath "$installerPath.sha256" -Encoding ASCII
+
       - name: 上传构建产物
         uses: actions/upload-artifact@v4
         with:
@@ -117,3 +139,4 @@ jobs:
           files: |
             artifacts/release/*.zip
             artifacts/release/*.sha256
+            artifacts/release/*.exe

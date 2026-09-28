@@ -22,22 +22,25 @@ public sealed class UpdateChecker : IUpdateChecker
     private readonly string _repo;
     private readonly string _apiBase;
     private readonly Action<string>? _log;
+    private readonly bool _preferInstaller;
 
     public UpdateChecker(
         HttpClient http,
         string owner,
         string repo,
         string apiBase = DefaultApiBase,
-        Action<string>? log = null)
+        Action<string>? log = null,
+        bool preferInstaller = true)
     {
         _http = http ?? throw new ArgumentNullException(nameof(http));
         _owner = owner;
         _repo = repo;
         _apiBase = apiBase.TrimEnd('/');
         _log = log;
+        _preferInstaller = preferInstaller;
     }
 
-    public async Task<UpdateInfo?> CheckAsync(Version current, CancellationToken cancellationToken = default)
+    public async Task<UpdateCheckResult> CheckAsync(Version current, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -52,42 +55,42 @@ public sealed class UpdateChecker : IUpdateChecker
             if (!response.IsSuccessStatusCode)
             {
                 _log?.Invoke($"检查更新失败：HTTP {(int)response.StatusCode}");
-                return null;
+                return UpdateCheckResult.Failed($"HTTP {(int)response.StatusCode}");
             }
 
             string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
             GitHubRelease? release = JsonSerializer.Deserialize(json, AppJsonContext.Default.GitHubRelease);
             if (release is null || release.Draft || release.Prerelease)
             {
-                return null;
+                return UpdateCheckResult.Latest();
             }
 
             Version? candidate = VersionUtil.Parse(release.TagName);
             if (!VersionUtil.IsNewer(candidate, current))
             {
-                return null;
+                return UpdateCheckResult.Latest();
             }
 
-            (string? assetUrl, string? assetName) = PickAsset(release, CurrentRuntimeIdentifier());
+            (string? assetUrl, string? assetName) = PickAsset(release, CurrentRuntimeIdentifier(), _preferInstaller);
             string title = string.IsNullOrWhiteSpace(release.Name) ? release.TagName ?? string.Empty : release.Name!;
 
-            return new UpdateInfo(
+            return new UpdateCheckResult(new UpdateInfo(
                 candidate!,
                 release.TagName ?? string.Empty,
                 title,
                 release.Body,
                 release.HtmlUrl ?? $"https://github.com/{_owner}/{_repo}/releases",
                 assetUrl,
-                assetName);
+                assetName), true, null);
         }
         catch (OperationCanceledException)
         {
-            return null;
+            return UpdateCheckResult.Failed("操作已取消");
         }
         catch (Exception ex)
         {
             _log?.Invoke($"检查更新异常：{ex.Message}");
-            return null;
+            return UpdateCheckResult.Failed(ex.Message);
         }
     }
 
@@ -95,7 +98,10 @@ public sealed class UpdateChecker : IUpdateChecker
     /// 选择当前系统/架构的可下载资产。Windows 优先安装器，方便普通用户直接升级；
     /// 其它平台使用对应的 zip。没有匹配包时交给用户打开 Release 页面。
     /// </summary>
-    private static (string? Url, string? Name) PickAsset(GitHubRelease release, string? runtimeIdentifier)
+    private static (string? Url, string? Name) PickAsset(
+        GitHubRelease release,
+        string? runtimeIdentifier,
+        bool preferInstaller)
     {
         if (release.Assets is null || release.Assets.Length == 0)
         {
@@ -107,12 +113,12 @@ public sealed class UpdateChecker : IUpdateChecker
             return (null, null);
         }
 
-        string marker = "-" + runtimeIdentifier + "-";
+        string marker = "-" + runtimeIdentifier;
         GitHubAsset? preferred = null;
 
         // The installer is only published for Windows x64. Keep the zip as a
         // fallback so older releases remain usable during the transition.
-        if (string.Equals(runtimeIdentifier, "win-x64", StringComparison.OrdinalIgnoreCase))
+        if (preferInstaller && string.Equals(runtimeIdentifier, "win-x64", StringComparison.OrdinalIgnoreCase))
         {
             preferred = release.Assets.FirstOrDefault(a =>
                 IsAssetForRuntime(a, marker) &&
@@ -130,7 +136,8 @@ public sealed class UpdateChecker : IUpdateChecker
     {
         return !string.IsNullOrWhiteSpace(asset.Name) &&
             !string.IsNullOrWhiteSpace(asset.BrowserDownloadUrl) &&
-            asset.Name!.Contains(marker, StringComparison.OrdinalIgnoreCase);
+            (asset.Name!.Contains(marker + ".", StringComparison.OrdinalIgnoreCase) ||
+             asset.Name.Contains(marker + "-", StringComparison.OrdinalIgnoreCase));
     }
 
     private static string? CurrentRuntimeIdentifier()

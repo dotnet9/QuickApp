@@ -54,6 +54,7 @@ public sealed class DockViewModel : ViewModelBase
     private UpdateInfo? _pendingUpdate;
     private bool _isCheckingUpdate;
     private int _toastToken;
+    private string _updateResultText = "尚未检查";
 
     public DockViewModel(
         ConfigStore store,
@@ -245,6 +246,8 @@ public sealed class DockViewModel : ViewModelBase
     public bool UpdateAvailable => _pendingUpdate is not null;
 
     public string UpdateText => _pendingUpdate is null ? string.Empty : "发现新版本 " + _pendingUpdate.Tag;
+
+    public string UpdateResultText => _updateResultText;
 
     // ---------------- 面板状态 ----------------
 
@@ -1025,17 +1028,34 @@ public sealed class DockViewModel : ViewModelBase
         try
         {
             Version current = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version ?? new Version(0, 1, 0);
-            UpdateInfo? info = await _updates.CheckAsync(current).ConfigureAwait(true);
+            UpdateCheckResult result = await _updates.CheckAsync(current).ConfigureAwait(true);
+
+            if (!result.Succeeded)
+            {
+                _updateResultText = "检查更新失败，请稍后重试";
+                this.RaisePropertyChanged(nameof(UpdateResultText));
+                Toast(_updateResultText);
+                return;
+            }
+
+            UpdateInfo? info = result.Update;
 
             if (info is null)
             {
-                Toast("已是最新版本 " + VersionText);
+                _pendingUpdate = null;
+                this.RaisePropertyChanged(nameof(UpdateAvailable));
+                this.RaisePropertyChanged(nameof(UpdateText));
+                _updateResultText = "已是最新版本 " + VersionText;
+                this.RaisePropertyChanged(nameof(UpdateResultText));
+                Toast(_updateResultText);
                 return;
             }
 
             _pendingUpdate = info;
             this.RaisePropertyChanged(nameof(UpdateAvailable));
             this.RaisePropertyChanged(nameof(UpdateText));
+            _updateResultText = UpdateText;
+            this.RaisePropertyChanged(nameof(UpdateResultText));
             Toast("发现新版本 " + info.Tag);
         }
         catch (Exception ex)
