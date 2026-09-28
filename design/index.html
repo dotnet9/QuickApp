@@ -18,6 +18,7 @@
   --tile-size:44px;
   --dock-radius:18px;
   --dock-alpha:.55;
+  --items-window:512px;
 
   --dur-dock:240ms;
   --ease-out:cubic-bezier(.22,1,.36,1);
@@ -123,11 +124,12 @@ body:not(.dock-visible) .dock{transform:translateY(calc(-100% - 22px));opacity:0
 .items-wrap{position:relative;display:flex;min-width:0;flex:1 1 auto}
 .dock-items{
   display:flex;align-items:flex-start;gap:6px;padding:14px 6px;
-  overflow-x:auto;overflow-y:hidden;min-width:0;flex:1 1 auto;max-width:100%;
+  overflow-x:auto;overflow-y:hidden;min-width:0;flex:1 1 auto;max-width:var(--items-window);
+  scroll-snap-type:x proximity;scroll-behavior:smooth;overscroll-behavior:contain;
   cursor:default;
 }
 .dock-items.panning{cursor:grabbing}
-.dock-item{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;flex:0 0 auto}
+.dock-item{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;width:var(--tile-size);flex:0 0 auto;scroll-snap-align:start}
 .dock-item.dragging{opacity:.35}
 .dock-item.renaming .tile{opacity:.3}
 
@@ -141,7 +143,7 @@ body:not(.dock-visible) .dock{transform:translateY(calc(-100% - 22px));opacity:0
 .tile-icon{display:grid;place-items:center;line-height:0}
 
 .tile-name{
-  font-size:12px;line-height:1.2;max-width:7em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-size:12px;line-height:1.2;max-width:var(--tile-size);width:var(--tile-size);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   color:var(--text);text-align:center;
 }
 html[data-label="icon"] .tile-name{display:none}
@@ -161,8 +163,9 @@ html[data-label="icon"] .tile-name{display:none}
 .fade-right{right:0;background:linear-gradient(270deg,rgba(var(--surface),.9),rgba(var(--surface),0))}
 .fade.show{opacity:1}
 
-.dock-divider{width:1px;height:calc(var(--tile-size) * 1.2);background:var(--line);flex:0 0 auto}
-.dock-actions{display:flex;align-items:center;gap:4px;flex:0 0 auto}
+.dock-divider{width:1px;height:max(68px,calc(var(--tile-size) * 1.2));background:var(--line);flex:0 0 auto}
+/* 右侧辅助操作用两行排列，降低横向抢占并让小图标更有呼吸感 */
+.dock-actions{display:grid;grid-template-columns:repeat(3,32px);grid-template-rows:repeat(2,32px);column-gap:4px;row-gap:2px;align-items:center;flex:0 0 auto}
 
 .icon-btn{
   width:32px;height:32px;border-radius:9px;display:grid;place-items:center;color:var(--text-dim);
@@ -437,18 +440,19 @@ html[data-edge="right"] .items-wrap{flex-direction:column;flex:1 1 auto;min-heig
 html[data-edge="left"] .dock-items,
 html[data-edge="right"] .dock-items{
   flex-direction:column;align-items:stretch;gap:4px;padding:6px 14px;
-  overflow-x:hidden;overflow-y:auto;min-height:0;max-width:none;
+  overflow-x:hidden;overflow-y:auto;min-height:0;max-width:none;max-height:var(--items-window);
+  scroll-snap-type:y proximity;
 }
 html[data-edge="left"] .dock-item,
 html[data-edge="right"] .dock-item{flex-direction:row;align-items:center;gap:8px;width:100%}
 html[data-edge="right"] .dock-item{flex-direction:row-reverse}
 html[data-edge="left"] .tile-name,
-html[data-edge="right"] .tile-name{max-width:9em;text-align:left}
+html[data-edge="right"] .tile-name{max-width:9em;width:auto;text-align:left}
 html[data-edge="right"] .tile-name{text-align:right}
 html[data-edge="left"] .dock-divider,
 html[data-edge="right"] .dock-divider{width:calc(var(--tile-size) * 1.2);height:1px}
 html[data-edge="left"] .dock-actions,
-html[data-edge="right"] .dock-actions{flex-direction:column}
+html[data-edge="right"] .dock-actions{grid-template-columns:32px;grid-template-rows:repeat(5,32px);row-gap:2px}
 html[data-edge="left"] .remove,
 html[data-edge="right"] .remove{left:auto;right:-3px}
 html[data-edge="left"] .dock-search input,
@@ -501,7 +505,7 @@ body.dragging-dock .dock{box-shadow:0 26px 60px rgba(0,0,0,.5)}
 
 @media (max-width:640px){
   .dock{max-width:96vw}
-  .dock-actions{gap:0}
+  .dock-actions{gap:2px}
   /* 窄视口下仍保留搜索，添加操作折叠进「更多」菜单 */
   #btnAdd{display:none}
   .settings-card{max-width:calc(100vw - 16px)}
@@ -535,7 +539,7 @@ body.dragging-dock .dock{box-shadow:0 26px 60px rgba(0,0,0,.5)}
 <div class="dock" id="dock" role="toolbar" aria-label="快捷 Dock">
   <div class="dock-search" id="dockSearch" hidden>
     <span class="search-icon" data-icon="search"></span>
-    <input id="searchInput" type="search" placeholder="搜索应用、网址、命令…" aria-label="搜索" autocomplete="off">
+    <input id="searchInput" type="search" placeholder="搜索应用、拼音或首字母…" aria-label="搜索应用、拼音或首字母" autocomplete="off">
     <span class="search-count" id="searchCount">0 / 0</span>
     <button class="icon-btn" id="searchClear" data-icon="x" title="清空搜索" aria-label="清空搜索"></button>
   </div>
@@ -550,6 +554,7 @@ body.dragging-dock .dock{box-shadow:0 26px 60px rgba(0,0,0,.5)}
     <div class="dock-actions">
       <button class="icon-btn" id="btnSearch" data-icon="search" title="搜索（S）" aria-label="搜索"></button>
       <button class="icon-btn" id="btnAdd" data-icon="plus" title="添加" aria-label="添加"></button>
+      <button class="icon-btn" id="btnPin" data-icon="pin" title="钉住 Dock" aria-label="钉住 Dock" aria-pressed="false"></button>
       <button class="icon-btn" id="btnMenu" data-icon="more" title="更多操作" aria-label="更多操作" aria-haspopup="menu" aria-expanded="false"></button>
       <button class="icon-btn low-priority" id="btnHide" data-icon="chevron-up" title="收起" aria-label="收起"></button>
     </div>
@@ -803,6 +808,7 @@ const GLYPHS = {
   shield:'<path d="M12 3l7 3v5.5c0 4.3-2.9 7.6-7 9.5-4.1-1.9-7-5.2-7-9.5V6z"/><path d="M9.5 12l1.8 1.8 3.5-3.6"/>',
   record:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/>',
   app:'<rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M3.5 8.5h17"/>',
+  ding:'<path d="M5 11.5a7 7 0 0 1 14 0v4l2 2H3l2-2z"/><path d="M9.5 20h5"/>',
   terminal:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7.5 9.5l2.5 2.5-2.5 2.5"/><path d="M12.5 15h4"/>',
   search:'<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
   pencil:'<path d="M4 20l4-1 10-10-3-3L5 16z"/><path d="M14.5 5.5l3 3"/>',
@@ -824,7 +830,7 @@ const GLYPHS = {
   power:'<path d="M12 3v9"/><path d="M7.6 6.6a7.5 7.5 0 1 0 8.8 0"/>',
   list:'<path d="M4 6.5h16M4 12h16M4 17.5h16"/>'
 };
-const PICKER_ICONS = ['globe','chat','play','music','camera','monitor','monitor-alt','note','cloud','code','rocket','database','shield','record','app','terminal'];
+const PICKER_ICONS = ['globe','chat','ding','play','music','camera','monitor','monitor-alt','note','cloud','code','rocket','database','shield','record','app','terminal'];
 
 /* 演示数据：取自 src/QuickApp/menu.json（30 条） */
 const SEED_ITEMS = [
@@ -835,6 +841,7 @@ const SEED_ITEMS = [
   {name:'192.168.1.133',type:'cmd',target:'mstsc /v:192.168.1.133',icon:'monitor'},
   {name:'KuLi',type:'app',target:'C:\\Program Files (x86)\\KuLi\\KuLi.exe',icon:'app'},
   {name:'微信',type:'app',target:'I:\\Program Files (x86)\\Tencent\\WeChat\\WeChat.exe',icon:'chat'},
+  {name:'钉钉',type:'app',target:'I:\\Program Files (x86)\\DingDing\\DingtalkLauncher.exe',icon:'ding'},
   {name:'腾讯QQ',type:'app',target:'I:\\Program Files (x86)\\Tencent\\QQ\\Bin\\QQScLauncher.exe',icon:'chat'},
   {name:'腾讯视频',type:'app',target:'I:\\Program Files (x86)\\Tencent\\QQLive\\QQLive.exe',icon:'play'},
   {name:'腾讯会议',type:'app',target:'I:\\Program Files (x86)\\Tencent\\WeMeet\\wemeetapp.exe',icon:'camera'},
@@ -854,13 +861,26 @@ const SEED_ITEMS = [
   {name:'Qt Creator 4.11.1 (Community)',type:'app',target:'C:\\Qt\\Qt5.14.2\\Tools\\QtCreator\\bin\\qtcreator.exe',icon:'code'},
   {name:'Visual Studio Code',type:'app',target:'I:\\Users\\Administrator\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe',icon:'code'},
   {name:'百度网盘',type:'app',target:'I:\\Users\\Administrator\\AppData\\Roaming\\baidu\\BaiduNetdisk\\BaiduNetdisk.exe',icon:'cloud'},
-  {name:'钉钉',type:'app',target:'I:\\Program Files (x86)\\DingDing\\DingtalkLauncher.exe',icon:'chat'},
   {name:'魔音MORIN',type:'app',target:'C:\\Program Files\\魔音MORIN\\魔音Morin.exe',icon:'music'},
   {name:'向日葵',type:'app',target:'C:\\Program Files (x86)\\Oray\\SunLogin\\SunloginClient\\SunloginClient.exe',icon:'monitor-alt'},
   {name:'启动有道云笔记',type:'app',target:'I:\\Program Files (x86)\\Youdao\\YoudaoNote\\YoudaoNote.exe',icon:'note'}
 ];
 const TYPE_LABEL = {app:'应用',web:'网页',cmd:'命令'};
 const EDGE_LABEL = {top:'上',bottom:'下',left:'左',right:'右'};
+/* 零依赖拼音索引：支持全拼与首字母，英文/数字仍按原文搜索。 */
+const PINYIN = {
+  微:'wei',信:'xin',公:'gong',众:'zhong',号:'hao',钉:'ding',腾:'teng',讯:'xun',
+  视:'shi',频:'pin',会:'hui',议:'yi',百:'bai',度:'du',网:'wang',盘:'pan',
+  魔:'mo',音:'yin',向:'xiang',日:'ri',葵:'kui',启:'qi',动:'dong',有:'you',
+  道:'dao',云:'yun',笔:'bi',记:'ji',格:'ge',式:'shi',化:'hua',软:'ruan',
+  件:'jian',管:'guan',家:'jia'
+};
+function pinyinForms(value){
+  const text = String(value).toLowerCase();
+  const full = [...text].map(ch => PINYIN[ch] || ch).join('');
+  const initials = [...text].map(ch => PINYIN[ch] ? PINYIN[ch][0] : ch).join('');
+  return [text, full, initials];
+}
 
 /* =====================================================================
    2. 状态
@@ -930,12 +950,16 @@ function targetSummary(it){
   return '…\\' + parts.slice(-2).join('\\');
 }
 function visibleItems(){
-  const q = STATE.query.trim().toLowerCase();
-  if(!q) return STATE.items;
-  return STATE.items.filter(it =>
-    it.name.toLowerCase().includes(q) ||
-    it.target.toLowerCase().includes(q) ||
-    typeLabel(it.type).includes(q));
+  const tokens = STATE.query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if(!tokens.length) return STATE.items;
+  return STATE.items.filter(it => {
+    const forms = [
+      ...pinyinForms(it.name),
+      it.target.toLowerCase(),
+      ...pinyinForms(typeLabel(it.type))
+    ];
+    return tokens.every(token => forms.some(form => form.includes(token)));
+  });
 }
 function inTypingTarget(node){
   return !!node && (node.tagName === 'INPUT' || node.tagName === 'TEXTAREA' || node.isContentEditable);
@@ -1090,6 +1114,7 @@ function applyTokens(){
   root.dataset.edit = String(STATE.edit);
   root.dataset.edge = STATE.edge;
   root.style.setProperty('--tile-size', STATE.tileSize + 'px');
+  root.style.setProperty('--items-window', (STATE.tileSize * 10 + 72) + 'px');
   root.style.setProperty('--dock-radius', STATE.radius + 'px');
   root.style.setProperty('--dock-alpha', String(STATE.alpha));
   document.body.classList.toggle('dock-visible', STATE.dockVisible);
@@ -1100,6 +1125,14 @@ function applyTokens(){
   if(searchButton) searchButton.classList.toggle('active', STATE.searchOpen);
   const menuButton = $('#btnMenu');
   if(menuButton) menuButton.setAttribute('aria-expanded', String(menuOpen));
+  const pinButton = $('#btnPin');
+  if(pinButton){
+    const pinLabel = STATE.pinned ? '取消钉住' : '钉住 Dock';
+    pinButton.classList.toggle('active', STATE.pinned);
+    pinButton.setAttribute('aria-pressed', String(STATE.pinned));
+    pinButton.title = pinLabel;
+    pinButton.setAttribute('aria-label', pinLabel);
+  }
   requestAnimationFrame(() => {
     updateScrollChrome();
     if(!els.keysCard.hidden) positionKeysCard();
@@ -1435,8 +1468,6 @@ function dockMenuSpec(){
     {sep:true},
     {title:'管理'},
     {label:'进入编辑模式', icon:'pencil', action:() => setEdit(true)},
-    {label: STATE.pinned ? '取消钉住' : '钉住 Dock', icon:'pin', note: STATE.pinned ? '已开启' : '未开启',
-      action:() => setPinned(!STATE.pinned)},
     {sep:true},
     {title:'停靠到边缘'},
     {label:'上边缘', icon:'chevron-up', note: STATE.edge === 'top' ? '当前' : '',
@@ -1764,7 +1795,8 @@ function bindEvents(){
     if(total <= view) return;
     const delta = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
     if(delta === 0) return;
-    if(vertical) sc.scrollTop += delta; else sc.scrollLeft += delta;
+    if(vertical) sc.scrollBy({top:delta, behavior:'smooth'});
+    else sc.scrollBy({left:delta, behavior:'smooth'});
     e.preventDefault();
   }, {passive:false});
   els.dockItems.addEventListener('scroll', updateScrollChrome);
@@ -1838,6 +1870,7 @@ function bindEvents(){
     const r = e.currentTarget.getBoundingClientRect();
     openMenu(dockMenuSpec(), r.left - 120, r.bottom + 8);
   });
+  $('#btnPin').addEventListener('click', () => setPinned(!STATE.pinned));
   $('#btnHide').addEventListener('click', () => setDockVisible(false));
   $('#editDone').addEventListener('click', () => setEdit(false));
   $('#editReset').addEventListener('click', () => { resetSeed(STATE.count); toast('演示数据已重置（' + STATE.items.length + ' 项）'); });
