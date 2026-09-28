@@ -15,9 +15,14 @@ public sealed class UpdateCheckerTests
     public async Task Selects_current_platform_asset_and_prefers_windows_installer()
     {
         string rid = CurrentRuntimeIdentifier();
+        string nativeExtension = rid.StartsWith("linux-", StringComparison.OrdinalIgnoreCase)
+            ? ".deb"
+            : rid.StartsWith("osx-", StringComparison.OrdinalIgnoreCase)
+                ? ".pkg"
+                : ".zip";
         string expectedName = rid == "win-x64"
             ? "QuickApp-v9.9.9-win-x64-setup.exe"
-            : $"QuickApp-v9.9.9-{rid}.zip";
+            : $"QuickApp-v9.9.9-{rid}{nativeExtension}";
 
         string json = $"{{\"tag_name\":\"v9.9.9\",\"name\":\"QuickApp v9.9.9\",\"html_url\":\"https://example.test/release\",\"assets\":[" +
             "{\"name\":\"QuickApp-v9.9.9-win-x64.zip\",\"browser_download_url\":\"https://example.test/win.zip\"}," +
@@ -96,6 +101,29 @@ public sealed class UpdateCheckerTests
         Assert.False(result.Succeeded);
         Assert.Null(result.Update);
         Assert.Equal("HTTP 403", result.Error);
+    }
+
+    [Theory]
+    [InlineData("linux-x64", "QuickApp-v9.9.9-linux-x64.deb")]
+    [InlineData("linux-arm64", "QuickApp-v9.9.9-linux-arm64.deb")]
+    [InlineData("osx-x64", "QuickApp-v9.9.9-osx-x64.pkg")]
+    [InlineData("osx-arm64", "QuickApp-v9.9.9-osx-arm64.pkg")]
+    public async Task Selects_native_asset_for_requested_platform(string rid, string expectedName)
+    {
+        string json = $"{{\"tag_name\":\"v9.9.9\",\"assets\":[" +
+            $"{{\"name\":\"{expectedName}\",\"browser_download_url\":\"https://example.test/native\"}}," +
+            $"{{\"name\":\"QuickApp-v9.9.9-{rid}.dmg\",\"browser_download_url\":\"https://example.test/dmg\"}}]}}";
+        var checker = new UpdateChecker(
+            new HttpClient(new StubHandler(json)),
+            owner: "dotnet9",
+            repo: "QuickApp",
+            apiBase: "https://example.test",
+            runtimeIdentifier: rid);
+
+        UpdateCheckResult result = await checker.CheckAsync(new Version(0, 1, 0));
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(expectedName, result.Update!.AssetName);
     }
 
     private static UpdateChecker CreateChecker(string json)

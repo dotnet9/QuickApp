@@ -23,6 +23,7 @@ public sealed class UpdateChecker : IUpdateChecker
     private readonly string _apiBase;
     private readonly Action<string>? _log;
     private readonly bool _preferInstaller;
+    private readonly string? _runtimeIdentifier;
 
     public UpdateChecker(
         HttpClient http,
@@ -30,7 +31,8 @@ public sealed class UpdateChecker : IUpdateChecker
         string repo,
         string apiBase = DefaultApiBase,
         Action<string>? log = null,
-        bool preferInstaller = true)
+        bool preferInstaller = true,
+        string? runtimeIdentifier = null)
     {
         _http = http ?? throw new ArgumentNullException(nameof(http));
         _owner = owner;
@@ -38,6 +40,7 @@ public sealed class UpdateChecker : IUpdateChecker
         _apiBase = apiBase.TrimEnd('/');
         _log = log;
         _preferInstaller = preferInstaller;
+        _runtimeIdentifier = runtimeIdentifier;
     }
 
     public async Task<UpdateCheckResult> CheckAsync(Version current, CancellationToken cancellationToken = default)
@@ -71,7 +74,10 @@ public sealed class UpdateChecker : IUpdateChecker
                 return UpdateCheckResult.Latest();
             }
 
-            (string? assetUrl, string? assetName) = PickAsset(release, CurrentRuntimeIdentifier(), _preferInstaller);
+            (string? assetUrl, string? assetName) = PickAsset(
+                release,
+                _runtimeIdentifier ?? CurrentRuntimeIdentifier(),
+                _preferInstaller);
             string title = string.IsNullOrWhiteSpace(release.Name) ? release.TagName ?? string.Empty : release.Name!;
 
             return new UpdateCheckResult(new UpdateInfo(
@@ -95,8 +101,8 @@ public sealed class UpdateChecker : IUpdateChecker
     }
 
     /// <summary>
-    /// 选择当前系统/架构的可下载资产。Windows 优先安装器，方便普通用户直接升级；
-    /// 其它平台使用对应的 zip。没有匹配包时交给用户打开 Release 页面。
+    /// 选择当前系统/架构的可下载资产。Windows 使用安装器，Linux 使用 deb，macOS 使用 pkg/dmg；
+    /// 对旧版本保留 zip 回退。没有匹配包时交给用户打开 Release 页面。
     /// </summary>
     private static (string? Url, string? Name) PickAsset(
         GitHubRelease release,
@@ -125,6 +131,24 @@ public sealed class UpdateChecker : IUpdateChecker
                 a.Name!.EndsWith("-setup.exe", StringComparison.OrdinalIgnoreCase));
         }
 
+        string nativeExtension = runtimeIdentifier.StartsWith("linux-", StringComparison.OrdinalIgnoreCase)
+            ? ".deb"
+            : runtimeIdentifier.StartsWith("osx-", StringComparison.OrdinalIgnoreCase)
+                ? ".pkg"
+                : ".zip";
+
+        preferred ??= release.Assets.FirstOrDefault(a =>
+            IsAssetForRuntime(a, marker) &&
+            a.Name!.EndsWith(nativeExtension, StringComparison.OrdinalIgnoreCase));
+
+        if (runtimeIdentifier.StartsWith("osx-", StringComparison.OrdinalIgnoreCase))
+        {
+            preferred ??= release.Assets.FirstOrDefault(a =>
+                IsAssetForRuntime(a, marker) &&
+                a.Name!.EndsWith(".dmg", StringComparison.OrdinalIgnoreCase));
+        }
+
+        // Releases before native installers were introduced only contain ZIP files.
         preferred ??= release.Assets.FirstOrDefault(a =>
             IsAssetForRuntime(a, marker) &&
             a.Name!.EndsWith(".zip", StringComparison.OrdinalIgnoreCase));

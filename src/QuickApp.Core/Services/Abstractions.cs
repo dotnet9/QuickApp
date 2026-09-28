@@ -72,6 +72,24 @@ public sealed record UpdateCheckResult(UpdateInfo? Update, bool Succeeded, strin
     public static UpdateCheckResult Failed(string error) => new(null, false, error);
 }
 
+/// <summary>下载更新资产并报告进度。</summary>
+public interface IUpdateDownloader
+{
+    Task<UpdateDownloadResult> DownloadAsync(
+        UpdateInfo update,
+        IProgress<UpdateDownloadProgress>? progress = null,
+        CancellationToken cancellationToken = default);
+}
+
+public sealed record UpdateDownloadProgress(long BytesReceived, long? TotalBytes)
+{
+    public double? Percentage => TotalBytes is > 0
+        ? BytesReceived * 100d / TotalBytes.Value
+        : null;
+}
+
+public sealed record UpdateDownloadResult(string FilePath, string FileName, long BytesReceived);
+
 /// <summary>开机自检更新的结果。</summary>
 public sealed record UpdateInfo(
     Version Version,

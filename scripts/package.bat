@@ -1,6 +1,6 @@
 @echo off
-rem Publish + package in one go. Artifacts land in artifacts\release (zip + sha256),
-rem ready to upload to a GitHub Release.
+rem Legacy portable ZIP helper for local builds. GitHub Release uses native
+rem installers from the platform-specific package scripts instead.
 rem
 rem Usage:
 rem   package.bat                             all platforms

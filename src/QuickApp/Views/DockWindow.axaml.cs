@@ -164,6 +164,11 @@ public partial class DockWindow : Window, IDockHost
         {
             case nameof(DockViewModel.IsDockVisible):
             case nameof(DockViewModel.UpdateAvailable):
+            case nameof(DockViewModel.IsDownloadingUpdate):
+            case nameof(DockViewModel.IsUpdateReady):
+            case nameof(DockViewModel.CanDownloadUpdate):
+            case nameof(DockViewModel.NeedsUpdatePage):
+            case nameof(DockViewModel.DownloadProgressText):
                 ScheduleReposition();
                 break;
 

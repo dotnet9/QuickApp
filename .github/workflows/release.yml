@@ -1,6 +1,6 @@
 name: release
 
-# 推送 v* 标签即发布：Windows x64 使用 NativeAOT，其它平台使用自包含单文件。
+# 推送 v* 标签即发布：Windows x64 使用 NativeAOT，其它平台使用自包含单文件并生成原生安装包。
 on:
   push:
     tags:
@@ -74,9 +74,15 @@ jobs:
         shell: pwsh
         run: pwsh scripts/publish_quickapp.ps1 -RuntimeIdentifier '${{ matrix.rid }}' -Version $env:APP_VERSION
 
-      - name: 打包 zip + sha256
+      - name: 打包 Linux deb + sha256
+        if: startsWith(matrix.rid, 'linux-')
         shell: pwsh
-        run: pwsh scripts/package_quickapp.ps1 -RuntimeIdentifier '${{ matrix.rid }}' -Version $env:APP_VERSION -Force
+        run: pwsh scripts/package_linux_deb.ps1 -RuntimeIdentifier '${{ matrix.rid }}' -Version $env:APP_VERSION -Force
+
+      - name: 打包 macOS pkg + dmg + sha256
+        if: startsWith(matrix.rid, 'osx-')
+        shell: pwsh
+        run: pwsh scripts/package_macos_dmg.ps1 -RuntimeIdentifier '${{ matrix.rid }}' -Version $env:APP_VERSION -Force
 
       - name: 构建 Windows 安装包
         if: matrix.rid == 'win-x64'
@@ -137,6 +143,8 @@ jobs:
           name: QuickApp v${{ steps.version.outputs.version }}
           generate_release_notes: true
           files: |
-            artifacts/release/*.zip
+            artifacts/release/*.deb
+            artifacts/release/*.dmg
+            artifacts/release/*.pkg
             artifacts/release/*.sha256
             artifacts/release/*.exe

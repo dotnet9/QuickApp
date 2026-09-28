@@ -448,13 +448,34 @@
                 CornerRadius="8"
                 Padding="8,4"
                 Margin="2,2,2,0">
-          <Grid ColumnDefinitions="*,Auto,Auto">
-            <TextBlock Grid.Column="0" Text="{Binding UpdateText}" FontSize="12" VerticalAlignment="Center" />
-            <Button Grid.Column="1" Theme="{StaticResource LinkButton}" Content="去下载"
-                    Command="{Binding OpenUpdateCommand}" Margin="8,0" />
-            <Button Grid.Column="2" Theme="{StaticResource LinkButton}" Content="忽略"
-                    Command="{Binding DismissUpdateCommand}" />
-          </Grid>
+          <StackPanel Spacing="4">
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto">
+              <TextBlock Grid.Column="0" Text="{Binding UpdateText}" FontSize="12" VerticalAlignment="Center" />
+              <Button Grid.Column="1" Theme="{StaticResource LinkButton}" Content="下载"
+                      IsVisible="{Binding CanDownloadUpdate}"
+                      Command="{Binding DownloadUpdateCommand}" Margin="8,0" />
+              <Button Grid.Column="2" Theme="{StaticResource LinkButton}" Content="{Binding UpdateInstallButtonText}"
+                      IsVisible="{Binding IsUpdateReady}"
+                      Command="{Binding InstallUpdateCommand}" Margin="8,0" />
+              <Button Grid.Column="3" Theme="{StaticResource LinkButton}" Content="打开发布页"
+                      IsVisible="{Binding NeedsUpdatePage}"
+                      Command="{Binding OpenUpdateCommand}" Margin="8,0" />
+              <Button Grid.Column="4" Theme="{StaticResource LinkButton}" Content="取消"
+                      IsVisible="{Binding IsDownloadingUpdate}"
+                      Command="{Binding CancelUpdateDownloadCommand}" Margin="8,0" />
+              <Button Grid.Column="4" Theme="{StaticResource LinkButton}" Content="忽略"
+                      IsVisible="{Binding !IsDownloadingUpdate}"
+                      Command="{Binding DismissUpdateCommand}" />
+            </Grid>
+            <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsDownloadingUpdate}">
+              <ProgressBar Grid.Column="0" Minimum="0" Maximum="100" Value="{Binding DownloadProgress}"
+                           Height="4" VerticalAlignment="Center" />
+              <TextBlock Grid.Column="1" Text="{Binding DownloadProgressText}" FontSize="11"
+                         Margin="8,0,0,0" VerticalAlignment="Center" />
+            </Grid>
+            <TextBlock IsVisible="{Binding IsUpdateReady}"
+                       Text="{Binding DownloadProgressText}" FontSize="11" />
+          </StackPanel>
         </Border>
 
         <!-- 编辑模式工具条（原型 .dock-editbar：上边线 + 12px 提示 + primary 完成钮） -->

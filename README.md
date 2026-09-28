@@ -51,34 +51,36 @@ Windows x64 的自包含 NativeAOT 发布：
 
 ```powershell
 cmd /c scripts/publish.bat win-x64 0.1.0
-powershell -ExecutionPolicy Bypass -File scripts/package_quickapp.ps1 `
-  -RuntimeIdentifier win-x64 -Version 0.1.0 -Force
+pwsh scripts/build_installer.ps1 -Version 0.1.0 -Force
 ```
 
-发布文件位于 `artifacts/publish`，压缩包和 SHA-256 校验文件位于 `artifacts/release`。
+发布文件位于 `artifacts/publish`，平台安装包和 SHA-256 校验文件位于 `artifacts/release`。
 
-Windows x64 也会生成 Inno Setup 安装包。安装包默认安装到 `Program Files\\QuickApp`，升级时只替换程序文件，不会覆盖 `%APPDATA%\\QuickApp\\config.json`；便携版仍可在程序目录放置 `portable.txt`。本地生成安装包需要先安装 Inno Setup 6：
+Windows x64 会生成 Inno Setup 安装包，Linux x64/arm64 会生成对应架构的 `.deb`，macOS x64/arm64 会生成 `.pkg` 和 `.dmg`。Windows 安装包默认安装到 `Program Files\\QuickApp`，升级时只替换程序文件，不会覆盖 `%APPDATA%\\QuickApp\\config.json`；便携版仍可在程序目录放置 `portable.txt`。本地生成 Windows 安装包需要先安装 Inno Setup 6：
 
 ```powershell
 pwsh scripts/build_installer.ps1 -Version 0.2.2 -Force
 ```
 
-安装包和对应的 `.sha256` 文件会写入 `artifacts/release`。推送 `v*` 标签时，GitHub Release 会同时上传 Windows 安装包、各平台 ZIP 及其校验文件；Linux/macOS 当前仍使用 ZIP 分发。
+安装包和对应的 `.sha256` 文件会写入 `artifacts/release`。推送 `v*` 标签时，GitHub Release 会上传 Windows 安装包、Linux `.deb`、macOS `.pkg/.dmg` 及其校验文件。Linux 安装包适用于 Debian/Ubuntu 系列发行版，macOS 安装包当前未做 Developer ID 签名和公证。
 
-Linux/macOS 的自包含单文件发布（不启用 NativeAOT）：
+Linux/macOS 的自包含单文件发布（不启用 NativeAOT，安装包脚本会把它们封装成对应平台安装包）：
 
 ```powershell
 pwsh scripts/publish_quickapp.ps1 -RuntimeIdentifier linux-x64 -Version 0.2.2
-pwsh scripts/package_quickapp.ps1 -RuntimeIdentifier linux-x64 -Version 0.2.2 -Force
+pwsh scripts/package_linux_deb.ps1 -RuntimeIdentifier linux-x64 -Version 0.2.2 -Force
+
+pwsh scripts/publish_quickapp.ps1 -RuntimeIdentifier osx-arm64 -Version 0.2.2
+pwsh scripts/package_macos_dmg.ps1 -RuntimeIdentifier osx-arm64 -Version 0.2.2 -Force
 ```
 
 可用 RID：`win-x64`、`win-x86`、`linux-x64`、`linux-arm64`、`osx-x64`、`osx-arm64`。`scripts/publish.bat` 支持一次发布多个 RID；Windows x64 使用 NativeAOT，其余 RID 使用自包含单文件。
 
-GitHub Actions 会在推送 `v*` 标签时分别构建 Windows、Linux 和 macOS 包，并创建包含 Windows 安装包、各平台 ZIP 与 SHA-256 校验文件的 Release。常规推送和 Pull Request 会执行构建与测试工作流。
+GitHub Actions 会在推送 `v*` 标签时分别构建 Windows、Linux 和 macOS 安装包，并创建包含 Windows 安装包、Linux `.deb`、macOS `.pkg/.dmg` 与 SHA-256 校验文件的 Release。常规推送和 Pull Request 会执行构建与测试工作流。
 
 ## 更新检查
 
-程序默认在启动时检查 GitHub Releases 的最新稳定版本，也可以在设置页手动检查，或关闭自动检查。更新提示会按当前系统和 CPU 架构选择下载资产：Windows x64 优先打开安装包，Linux/macOS 打开对应 ZIP；没有匹配资产时打开 Release 页面，避免下载错误平台的文件。当前版本不会静默下载、校验并替换正在运行的程序，安装包或压缩包仍需用户确认后安装；每个发布文件旁边的 `.sha256` 可用于完整性校验。
+程序默认在启动时检查 GitHub Releases 的最新稳定版本，也可以在设置页手动检查，或关闭自动检查。更新提示会按当前系统和 CPU 架构选择下载资产：Windows x64 优先选择安装包，Linux 选择 `.deb`，macOS 优先选择 `.pkg`、回退到 `.dmg`；没有匹配资产时打开 Release 页面，避免下载错误平台的文件。点击“下载”后界面显示进度，下载完成后还要再次点击“安装/打开安装包”；程序不会静默下载、校验并替换正在运行的程序。每个发布文件旁边的 `.sha256` 可用于完整性校验。
 
 这种设计把检查更新和安装更新分开，避免覆盖便携模式、运行中的文件或用户配置。Windows 安装器升级时保留 `%APPDATA%\QuickApp\config.json`，卸载也不会删除该配置目录。
 

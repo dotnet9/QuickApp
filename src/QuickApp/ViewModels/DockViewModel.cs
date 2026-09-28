@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Avalonia;
@@ -37,6 +40,7 @@ public sealed class DockViewModel : ViewModelBase
     private readonly IIconProvider _icons;
     private readonly IInstalledAppProvider _installedAppProvider;
     private readonly IUpdateChecker _updates;
+    private readonly IUpdateDownloader _updateDownloader;
     private readonly IAutoStartService _autoStart;
     private readonly AppConfig _config;
     private readonly List<ItemViewModel> _allItems = new();
@@ -55,6 +59,10 @@ public sealed class DockViewModel : ViewModelBase
     private bool _isCheckingUpdate;
     private int _toastToken;
     private string _updateResultText = "尚未检查";
+    private bool _isDownloadingUpdate;
+    private double _downloadProgress;
+    private string? _downloadedUpdatePath;
+    private CancellationTokenSource? _downloadCancellation;
 
     public DockViewModel(
         ConfigStore store,
@@ -62,6 +70,7 @@ public sealed class DockViewModel : ViewModelBase
         IIconProvider icons,
         IInstalledAppProvider installedAppProvider,
         IUpdateChecker updates,
+        IUpdateDownloader updateDownloader,
         IAutoStartService autoStart,
         string appName)
     {
@@ -70,6 +79,7 @@ public sealed class DockViewModel : ViewModelBase
         _icons = icons;
         _installedAppProvider = installedAppProvider;
         _updates = updates;
+        _updateDownloader = updateDownloader;
         _autoStart = autoStart;
         AppName = appName;
         _config = store.Load();
@@ -90,6 +100,9 @@ public sealed class DockViewModel : ViewModelBase
         ToggleAutoStartCommand = ReactiveCommand.Create(ToggleAutoStart);
         CheckUpdateCommand = ReactiveCommand.CreateFromTask(() => CheckUpdateAsync());
         OpenUpdateCommand = ReactiveCommand.Create(OpenUpdatePage);
+        DownloadUpdateCommand = ReactiveCommand.CreateFromTask(DownloadUpdateAsync);
+        CancelUpdateDownloadCommand = ReactiveCommand.Create(CancelUpdateDownload);
+        InstallUpdateCommand = ReactiveCommand.Create(InstallDownloadedUpdate);
         DismissUpdateCommand = ReactiveCommand.Create(DismissUpdate);
 
         LoadItems();
@@ -248,6 +261,33 @@ public sealed class DockViewModel : ViewModelBase
     public string UpdateText => _pendingUpdate is null ? string.Empty : "发现新版本 " + _pendingUpdate.Tag;
 
     public string UpdateResultText => _updateResultText;
+
+    public bool IsDownloadingUpdate => _isDownloadingUpdate;
+
+    public bool IsUpdateReady => !string.IsNullOrWhiteSpace(_downloadedUpdatePath) &&
+        File.Exists(_downloadedUpdatePath);
+
+    public bool CanDownloadUpdate => UpdateAvailable &&
+        !_isDownloadingUpdate &&
+        !IsUpdateReady &&
+        !string.IsNullOrWhiteSpace(_pendingUpdate?.AssetUrl);
+
+    public bool NeedsUpdatePage => UpdateAvailable &&
+        !_isDownloadingUpdate &&
+        !IsUpdateReady &&
+        string.IsNullOrWhiteSpace(_pendingUpdate?.AssetUrl);
+
+    public double DownloadProgress => _downloadProgress;
+
+    public string DownloadProgressText => _isDownloadingUpdate
+        ? _downloadProgress > 0 ? $"下载中 {_downloadProgress:0}%" : "正在准备下载…"
+        : IsUpdateReady ? "下载完成" : string.Empty;
+
+    public string UpdateInstallButtonText => IsWindowsInstallerAsset ? "安装" : "打开安装包";
+
+    private bool IsWindowsInstallerAsset =>
+        OperatingSystem.IsWindows() &&
+        (_pendingUpdate?.AssetName?.EndsWith("-setup.exe", StringComparison.OrdinalIgnoreCase) ?? false);
 
     // ---------------- 面板状态 ----------------
 
@@ -465,6 +505,12 @@ public sealed class DockViewModel : ViewModelBase
     public ICommand CheckUpdateCommand { get; }
 
     public ICommand OpenUpdateCommand { get; }
+
+    public ICommand DownloadUpdateCommand { get; }
+
+    public ICommand CancelUpdateDownloadCommand { get; }
+
+    public ICommand InstallUpdateCommand { get; }
 
     public ICommand DismissUpdateCommand { get; }
 
@@ -1042,18 +1088,22 @@ public sealed class DockViewModel : ViewModelBase
 
             if (info is null)
             {
+                ClearDownloadedUpdate(cancel: true);
                 _pendingUpdate = null;
                 this.RaisePropertyChanged(nameof(UpdateAvailable));
                 this.RaisePropertyChanged(nameof(UpdateText));
+                RaiseDownloadStateChanged();
                 _updateResultText = "已是最新版本 " + VersionText;
                 this.RaisePropertyChanged(nameof(UpdateResultText));
                 Toast(_updateResultText);
                 return;
             }
 
+            ClearDownloadedUpdate(cancel: true);
             _pendingUpdate = info;
             this.RaisePropertyChanged(nameof(UpdateAvailable));
             this.RaisePropertyChanged(nameof(UpdateText));
+            RaiseDownloadStateChanged();
             _updateResultText = UpdateText;
             this.RaisePropertyChanged(nameof(UpdateResultText));
             Toast("发现新版本 " + info.Tag);
@@ -1066,6 +1116,117 @@ public sealed class DockViewModel : ViewModelBase
         {
             IsCheckingUpdate = false;
         }
+    }
+
+    private async Task DownloadUpdateAsync()
+    {
+        if (IsDownloadingUpdate)
+        {
+            return;
+        }
+
+        if (_pendingUpdate?.AssetUrl is null)
+        {
+            OpenUpdatePage();
+            return;
+        }
+
+        _downloadCancellation?.Dispose();
+        _downloadCancellation = new CancellationTokenSource();
+        _downloadProgress = 0;
+        _isDownloadingUpdate = true;
+        RaiseDownloadStateChanged();
+
+        try
+        {
+            var progress = new Progress<UpdateDownloadProgress>(value =>
+            {
+                _downloadProgress = value.Percentage ?? _downloadProgress;
+                RaiseDownloadStateChanged();
+            });
+            UpdateDownloadResult result = await _updateDownloader.DownloadAsync(
+                _pendingUpdate,
+                progress,
+                _downloadCancellation.Token).ConfigureAwait(true);
+
+            _downloadedUpdatePath = result.FilePath;
+            _downloadProgress = 100;
+            Toast("下载完成，请点击" + UpdateInstallButtonText);
+        }
+        catch (OperationCanceledException)
+        {
+            Toast("已取消下载");
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("下载更新失败", ex);
+            Toast("下载失败，请重试");
+        }
+        finally
+        {
+            _isDownloadingUpdate = false;
+            _downloadCancellation?.Dispose();
+            _downloadCancellation = null;
+            RaiseDownloadStateChanged();
+        }
+    }
+
+    private void CancelUpdateDownload() => _downloadCancellation?.Cancel();
+
+    private void InstallDownloadedUpdate()
+    {
+        string? path = _downloadedUpdatePath;
+        if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
+        {
+            ClearDownloadedUpdate(cancel: false);
+            Toast("安装包不存在，请重新下载");
+            return;
+        }
+
+        try
+        {
+            if (IsWindowsInstallerAsset)
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = path,
+                    UseShellExecute = true
+                });
+                _host?.Exit();
+            }
+            else
+            {
+                _host?.OpenUrl(path);
+            }
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("打开安装包失败", ex);
+            Toast("打开安装包失败");
+        }
+    }
+
+    private void ClearDownloadedUpdate(bool cancel)
+    {
+        if (cancel)
+        {
+            _downloadCancellation?.Cancel();
+        }
+
+        _downloadedUpdatePath = null;
+        _downloadProgress = 0;
+        RaiseDownloadStateChanged();
+    }
+
+    private void RaiseDownloadStateChanged()
+    {
+        this.RaisePropertyChanged(nameof(IsDownloadingUpdate));
+        this.RaisePropertyChanged(nameof(IsUpdateReady));
+        this.RaisePropertyChanged(nameof(CanDownloadUpdate));
+        this.RaisePropertyChanged(nameof(NeedsUpdatePage));
+        this.RaisePropertyChanged(nameof(DownloadProgress));
+        this.RaisePropertyChanged(nameof(DownloadProgressText));
+        this.RaisePropertyChanged(nameof(UpdateInstallButtonText));
     }
 
     private void OpenUpdatePage()
@@ -1191,8 +1352,10 @@ public sealed class DockViewModel : ViewModelBase
 
     private void DismissUpdate()
     {
+        ClearDownloadedUpdate(cancel: true);
         _pendingUpdate = null;
         this.RaisePropertyChanged(nameof(UpdateAvailable));
         this.RaisePropertyChanged(nameof(UpdateText));
+        RaiseDownloadStateChanged();
     }
 }
