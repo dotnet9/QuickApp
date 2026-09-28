@@ -161,6 +161,9 @@ internal static unsafe partial class NativeMethods
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool PostThreadMessage(int idThread, int msg, IntPtr wParam, IntPtr lParam);
 
+    [LibraryImport("kernel32.dll")]
+    internal static partial int GetCurrentThreadId();
+
     [StructLayout(LayoutKind.Sequential)]
     internal struct MSG
     {

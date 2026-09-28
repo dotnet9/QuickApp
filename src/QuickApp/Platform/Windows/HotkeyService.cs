@@ -18,6 +18,7 @@ public sealed class HotkeyService : IHotkeyService
     private readonly object _gate = new();
     private Thread? _thread;
     private IntPtr _hwnd;
+    private int _nativeThreadId;
     private bool _disposeRequested;
 
     public HotkeyService(Action<string>? log = null) => _log = log;
@@ -103,6 +104,8 @@ public sealed class HotkeyService : IHotkeyService
 
     private void MessageLoop(uint modifiers, uint virtualKey, Action callback, ManualResetEventSlim ready, Action<bool> report)
     {
+        _nativeThreadId = NativeMethods.GetCurrentThreadId();
+
         // 预定义的 STATIC 类 + HWND_MESSAGE 父窗口 = 不显示、不占任务栏的 message-only 窗口
         IntPtr hwnd = NativeMethods.CreateWindowEx(0, "STATIC", null, 0, 0, 0, 0, 0,
             NativeMethods.HwndMessage, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
@@ -123,6 +126,7 @@ public sealed class HotkeyService : IHotkeyService
                 NativeMethods.DestroyWindow(hwnd);
             }
 
+            _nativeThreadId = 0;
             return;
         }
 
@@ -152,6 +156,7 @@ public sealed class HotkeyService : IHotkeyService
         {
             NativeMethods.UnregisterHotKey(hwnd, HotkeyId);
             NativeMethods.DestroyWindow(hwnd);
+            _nativeThreadId = 0;
         }
     }
 
@@ -160,7 +165,12 @@ public sealed class HotkeyService : IHotkeyService
         Thread? thread = _thread;
         if (thread is not null && thread.IsAlive)
         {
-            NativeMethods.PostThreadMessage(thread.ManagedThreadId, NativeMethods.WmQuit, IntPtr.Zero, IntPtr.Zero);
+            int nativeThreadId = Volatile.Read(ref _nativeThreadId);
+            if (nativeThreadId != 0)
+            {
+                NativeMethods.PostThreadMessage(nativeThreadId, NativeMethods.WmQuit, IntPtr.Zero, IntPtr.Zero);
+            }
+
             thread.Join(TimeSpan.FromSeconds(1));
         }
 
