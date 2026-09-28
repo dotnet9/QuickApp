@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="dark" data-style="glass" data-label="iconText" data-pinned="false" data-edit="false" data-edge="top">
+<html lang="zh-CN" data-theme="dark" data-style="glass" data-label="icon" data-pinned="false" data-edit="false" data-search-open="false" data-edge="top">
 <head>
 <meta charset="utf-8">
 <title>QuickApp 界面原型 · 四边可停靠 Dock</title>
@@ -7,7 +7,7 @@
 <!--
   QuickApp 界面原型（单文件、零依赖、离线可用）
   - 用途：为 Avalonia 重构定稿视觉与交互，不属于产品代码
-  - 演示数据取自仓库 src/QuickApp/menu.json（30 条）
+  - 演示数据取自仓库 src/QuickApp/menu.json（30 条，默认显示 10 项）
   - Dock 可停靠上/下/左/右四边：通过「更多操作」或控制台/设置直接切换
   - 所有设置只在内存中生效，刷新即回到初始态（上边缘 · 深色 · 毛玻璃）
 -->
@@ -17,8 +17,8 @@
   --font:"Microsoft YaHei UI","Microsoft YaHei",system-ui,-apple-system,"Segoe UI",sans-serif;
   --tile-size:44px;
   --dock-radius:18px;
-  --dock-alpha:.55;
-  --items-window:512px;
+  --dock-alpha:.4;
+  --items-window:530px;
 
   --dur-dock:240ms;
   --ease-out:cubic-bezier(.22,1,.36,1);
@@ -111,11 +111,15 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 .dock{
   position:fixed;top:10px;left:0;right:0;margin:0 auto;width:fit-content;max-width:94vw;z-index:100;
   display:flex;flex-direction:column;gap:2px;
-  padding:4px 10px 6px;border-radius:var(--dock-radius);
-  background:var(--panel-bg);backdrop-filter:var(--panel-blur);-webkit-backdrop-filter:var(--panel-blur);
-  border:1px solid var(--line);box-shadow:var(--panel-shadow);
+  padding:0;border:1px solid transparent;border-radius:var(--dock-radius);
+  background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none;
   transform:translateY(0);opacity:1;
-  transition:transform var(--dur-dock) var(--ease-out),opacity 180ms linear,background 160ms linear,border-radius 160ms linear;
+  transition:transform var(--dur-dock) var(--ease-out),opacity 180ms linear,background 160ms linear,border-color 160ms linear,border-radius 160ms linear,box-shadow 200ms var(--ease-out);
+}
+html[data-search-open="true"] .dock,
+html[data-edit="true"] .dock{
+  padding:8px 10px;background:var(--panel-bg);backdrop-filter:var(--panel-blur);-webkit-backdrop-filter:var(--panel-blur);
+  border-color:var(--line);box-shadow:var(--panel-shadow);
 }
 body:not(.dock-visible) .dock{transform:translateY(calc(-100% - 22px));opacity:0;pointer-events:none}
 .dock-body{display:flex;align-items:center;gap:8px;max-width:100%}
@@ -123,7 +127,7 @@ body:not(.dock-visible) .dock{transform:translateY(calc(-100% - 22px));opacity:0
 /* 滚动区：留白保证悬停放大不被裁切 */
 .items-wrap{position:relative;display:flex;min-width:0;flex:1 1 auto}
 .dock-items{
-  display:flex;align-items:flex-start;gap:6px;padding:14px 6px;
+  display:flex;align-items:flex-start;gap:6px;padding:18px;
   overflow-x:auto;overflow-y:hidden;min-width:0;flex:1 1 auto;max-width:var(--items-window);
   scroll-snap-type:x proximity;scroll-behavior:smooth;overscroll-behavior:contain;
   cursor:default;
@@ -161,7 +165,7 @@ body:not(.dock-visible) .dock{transform:translateY(calc(-100% - 22px));opacity:0
   position:relative;width:var(--tile-size);height:var(--tile-size);
   border-radius:calc(var(--tile-size) * .28);display:grid;place-items:center;
   color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.28);
-  transition:transform 200ms var(--ease-pop),box-shadow 180ms linear;
+  transition:transform 260ms var(--ease-out),box-shadow 220ms var(--ease-out),filter 220ms linear;
 }
 .tile.running{animation:tileRun 320ms var(--ease-out)}
 .tile-icon{display:grid;place-items:center;line-height:0}
@@ -181,15 +185,27 @@ html[data-label="icon"] .tile-name{display:none}
 
 .dock-empty{padding:16px 18px;color:var(--text-dim);font-size:12px;white-space:nowrap}
 
-/* 两端渐隐 */
-.fade{position:absolute;top:0;bottom:0;width:26px;pointer-events:none;opacity:0;transition:opacity 140ms linear;z-index:2}
-.fade-left{left:0;background:linear-gradient(90deg,rgba(var(--surface),.9),rgba(var(--surface),0))}
-.fade-right{right:0;background:linear-gradient(270deg,rgba(var(--surface),.9),rgba(var(--surface),0))}
+/* 两端渐隐只覆盖应用图标，提示还有内容但不挡住图标 */
+.fade{position:absolute;top:0;bottom:0;width:22px;pointer-events:none;opacity:0;transition:opacity 160ms linear;z-index:2}
+.fade-left{left:0;background:linear-gradient(90deg,rgba(var(--surface),.46),rgba(var(--surface),0))}
+.fade-right{right:0;background:linear-gradient(270deg,rgba(var(--surface),.46),rgba(var(--surface),0))}
 .fade.show{opacity:1}
 
-.dock-divider{width:1px;height:max(68px,calc(var(--tile-size) * 1.2));background:var(--line);flex:0 0 auto}
+.dock-tools{
+  display:flex;align-items:center;gap:4px;padding:2px;
+  border:1px solid var(--line);border-radius:14px;
+  background:var(--panel-bg);backdrop-filter:var(--panel-blur);-webkit-backdrop-filter:var(--panel-blur);
+  box-shadow:0 6px 16px rgba(0,0,0,.24);flex:0 0 auto;
+}
+.dock-divider{width:1px;height:max(54px,calc(var(--tile-size) * 1.1));background:var(--line);flex:0 0 auto}
 /* 右侧辅助操作用两行排列，降低横向抢占并让小图标更有呼吸感 */
-.dock-actions{display:grid;grid-template-columns:repeat(3,32px);grid-template-rows:repeat(2,32px);column-gap:4px;row-gap:2px;align-items:center;flex:0 0 auto}
+.dock-actions{display:grid;grid-template-columns:repeat(3,28px);grid-template-rows:repeat(2,28px);column-gap:2px;row-gap:0;align-items:center;flex:0 0 auto}
+.dock-actions .icon-btn{width:28px;height:28px;border-radius:8px}
+html[data-search-open="true"] .dock-tools,
+html[data-edit="true"] .dock-tools{
+  padding:0;border-color:transparent;border-radius:0;background:transparent;
+  backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none;
+}
 
 .icon-btn{
   width:32px;height:32px;border-radius:9px;display:grid;place-items:center;color:var(--text-dim);
@@ -205,8 +221,8 @@ html[data-label="icon"] .tile-name{display:none}
 .icon-btn.grip{cursor:grab;touch-action:none}
 .icon-btn.grip:active{cursor:grabbing}
 
-/* 滚动指示线 */
-.scroll-indicator{height:3px;margin:0 6px 2px;border-radius:2px;background:var(--hover);position:relative;overflow:hidden}
+/* 滚动进度限制在应用图标区域 */
+.scroll-indicator{position:absolute;left:18px;right:18px;bottom:4px;height:2px;margin:0;border-radius:2px;background:var(--hover);overflow:hidden;z-index:3}
 .scroll-indicator i{position:absolute;top:0;bottom:0;left:0;border-radius:2px;background:var(--accent);opacity:.65}
 
 /* 搜索行 */
@@ -422,17 +438,38 @@ output{font-size:11px;color:var(--text-dim);font-variant-numeric:tabular-nums;mi
 }
 
 /* ============================ 9. 四边停靠 ============================ */
-/* 悬停位移方向 = 背离所在边（外扩），由停靠边决定 */
-:root{ --pop-x:0px; --pop-y:-4px }
-html[data-edge="top"]{ --pop-x:0px; --pop-y:-4px }
-html[data-edge="bottom"]{ --pop-x:0px; --pop-y:4px }
-html[data-edge="left"]{ --pop-x:-4px; --pop-y:0px }
-html[data-edge="right"]{ --pop-x:4px; --pop-y:0px }
+/* 悬停位移朝桌面内部，让图标远离所在屏幕边缘 */
+:root{ --pop-x:0px; --pop-y:5px }
+html[data-edge="top"]{ --pop-x:0px; --pop-y:5px }
+html[data-edge="bottom"]{ --pop-x:0px; --pop-y:-5px }
+html[data-edge="left"]{ --pop-x:5px; --pop-y:0px }
+html[data-edge="right"]{ --pop-x:-5px; --pop-y:0px }
 
-.dock-item:hover .tile,.dock-item:focus-within .tile{transform:translate(var(--pop-x),var(--pop-y)) scale(1.18)}
-.dock-item .tile:active{transform:translate(var(--pop-x),var(--pop-y)) scale(.94)}
+.dock-item:hover,.dock-item:focus-within{z-index:5}
+.dock-item:hover .tile,.dock-item:focus-within .tile{
+  z-index:1;transform:translate(var(--pop-x),var(--pop-y)) scale(1.44);
+  animation:tileHoverIn 380ms var(--ease-pop) both;
+  box-shadow:0 14px 28px rgba(0,0,0,.42),0 3px 8px rgba(0,0,0,.26);
+  filter:brightness(1.1) saturate(1.12);
+}
+.dock-item:hover + .dock-item .tile,
+.dock-item:has(+ .dock-item:hover) .tile,
+.dock-item:focus-within + .dock-item .tile,
+.dock-item:has(+ .dock-item:focus-within) .tile{
+  transform:translate(calc(var(--pop-x) * .4),calc(var(--pop-y) * .4)) scale(1.12);
+  box-shadow:0 5px 12px rgba(0,0,0,.3);
+}
+.dock-item:hover .tile:active,.dock-item:focus-within .tile:active{
+  animation:none;transform:translate(var(--pop-x),var(--pop-y)) scale(.94);transition-duration:90ms;
+}
+@keyframes tileHoverIn{
+  0%{transform:translate(calc(var(--pop-x) * .5),calc(var(--pop-y) * .5)) scale(.86)}
+  58%{transform:translate(var(--pop-x),var(--pop-y)) scale(1.52)}
+  80%{transform:translate(var(--pop-x),var(--pop-y)) scale(1.39)}
+  100%{transform:translate(var(--pop-x),var(--pop-y)) scale(1.44)}
+}
 @keyframes tileRun{
-  0%{transform:translate(var(--pop-x),var(--pop-y)) scale(1.18)}
+  0%{transform:translate(var(--pop-x),var(--pop-y)) scale(1.44)}
   45%{transform:translate(0,0) scale(.9)}
   100%{transform:none}
 }
@@ -459,12 +496,15 @@ html[data-edge="right"] body:not(.dock-visible) .dock{transform:translateX(calc(
 /* 左 / 右：竖向排布 */
 html[data-edge="left"] .dock-body,
 html[data-edge="right"] .dock-body{flex-direction:column;align-items:stretch;gap:6px}
+html[data-edge="left"] .dock-tools,
+html[data-edge="right"] .dock-tools{flex-direction:column}
 html[data-edge="left"] .items-wrap,
 html[data-edge="right"] .items-wrap{flex-direction:column;flex:1 1 auto;min-height:0}
 html[data-edge="left"] .dock-items,
 html[data-edge="right"] .dock-items{
-  flex-direction:column;align-items:stretch;gap:4px;padding:6px 14px;
-  overflow-x:hidden;overflow-y:auto;min-height:0;max-width:none;max-height:var(--items-window);
+  flex-direction:column;align-items:stretch;gap:4px;padding:18px;
+  overflow-x:hidden;overflow-y:auto;min-height:0;max-width:none;
+  max-height:calc(var(--tile-size) * 10 + 72px);
   scroll-snap-type:y proximity;
 }
 html[data-edge="left"] .dock-item,
@@ -474,9 +514,9 @@ html[data-edge="left"] .tile-name,
 html[data-edge="right"] .tile-name{max-width:9em;width:auto;text-align:left}
 html[data-edge="right"] .tile-name{text-align:right}
 html[data-edge="left"] .dock-divider,
-html[data-edge="right"] .dock-divider{width:calc(var(--tile-size) * 1.2);height:1px}
+html[data-edge="right"] .dock-divider{width:calc(var(--tile-size) * 1);height:1px}
 html[data-edge="left"] .dock-actions,
-html[data-edge="right"] .dock-actions{grid-template-columns:32px;grid-template-rows:repeat(5,32px);row-gap:2px}
+html[data-edge="right"] .dock-actions{grid-template-columns:repeat(2,28px);grid-template-rows:repeat(3,28px);column-gap:2px;row-gap:0}
 html[data-edge="left"] .remove,
 html[data-edge="right"] .remove{left:auto;right:-3px}
 html[data-edge="left"] .dock-search input,
@@ -486,20 +526,20 @@ html[data-edge="right"] .dock-editbar{flex-direction:column;align-items:stretch;
 html[data-edge="left"] .dock-editbar .spacer,
 html[data-edge="right"] .dock-editbar .spacer{display:none}
 
-/* 左 / 右：渐隐改为上下，滚动指示线改为竖条 */
+/* 左 / 右：渐隐和滚动指示线改为上下 / 竖向 */
 html[data-edge="left"] .fade-left,
 html[data-edge="right"] .fade-left{
-  left:0;right:0;top:0;bottom:auto;width:auto;height:26px;
-  background:linear-gradient(180deg,rgba(var(--surface),.9),rgba(var(--surface),0));
+  left:0;right:0;top:0;bottom:auto;width:auto;height:22px;
+  background:linear-gradient(180deg,rgba(var(--surface),.46),rgba(var(--surface),0));
 }
 html[data-edge="left"] .fade-right,
 html[data-edge="right"] .fade-right{
-  left:0;right:0;bottom:0;top:auto;width:auto;height:26px;
-  background:linear-gradient(0deg,rgba(var(--surface),.9),rgba(var(--surface),0));
+  left:0;right:0;bottom:0;top:auto;width:auto;height:22px;
+  background:linear-gradient(0deg,rgba(var(--surface),.46),rgba(var(--surface),0));
 }
 html[data-edge="left"] .scroll-indicator,
 html[data-edge="right"] .scroll-indicator{
-  position:absolute;top:10px;bottom:10px;height:auto;width:3px;margin:0;
+  position:absolute;top:18px;bottom:18px;height:auto;width:2px;margin:0;
 }
 html[data-edge="left"] .scroll-indicator{right:5px;left:auto}
 html[data-edge="right"] .scroll-indicator{left:5px;right:auto}
@@ -525,11 +565,11 @@ html[data-edge="right"] .dock-hint{right:8px}
   position:fixed;z-index:210;background:var(--accent);color:var(--accent-ink);
   font-size:11px;padding:3px 9px;border-radius:999px;pointer-events:none;box-shadow:var(--shadow);
 }
-body.dragging-dock .dock{box-shadow:0 26px 60px rgba(0,0,0,.5)}
+body.dragging-dock .dock-tools{box-shadow:0 20px 42px rgba(0,0,0,.4)}
 
 @media (max-width:640px){
   .dock{max-width:96vw}
-  .dock-actions{gap:2px}
+  .dock-actions{gap:1px}
   /* 窄视口下仍保留搜索，添加操作折叠进「更多」菜单 */
   #btnAdd{display:none}
   .settings-card{max-width:calc(100vw - 16px)}
@@ -544,7 +584,11 @@ body.dragging-dock .dock{box-shadow:0 26px 60px rgba(0,0,0,.5)}
 /* ============================ 10. 无障碍降级 ============================ */
 @media (prefers-reduced-motion:reduce){
   *{animation-duration:1ms!important;transition-duration:1ms!important}
-  .dock-item:hover .tile,.dock-item:focus-within .tile{transform:none}
+  .dock-item:hover .tile,.dock-item:focus-within .tile,
+  .dock-item:hover + .dock-item .tile,.dock-item:has(+ .dock-item:hover) .tile,
+  .dock-item:focus-within + .dock-item .tile,.dock-item:has(+ .dock-item:focus-within) .tile{
+    animation:none!important;transform:none
+  }
 }
 </style>
 </head>
@@ -573,18 +617,19 @@ body.dragging-dock .dock{box-shadow:0 26px 60px rgba(0,0,0,.5)}
       <div class="dock-items" id="dockItems" role="list"></div>
       <div class="fade fade-left" id="fadeLeft"></div>
       <div class="fade fade-right" id="fadeRight"></div>
+      <div class="scroll-indicator" id="scrollIndicator" hidden><i id="scrollThumb"></i></div>
     </div>
-    <div class="dock-divider"></div>
-    <div class="dock-actions">
-      <button class="icon-btn" id="btnSearch" data-icon="search" title="搜索（S）" aria-label="搜索"></button>
-      <button class="icon-btn" id="btnAdd" data-icon="plus" title="添加" aria-label="添加"></button>
-      <button class="icon-btn" id="btnPin" data-icon="pin" title="钉住 Dock" aria-label="钉住 Dock" aria-pressed="false"></button>
-      <button class="icon-btn" id="btnMenu" data-icon="more" title="更多操作" aria-label="更多操作" aria-haspopup="menu" aria-expanded="false"></button>
-      <button class="icon-btn low-priority" id="btnHide" data-icon="chevron-up" title="收起" aria-label="收起"></button>
+    <div class="dock-tools">
+      <div class="dock-divider"></div>
+      <div class="dock-actions">
+        <button class="icon-btn" id="btnSearch" data-icon="search" title="搜索（S）" aria-label="搜索"></button>
+        <button class="icon-btn" id="btnAdd" data-icon="plus" title="添加" aria-label="添加"></button>
+        <button class="icon-btn" id="btnPin" data-icon="pin" title="钉住 Dock" aria-label="钉住 Dock" aria-pressed="false"></button>
+        <button class="icon-btn" id="btnMenu" data-icon="more" title="更多操作" aria-label="更多操作" aria-haspopup="menu" aria-expanded="false"></button>
+        <button class="icon-btn low-priority" id="btnHide" data-icon="chevron-up" title="收起" aria-label="收起"></button>
+      </div>
     </div>
   </div>
-
-  <div class="scroll-indicator" id="scrollIndicator" hidden><i id="scrollThumb"></i></div>
 
   <div class="dock-editbar" id="dockEditbar" hidden>
     <span>拖动排序 · 双击改名 · 点 × 移除</span>
@@ -857,7 +902,7 @@ const GLYPHS = {
 };
 const PICKER_ICONS = ['globe','chat','ding','play','music','camera','monitor','monitor-alt','note','cloud','code','rocket','database','shield','record','app','terminal'];
 
-/* 演示数据：取自 src/QuickApp/menu.json（30 条） */
+/* 演示数据：取自 src/QuickApp/menu.json（30 条，默认取前 10 项） */
 const SEED_ITEMS = [
   {name:'Google Chrome',type:'app',target:'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',icon:'globe'},
   {name:'Dotnet9',type:'web',target:'https://dotnet9.com/',icon:'globe'},
@@ -918,12 +963,12 @@ function pinyinForms(value){
    ===================================================================== */
 const STATE = {
   /* 外观 */
-  themePref:'dark', theme:'dark', style:'glass', label:'iconText',
-  tileSize:44, radius:18, alpha:.55,
+  themePref:'dark', theme:'dark', style:'glass', label:'icon',
+  tileSize:44, radius:18, alpha:.4,
   /* 行为 */
   pinned:false, edgeReveal:true, autoHideDelay:700, autoCollapse:true, autoStart:true,
   /* 界面 */
-  dockVisible:true, edit:false, searchOpen:false, query:'', count:30, edge:'top',
+  dockVisible:true, edit:false, searchOpen:false, query:'', count:10, edge:'top',
   /* 数据 */
   items:[], nextId:0, focusId:null
 };
@@ -1201,9 +1246,10 @@ function applyTokens(){
   root.dataset.label = STATE.label;
   root.dataset.pinned = String(STATE.pinned);
   root.dataset.edit = String(STATE.edit);
+  root.dataset.searchOpen = String(STATE.searchOpen);
   root.dataset.edge = STATE.edge;
   root.style.setProperty('--tile-size', STATE.tileSize + 'px');
-  root.style.setProperty('--items-window', (STATE.tileSize * 10 + 72) + 'px');
+  root.style.setProperty('--items-window', (STATE.tileSize * 10 + 90) + 'px');
   root.style.setProperty('--dock-radius', STATE.radius + 'px');
   root.style.setProperty('--dock-alpha', String(STATE.alpha));
   document.body.classList.toggle('dock-visible', STATE.dockVisible);
