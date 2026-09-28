@@ -17,7 +17,7 @@
   <Window.Resources>
     <!-- 一个图标：图标 + 名称（名称按设置显隐），左/右边缘时自动变成横向排列 -->
     <DataTemplate x:Key="TileTemplate" x:DataType="vm:ItemViewModel">
-      <StackPanel Orientation="{Binding ItemOrientation}" Spacing="5" Margin="1" ClipToBounds="False">
+      <StackPanel Orientation="{Binding ItemOrientation}" Spacing="5" Margin="0" ClipToBounds="False">
 
         <Border Name="TileRoot"
                 Classes="tile"
@@ -29,9 +29,9 @@
                 Height="{Binding TileSize}"
                 CornerRadius="{Binding TileCornerRadius}"
                 ClipToBounds="True"
-                Background="{Binding IconBrush}"
+                Background="{Binding TileBackgroundBrush}"
                 BorderBrush="{Binding RingBrush}"
-                BorderThickness="2"
+                BorderThickness="0"
                 ToolTip.Tip="{Binding Tooltip}"
                 DragDrop.AllowDrop="True">
           <Panel>
@@ -50,8 +50,8 @@
                   StrokeLineCap="Round"
                   StrokeJoin="Round"
                   Stretch="Uniform"
-                  Width="{Binding IconSize}"
-                  Height="{Binding IconSize}" />
+                  Width="{Binding GlyphSize}"
+                  Height="{Binding GlyphSize}" />
 
             <!-- 执行中的反馈 -->
             <Path Data="M5,12.5 L9.5,17 L19,7"
@@ -63,6 +63,12 @@
                   Stretch="Uniform"
                   Width="{Binding TileSize}"
                   Height="{Binding TileSize}" />
+
+            <Border IsVisible="{Binding IsFocused}"
+                    BorderBrush="{Binding RingBrush}"
+                    BorderThickness="2"
+                    CornerRadius="{Binding TileCornerRadius}"
+                    IsHitTestVisible="False" />
 
             <!-- 编辑模式：移除。横向 Dock 在左上角、竖向 Dock 在右上角，向外偏 3px（原型 .remove） -->
             <Button Theme="{StaticResource RemoveButton}"
@@ -126,14 +132,15 @@
           <Border Width="36"
                   Height="36"
                   CornerRadius="{Binding TileCornerRadius}"
-                  Background="{Binding IconBrush}"
+                  Background="{Binding TileBackgroundBrush}"
                   ClipToBounds="True"
                   VerticalAlignment="Center">
             <Panel>
               <Image Source="{Binding Icon}"
                      IsVisible="{Binding HasIcon}"
-                     Stretch="Uniform"
-                     Margin="7" />
+                     Width="36"
+                     Height="36"
+                     Stretch="Uniform" />
               <Path Data="{Binding Glyph}"
                     IsVisible="{Binding !HasIcon}"
                     Stroke="White"

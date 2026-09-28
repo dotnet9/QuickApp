@@ -78,6 +78,8 @@ pwsh scripts/package_macos_dmg.ps1 -RuntimeIdentifier osx-arm64 -Version 0.2.2 -
 
 GitHub Actions 会在推送 `v*` 标签时分别构建 Windows、Linux 和 macOS 安装包，并创建包含 Windows 安装包、Linux `.deb`、macOS `.pkg/.dmg` 与 SHA-256 校验文件的 Release。常规推送和 Pull Request 会执行构建与测试工作流。
 
+每个版本的 Release 描述维护在 `.github/release-notes/v版本号.md`，例如 `.github/release-notes/v0.2.5.md`。打标签前先补充该文件；发布工作流会直接使用它作为 GitHub Release 正文，缺少说明时会停止发布。
+
 ## 更新检查
 
 程序默认在启动时检查 GitHub Releases 的最新稳定版本，也可以在设置页手动检查，或关闭自动检查。更新提示会按当前系统和 CPU 架构选择下载资产：Windows x64 优先选择安装包，Linux 选择 `.deb`，macOS 优先选择 `.pkg`、回退到 `.dmg`；没有匹配资产时打开 Release 页面，避免下载错误平台的文件。点击“下载”后界面显示进度，下载完成后还要再次点击“安装/打开安装包”；程序不会静默下载、校验并替换正在运行的程序。每个发布文件旁边的 `.sha256` 可用于完整性校验。

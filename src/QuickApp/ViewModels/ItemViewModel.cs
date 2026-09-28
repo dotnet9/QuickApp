@@ -29,6 +29,7 @@ public sealed class ItemViewModel : ViewModelBase
     private bool _isRenaming;
     private bool _isDropTarget;
     private bool _isDragged;
+    private bool _isFocused;
     private string _editingName = string.Empty;
     private double _tileSize = 44;
     private Orientation _itemOrientation = Orientation.Vertical;
@@ -116,11 +117,14 @@ public sealed class ItemViewModel : ViewModelBase
             if (Set(ref _icon, value))
             {
                 this.RaisePropertyChanged(nameof(HasIcon));
+                this.RaisePropertyChanged(nameof(TileBackgroundBrush));
             }
         }
     }
 
     public bool HasIcon => _icon is not null && string.IsNullOrEmpty(Model.IconKey);
+
+    public IBrush? TileBackgroundBrush => HasIcon ? Brushes.Transparent : IconBrush;
 
     /// <summary>用户指定的占位图标键（图标选择器写入 Model.IconKey）；为空时显示真实图标。</summary>
     public string? IconKey => Model.IconKey;
@@ -136,7 +140,13 @@ public sealed class ItemViewModel : ViewModelBase
     public IBrush? IconBrush
     {
         get => _iconBrush;
-        set => Set(ref _iconBrush, value);
+        set
+        {
+            if (Set(ref _iconBrush, value))
+            {
+                this.RaisePropertyChanged(nameof(TileBackgroundBrush));
+            }
+        }
     }
 
     /// <summary>键盘选中时的描边色，由视图写入（跟随主题）。</summary>
@@ -144,6 +154,12 @@ public sealed class ItemViewModel : ViewModelBase
     {
         get => _ringBrush;
         set => Set(ref _ringBrush, value);
+    }
+
+    public bool IsFocused
+    {
+        get => _isFocused;
+        set => Set(ref _isFocused, value);
     }
 
     /// <summary>名称文字颜色，由视图写入。必须显式给：不设会继承 Fluent 主题前景色，系统浅色主题下就是黑字压深底。</summary>
@@ -246,6 +262,7 @@ public sealed class ItemViewModel : ViewModelBase
                 this.RaisePropertyChanged(nameof(TileRadius));
                 this.RaisePropertyChanged(nameof(TileCornerRadius));
                 this.RaisePropertyChanged(nameof(IconSize));
+                this.RaisePropertyChanged(nameof(GlyphSize));
                 this.RaisePropertyChanged(nameof(LabelMaxWidth));
             }
         }
@@ -256,7 +273,9 @@ public sealed class ItemViewModel : ViewModelBase
     /// <summary>明确提供 CornerRadius 类型，确保图标四角圆角在 Avalonia 绑定中生效。</summary>
     public CornerRadius TileCornerRadius => new(TileRadius);
 
-    public double IconSize => Math.Round(TileSize * 0.5, 1);
+    public double IconSize => Math.Round(TileSize, 1);
+
+    public double GlyphSize => Math.Round(TileSize * 0.5, 1);
 
     /// <summary>改名框宽度：瓦片宽 + 70（原型 startRename 的 width 规则，最小 120）。</summary>
     public double RenameWidth => Math.Max(120, Math.Round(TileSize + 70));

@@ -118,6 +118,8 @@ jobs:
     needs: publish
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
       - name: 下载构建产物
         uses: actions/download-artifact@v4
         with:
@@ -136,12 +138,22 @@ jobs:
           }
           "version=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
+      - name: 验证版本发布说明
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          $releaseNotes = ".github/release-notes/v$env:VERSION.md"
+          if (-not (Test-Path -LiteralPath $releaseNotes -PathType Leaf)) {
+            throw "Release notes are required: $releaseNotes"
+          }
+
       - name: 创建 GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version }}
           name: QuickApp v${{ steps.version.outputs.version }}
-          generate_release_notes: true
+          body_path: .github/release-notes/v${{ steps.version.outputs.version }}.md
           files: |
             artifacts/release/*.deb
             artifacts/release/*.dmg

@@ -475,6 +475,7 @@ public partial class DockWindow : Window, IDockHost
     {
         item.IconBrush = PaletteBrushes.TileBrush(item.Name, item.Model.Kind, item.TileSize);
         item.RingBrush = ReferenceEquals(item, _focused) ? _vm?.AccentBrush : null;
+        item.IsFocused = ReferenceEquals(item, _focused);
         item.TextBrush = _vm?.TextBrush;
 
         // 手动挑过的占位图标优先于真实图标（原型「更换图标」的语义）
@@ -543,6 +544,7 @@ public partial class DockWindow : Window, IDockHost
         if (_focused is not null)
         {
             _focused.RingBrush = null;
+            _focused.IsFocused = false;
         }
 
         _focused = item;
@@ -550,6 +552,7 @@ public partial class DockWindow : Window, IDockHost
         if (_focused is not null)
         {
             _focused.RingBrush = _vm?.AccentBrush;
+            _focused.IsFocused = true;
         }
     }
 
@@ -923,7 +926,11 @@ public partial class DockWindow : Window, IDockHost
             menu.Items.Add(MenuEntry("复制为命令", () => CopyToClipboard(ItemQuery.ToCommandText(captured.Model))));
             menu.Items.Add(MenuEntry("在资源管理器中显示", () => RevealInExplorer(captured.Model.Target)));
             menu.Items.Add(new Separator());
-            menu.Items.Add(MenuEntry("从 Dock 移除", () => _vm.RemoveCommand.Execute(captured)));
+            menu.Items.Add(MenuEntry("从 Dock 移除", () =>
+            {
+                menu.Close();
+                _vm.RemoveCommand.Execute(captured);
+            }));
         }
 
         menu.PlacementTarget = ItemsHost;
