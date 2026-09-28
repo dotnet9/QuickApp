@@ -20,11 +20,11 @@ $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = (Resolve-Path (Join-Path $scriptRoot "..")).Path
 
 if ([string]::IsNullOrWhiteSpace($PublishRoot)) {
-    $PublishRoot = Join-Path $repoRoot "artifacts\publish"
+    $PublishRoot = Join-Path (Join-Path $repoRoot "artifacts") "publish"
 }
 
 if ([string]::IsNullOrWhiteSpace($ReleaseRoot)) {
-    $ReleaseRoot = Join-Path $repoRoot "artifacts\release"
+    $ReleaseRoot = Join-Path (Join-Path $repoRoot "artifacts") "release"
 }
 
 # Locate the folder to package: use the explicit one, otherwise probe rid/[tfm/]AssemblyName.
@@ -36,7 +36,7 @@ if ([string]::IsNullOrWhiteSpace($SourceDirectory)) {
 
     $candidates = @()
     if (-not [string]::IsNullOrWhiteSpace($TargetFramework)) {
-        $candidates += (Join-Path $ridRoot "$TargetFramework\$AssemblyName")
+        $candidates += (Join-Path (Join-Path $ridRoot $TargetFramework) $AssemblyName)
     }
 
     $candidates += (Join-Path $ridRoot $AssemblyName)
@@ -106,11 +106,11 @@ if (Test-Path -LiteralPath $zipPath) {
     Remove-Item -LiteralPath $zipPath -Force
 }
 
-$resolvedSource = $sourceDir.TrimEnd('\')
+$resolvedSource = $sourceDir.TrimEnd([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
 $archive = [System.IO.Compression.ZipFile]::Open($zipPath, [System.IO.Compression.ZipArchiveMode]::Create)
 try {
     foreach ($file in $files) {
-        $relative = $file.FullName.Substring($resolvedSource.Length).TrimStart('\').Replace('\', '/')
+        $relative = $file.FullName.Substring($resolvedSource.Length).TrimStart([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar).Replace([IO.Path]::DirectorySeparatorChar, '/')
         [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
             $archive, $file.FullName, $relative, [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
     }

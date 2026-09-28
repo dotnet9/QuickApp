@@ -33,8 +33,16 @@ public static class LaunchPlanner
                 return new LaunchPlan(target, string.Empty, UseShellExecute: true, null);
 
             case ItemKind.Command:
-                // start "" <命令>：立即返回，不留隐藏的 cmd 进程
-                return new LaunchPlan("cmd.exe", "/c start \"\" " + target, UseShellExecute: false, null);
+                if (OperatingSystem.IsWindows())
+                {
+                    // start "" <命令>：立即返回，不留隐藏的 cmd 进程
+                    return new LaunchPlan("cmd.exe", "/c start \"\" " + target, UseShellExecute: false, null);
+                }
+
+                // Linux/macOS 没有 cmd.exe；交给系统 shell 执行用户配置的命令。
+                string shellCommand = target.Replace("\\", "\\\\", StringComparison.Ordinal)
+                    .Replace("\"", "\\\"", StringComparison.Ordinal);
+                return new LaunchPlan("/bin/sh", "-c \"" + shellCommand + "\"", UseShellExecute: false, null);
 
             default:
                 string? workingDirectory = string.IsNullOrWhiteSpace(item.WorkingDirectory)
