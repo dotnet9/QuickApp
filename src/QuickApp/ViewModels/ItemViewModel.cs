@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Windows.Input;
+using Avalonia;
 using Avalonia.Layout;
 using Avalonia.Media;
 using QuickApp.Core.Models;
@@ -32,20 +33,36 @@ public sealed class ItemViewModel : ViewModelBase
     private double _tileSize = 44;
     private Orientation _itemOrientation = Orientation.Vertical;
 
-    public ItemViewModel(LauncherItem model, Action<ItemViewModel>? activate = null, Action<ItemViewModel>? remove = null)
+    public ItemViewModel(
+        LauncherItem model,
+        Action<ItemViewModel>? activate = null,
+        Action<ItemViewModel>? remove = null,
+        Action<ItemViewModel>? addToDock = null,
+        bool isSystemResult = false)
     {
         Model = model;
+        IsSystemResult = isSystemResult;
         ActivateCommand = ReactiveCommand.Create(() => activate?.Invoke(this));
         RemoveCommand = ReactiveCommand.Create(() => remove?.Invoke(this));
+        AddToDockCommand = ReactiveCommand.Create(() => addToDock?.Invoke(this));
     }
 
     public LauncherItem Model { get; }
+
+    /// <summary>搜索结果中的系统应用候选，尚未加入用户配置。</summary>
+    public bool IsSystemResult { get; }
+
+    public bool ShowSystemAdd => IsSystemResult;
+
+    public string ResultStatus => IsSystemResult ? "系统已安装 · 未配置" : string.Empty;
 
     public string Id => Model.Id;
 
     public ICommand ActivateCommand { get; }
 
     public ICommand RemoveCommand { get; }
+
+    public ICommand AddToDockCommand { get; }
 
     public string Name
     {
@@ -179,6 +196,9 @@ public sealed class ItemViewModel : ViewModelBase
     /// <summary>图标排布是否竖向（横排在名称上方）：决定移除按钮放左上还是右上。</summary>
     public bool IsItemVertical => ItemOrientation == Orientation.Vertical;
 
+    /// <summary>上/下 Dock 为了显示 10 项按瓦片宽度截断名称，左/右 Dock 给名称更多空间。</summary>
+    public double LabelMaxWidth => IsItemVertical ? TileSize : 108;
+
     /// <summary>编辑模式下才显示右上角的移除按钮。</summary>
     public bool ShowRemove
     {
@@ -224,12 +244,17 @@ public sealed class ItemViewModel : ViewModelBase
             if (Set(ref _tileSize, value))
             {
                 this.RaisePropertyChanged(nameof(TileRadius));
+                this.RaisePropertyChanged(nameof(TileCornerRadius));
                 this.RaisePropertyChanged(nameof(IconSize));
+                this.RaisePropertyChanged(nameof(LabelMaxWidth));
             }
         }
     }
 
     public double TileRadius => Math.Round(TileSize * 0.28, 1);
+
+    /// <summary>明确提供 CornerRadius 类型，确保图标四角圆角在 Avalonia 绑定中生效。</summary>
+    public CornerRadius TileCornerRadius => new(TileRadius);
 
     public double IconSize => Math.Round(TileSize * 0.5, 1);
 
@@ -245,6 +270,7 @@ public sealed class ItemViewModel : ViewModelBase
             if (Set(ref _itemOrientation, value))
             {
                 this.RaisePropertyChanged(nameof(IsItemVertical));
+                this.RaisePropertyChanged(nameof(LabelMaxWidth));
             }
         }
     }

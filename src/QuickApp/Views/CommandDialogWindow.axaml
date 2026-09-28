@@ -27,7 +27,7 @@
             Background="{Binding SettingsBackgroundBrush}"
             BorderBrush="{Binding PanelBorderBrush}"
             BorderThickness="1"
-            CornerRadius="{Binding PanelRadius}">
+            CornerRadius="{Binding PanelCornerRadius}">
       <StackPanel Margin="18,0,18,16">
 
         <Grid ColumnDefinitions="*,Auto" Margin="-18,0,-18,0" Name="HeaderBar" Cursor="SizeAll">

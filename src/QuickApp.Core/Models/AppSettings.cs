@@ -13,14 +13,14 @@ public sealed class AppSettings
     public string Style { get; set; } = "glass";
 
     /// <summary>是否在图标下方显示名称（对应原型的「仅图标 / 图标 + 名称」）。</summary>
-    public bool ShowLabels { get; set; } = true;
+    public bool ShowLabels { get; set; }
 
     public double TileSize { get; set; } = 44;
 
     public double CornerRadius { get; set; } = 18;
 
     /// <summary>面板不透明度 0.4 ~ 1.0。</summary>
-    public double PanelOpacity { get; set; } = 0.55;
+    public double PanelOpacity { get; set; } = 0.4;
 
     /// <summary>钉住后不再自动隐藏。</summary>
     public bool Pinned { get; set; }

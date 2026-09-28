@@ -29,6 +29,7 @@ namespace QuickApp.Views;
 public partial class DockWindow : Window, IDockHost
 {
     private const int DockMargin = 10;
+    private const int WindowShadowMargin = 12;
     private const int EdgeBand = 6;
     private const double DragThreshold = 5;
 
@@ -37,6 +38,7 @@ public partial class DockWindow : Window, IDockHost
     private readonly DispatcherTimer _edgeTimer;
     private DockViewModel? _vm;
     private bool _isHidden;
+    private bool _isMoreMenuOpen;
     private double _progress;
 
     private ItemViewModel? _focused;
@@ -46,11 +48,13 @@ public partial class DockWindow : Window, IDockHost
     private Point _dragPressPosition;
     private bool _dragStarted;
 
-    // 拖动手柄吸附：拖动中窗口跟手，光标最近边显示吸附提示，松手落边
+    // 面板空白处拖动吸附：窗口跟手，光标最近边显示吸附提示，松手落边
     private bool _dockDragging;
+    private bool _dockDragStarted;
     private PixelPoint _dragCursorOrigin;
     private PixelPoint _dragWindowOrigin;
     private DockEdge _dragEdge;
+    private int _dragMonitorIndex = -1;
     private Window? _snapChip;
     private TextBlock? _snapChipText;
 
@@ -68,7 +72,7 @@ public partial class DockWindow : Window, IDockHost
         _hideTimer.Tick += (_, _) =>
         {
             _hideTimer.Stop();
-            if (_vm is not null && !_vm.IsPointerOver && !_vm.IsPinned && !_vm.IsSearchOpen && !_vm.IsEditMode)
+            if (_vm is not null && !_dockDragging && !_vm.IsPointerOver && !_vm.IsPinned && !_vm.IsSearchOpen && !_vm.IsEditMode && !_isMoreMenuOpen)
             {
                 _vm.IsDockVisible = false;
             }
@@ -103,18 +107,18 @@ public partial class DockWindow : Window, IDockHost
         viewModel.DockVisibilityChanged += (_, visible) => SetDockVisible(visible, animate: true);
         viewModel.PointerOverChanged += (_, over) => OnPointerOverChanged(over);
         viewModel.Items.CollectionChanged += OnItemsChanged;
+        viewModel.InstalledItems.CollectionChanged += OnItemsChanged;
         viewModel.ItemVisualRequested += ApplyItemVisual;
         viewModel.ContextRequested += ShowContextMenu;
         viewModel.PropertyChanged += OnViewModelPropertyChanged;
 
         BuildActionIcons();
 
-        // Button 的类处理器在冒泡阶段把 PointerPressed 标记为已处理，
-        // 手柄的四个指针事件必须走 Tunnel 才能先于按钮自身的点击逻辑
-        MoveButton.AddHandler(PointerPressedEvent, OnMoveButtonPointerPressed, RoutingStrategies.Tunnel);
-        MoveButton.AddHandler(PointerMovedEvent, OnMoveButtonPointerMoved, RoutingStrategies.Tunnel);
-        MoveButton.AddHandler(PointerReleasedEvent, OnMoveButtonPointerReleased, RoutingStrategies.Tunnel);
-        MoveButton.AddHandler(PointerCaptureLostEvent, OnMoveButtonPointerCaptureLost, RoutingStrategies.Tunnel);
+        // 在面板隧道阶段识别空白区域拖动；子控件的交互仍由各自处理器接管。
+        Panel.AddHandler(PointerPressedEvent, OnPanelPointerPressed, RoutingStrategies.Tunnel);
+        Panel.AddHandler(PointerMovedEvent, OnPanelPointerMoved, RoutingStrategies.Tunnel);
+        Panel.AddHandler(PointerReleasedEvent, OnPanelPointerReleased, RoutingStrategies.Tunnel);
+        Panel.AddHandler(PointerCaptureLostEvent, OnPanelPointerCaptureLost, RoutingStrategies.Tunnel);
 
         AddButton.Click += OnAddClicked;
         MoreButton.Click += OnMoreClicked;
@@ -165,9 +169,19 @@ public partial class DockWindow : Window, IDockHost
 
             case nameof(DockViewModel.IsSearchOpen):
             case nameof(DockViewModel.IsEditMode):
+            case nameof(DockViewModel.IsSearchEmpty):
+            case nameof(DockViewModel.HasConfiguredResults):
+            case nameof(DockViewModel.HasInstalledResults):
+            case nameof(DockViewModel.ConfiguredGroupTitle):
+            case nameof(DockViewModel.InstalledGroupTitle):
                 // 关闭搜索/编辑后若鼠标不在 Dock 上，重新进入自动隐藏倒计时
                 ScheduleReposition();
+                UpdateScrollChrome();
                 ScheduleAutoHide();
+                if (e.PropertyName == nameof(DockViewModel.IsSearchOpen) && _vm?.IsSearchOpen == true)
+                {
+                    FocusSearchBox();
+                }
                 break;
 
             case nameof(DockViewModel.IsPinned):
@@ -182,6 +196,9 @@ public partial class DockWindow : Window, IDockHost
             case nameof(DockViewModel.PanelBrush):
                 ApplyTransparency();
                 UpdateFadeBrushes();
+                // 图标由 Path 自绘，Stroke 不会继承 Button.Foreground；切换主题时重建，保持颜色同步。
+                BuildActionIcons();
+                UpdatePinState();
                 break;
         }
     }
@@ -238,16 +255,17 @@ public partial class DockWindow : Window, IDockHost
             return;
         }
 
-        double track = vertical ? ScrollArea.Bounds.Height - 10 : ScrollArea.Bounds.Width - 10;
+        double track = vertical ? ScrollArea.Bounds.Height - 48 : ScrollArea.Bounds.Width - 48;
         double ratio = vertical ? viewport.Height / extent.Height : viewport.Width / extent.Width;
         double thumb = Math.Max(14, track * ratio);
         double progress = (vertical ? offset.Y : offset.X) / maxOffset;
 
         if (vertical)
         {
-            ScrollIndicator.Width = 3;
+            ScrollIndicator.Width = 2;
             ScrollIndicator.HorizontalAlignment = HorizontalAlignment.Right;
             ScrollIndicator.VerticalAlignment = VerticalAlignment.Stretch;
+            ScrollIndicator.Margin = new Thickness(0, 24, 5, 24);
             ScrollThumb.Width = double.NaN;
             ScrollThumb.HorizontalAlignment = HorizontalAlignment.Stretch;
             ScrollThumb.Height = thumb;
@@ -256,9 +274,10 @@ public partial class DockWindow : Window, IDockHost
         }
         else
         {
-            ScrollIndicator.Height = 3;
+            ScrollIndicator.Height = 2;
             ScrollIndicator.HorizontalAlignment = HorizontalAlignment.Stretch;
             ScrollIndicator.VerticalAlignment = VerticalAlignment.Bottom;
+            ScrollIndicator.Margin = new Thickness(24, 0, 24, 4);
             ScrollThumb.Height = double.NaN;
             ScrollThumb.VerticalAlignment = VerticalAlignment.Stretch;
             ScrollThumb.Width = thumb;
@@ -271,7 +290,7 @@ public partial class DockWindow : Window, IDockHost
     private void UpdateScrollChromeLayout()
     {
         bool vertical = _vm?.IsVertical ?? false;
-        const double fadeLength = 26;
+        const double fadeLength = 22;
 
         if (vertical)
         {
@@ -299,7 +318,7 @@ public partial class DockWindow : Window, IDockHost
         UpdateFadeBrushes();
     }
 
-    /// <summary>渐隐画刷：面板色（近似不透明）渐到透明，方向随停靠边。</summary>
+    /// <summary>渐隐画刷：用低透明度面板色提示两端仍有应用，方向随停靠边。</summary>
     private void UpdateFadeBrushes()
     {
         if (_vm is null || _vm.SettingsBackgroundBrush is not SolidColorBrush surface)
@@ -308,7 +327,7 @@ public partial class DockWindow : Window, IDockHost
         }
 
         Color c = surface.Color;
-        Color from = Color.FromArgb(230, c.R, c.G, c.B);
+        Color from = Color.FromArgb(96, c.R, c.G, c.B);
         Color to = Color.FromArgb(0, c.R, c.G, c.B);
 
         bool vertical = _vm.IsVertical;
@@ -320,8 +339,8 @@ public partial class DockWindow : Window, IDockHost
         };
         FadeEnd.Background = new LinearGradientBrush
         {
-            StartPoint = new RelativePoint(vertical ? 0 : 1, 0, RelativeUnit.Relative),
-            EndPoint = new RelativePoint(vertical ? 0 : 1, vertical ? 1 : 0, RelativeUnit.Relative),
+            StartPoint = new RelativePoint(vertical ? 0 : 1, vertical ? 1 : 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
             GradientStops = { new GradientStop(from, 0), new GradientStop(to, 1) }
         };
     }
@@ -399,16 +418,19 @@ public partial class DockWindow : Window, IDockHost
 
     private void BuildActionIcons()
     {
-        IBrush color = _vm?.TextDimBrush ?? Brushes.Gray;
-        SetIcon(MoveButton, Icons.Grip, 14, color);
+        // 原型中的紧凑工具区使用高对比度图标，采用正文色（深色主题下接近白色），避免过暗。
+        IBrush color = _vm?.TextBrush ?? Brushes.White;
         SetIcon(SearchButton, Icons.Search, 15, color);
-        SetIcon(EditButton, Icons.Pencil, 15, color);
         SetIcon(AddButton, Icons.Plus, 16, color);
         SetIcon(MoreButton, Icons.More, 16, color);
+        if (MoreButton.Content is Path morePath)
+        {
+            morePath.Fill = color;
+            morePath.StrokeThickness = 0;
+        }
         SetIcon(PinButton, Icons.Pin, 15, color);
         SetIcon(CollapseButton, Icons.ChevronUp, 14, color);
 
-        MoveButton.Cursor = new Cursor(StandardCursorType.SizeAll);
         UpdateCollapseIcon();
     }
 
@@ -476,6 +498,29 @@ public partial class DockWindow : Window, IDockHost
             .FirstOrDefault(b => b.Classes.Contains("tile"));
 
         return border?.DataContext as ItemViewModel;
+    }
+
+    private void OnInstalledResultPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (_vm is null
+            || !e.GetCurrentPoint(this).Properties.IsLeftButtonPressed
+            || (e.Source as Visual)?.GetSelfAndVisualAncestors().OfType<Button>().Any() == true)
+        {
+            return;
+        }
+
+        ItemViewModel? item = (e.Source as Visual)?.GetSelfAndVisualAncestors()
+            .Select(visual => visual.DataContext)
+            .OfType<ItemViewModel>()
+            .FirstOrDefault(candidate => candidate.IsSystemResult);
+
+        if (item is null)
+        {
+            return;
+        }
+
+        _vm.RunCommand.Execute(item);
+        e.Handled = true;
     }
 
     private static Border? TileOf(object? source)
@@ -771,6 +816,11 @@ public partial class DockWindow : Window, IDockHost
             _vm.RunCommand.Execute(_vm.Items[0]);
             e.Handled = true;
         }
+        else if (e.Key == Key.Enter && _vm.InstalledItems.Count > 0)
+        {
+            _vm.RunCommand.Execute(_vm.InstalledItems[0]);
+            e.Handled = true;
+        }
     }
 
     private void MoveFocus(int step)
@@ -973,11 +1023,13 @@ public partial class DockWindow : Window, IDockHost
         }
     }
 
-    // ---------------- 拖动手柄吸附四边 ----------------
+    // ---------------- 面板空白处拖动吸附四边 ----------------
 
-    private void OnMoveButtonPointerPressed(object? sender, PointerPressedEventArgs e)
+    private void OnPanelPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (_vm is null || !e.GetCurrentPoint(MoveButton).Properties.IsLeftButtonPressed)
+        if (_vm is null
+            || !e.GetCurrentPoint(Panel).Properties.IsLeftButtonPressed
+            || IsInteractiveDockTarget(e.Source))
         {
             return;
         }
@@ -990,16 +1042,17 @@ public partial class DockWindow : Window, IDockHost
         _dragCursorOrigin = new PixelPoint(cursor.X, cursor.Y);
         _dragWindowOrigin = Position;
         _dragEdge = _vm.Settings.Edge;
+        _dragMonitorIndex = _vm.Settings.MonitorIndex;
         _dockDragging = true;
+        _dockDragStarted = false;
         _hideTimer.Stop();
-        e.Pointer.Capture(MoveButton);
-        ShowSnapChip(_dragCursorOrigin);
+        e.Pointer.Capture(Panel);
         e.Handled = true;
     }
 
-    private void OnMoveButtonPointerMoved(object? sender, PointerEventArgs e)
+    private void OnPanelPointerMoved(object? sender, PointerEventArgs e)
     {
-        if (!_dockDragging || !e.GetCurrentPoint(MoveButton).Properties.IsLeftButtonPressed)
+        if (!_dockDragging || !e.GetCurrentPoint(Panel).Properties.IsLeftButtonPressed)
         {
             return;
         }
@@ -1010,6 +1063,18 @@ public partial class DockWindow : Window, IDockHost
         }
 
         var pointer = new PixelPoint(cursor.X, cursor.Y);
+        if (!_dockDragStarted)
+        {
+            int distance = Math.Abs(pointer.X - _dragCursorOrigin.X) + Math.Abs(pointer.Y - _dragCursorOrigin.Y);
+            if (distance < DragThreshold)
+            {
+                return;
+            }
+
+            _dockDragStarted = true;
+            ShowSnapChip(_dragCursorOrigin);
+        }
+
         Position = new PixelPoint(
             _dragWindowOrigin.X + pointer.X - _dragCursorOrigin.X,
             _dragWindowOrigin.Y + pointer.Y - _dragCursorOrigin.Y);
@@ -1019,30 +1084,74 @@ public partial class DockWindow : Window, IDockHost
         e.Handled = true;
     }
 
-    private void OnMoveButtonPointerReleased(object? sender, PointerReleasedEventArgs e)
+    private void OnPanelPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
         if (!_dockDragging)
         {
             return;
         }
 
+        bool moved = _dockDragStarted;
+        _dockDragging = false;
+        _dockDragStarted = false;
         e.Pointer.Capture(null);
         e.Handled = true;
-        FinishDockDrag();
-    }
-
-    private void OnMoveButtonPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
-    {
-        if (_dockDragging)
+        if (moved)
         {
             FinishDockDrag();
         }
+    }
+
+    private void OnPanelPointerCaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        if (!_dockDragging)
+        {
+            return;
+        }
+
+        bool moved = _dockDragStarted;
+        _dockDragging = false;
+        _dockDragStarted = false;
+        if (moved)
+        {
+            FinishDockDrag();
+        }
+        else
+        {
+            HideSnapChip();
+        }
+    }
+
+    private bool IsInteractiveDockTarget(object? source)
+    {
+        if (source is not Visual visual)
+        {
+            return true;
+        }
+
+        foreach (Visual ancestor in visual.GetSelfAndVisualAncestors())
+        {
+            if (ancestor is Button or TextBox or TextBlock or Path or Image or ScrollBar
+                || ReferenceEquals(ancestor, ItemsHost)
+                || ReferenceEquals(ancestor, InstalledItemsHost))
+            {
+                return true;
+            }
+
+            if (ReferenceEquals(ancestor, Panel))
+            {
+                break;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>松手：吸附到拖动中判定的最近边；与当前边相同则只是把窗口摆回去。</summary>
     private void FinishDockDrag()
     {
         _dockDragging = false;
+        _dockDragStarted = false;
         HideSnapChip();
 
         if (_vm is null)
@@ -1052,9 +1161,17 @@ public partial class DockWindow : Window, IDockHost
 
         DockEdge edge = _dragEdge;
         bool changed = _vm.Settings.Edge != edge;
+        bool monitorChanged = _vm.Settings.MonitorIndex != _dragMonitorIndex;
+        // Set the destination screen before SetEdge saves and schedules the final placement.
+        _vm.Settings.MonitorIndex = _dragMonitorIndex;
         _vm.SetEdgeCommand.Execute(edge);
         if (!changed)
         {
+            if (monitorChanged)
+            {
+                _vm.Save();
+            }
+
             _vm.Toast("Dock 回到" + DockPlacement.Label(edge) + "边缘");
             ScheduleReposition();
         }
@@ -1068,16 +1185,21 @@ public partial class DockWindow : Window, IDockHost
             return DockEdge.Top;
         }
 
-        (PixelRect Work, double Scaling)? screen = null;
+        (PixelRect Work, double Scaling, int MonitorIndex)? screen = null;
         try
         {
             if (Screens.ScreenFromPoint(cursor) is { } byPoint)
             {
-                screen = (byPoint.WorkingArea, byPoint.Scaling);
+                screen = (byPoint.WorkingArea, byPoint.Scaling, ResolveMonitorIndex(byPoint.Bounds));
+            }
+            else if (_dragMonitorIndex >= 0 && _dragMonitorIndex < Screens.All.Count)
+            {
+                var previous = Screens.All[_dragMonitorIndex];
+                screen = (previous.WorkingArea, previous.Scaling, _dragMonitorIndex);
             }
             else if (Screens.Primary is { } primary)
             {
-                screen = (primary.WorkingArea, primary.Scaling);
+                screen = (primary.WorkingArea, primary.Scaling, ResolveMonitorIndex(primary.Bounds));
             }
         }
         catch
@@ -1091,12 +1213,31 @@ public partial class DockWindow : Window, IDockHost
         }
 
         PixelRect work = screen.Value.Work;
+        _dragMonitorIndex = screen.Value.MonitorIndex;
         double scaling = screen.Value.Scaling <= 0 ? 1 : screen.Value.Scaling;
         var center = new PixelPoint(
             Position.X + (int)(ClientSize.Width * scaling / 2),
             Position.Y + (int)(ClientSize.Height * scaling / 2));
 
         return DockPlacement.NearestEdge(center.X, center.Y, work.X, work.Y, work.Width, work.Height);
+    }
+
+    private int ResolveMonitorIndex(PixelRect bounds)
+    {
+        if (Screens.Primary is { } primary && primary.Bounds.Equals(bounds))
+        {
+            return -1;
+        }
+
+        for (int index = 0; index < Screens.All.Count; index++)
+        {
+            if (Screens.All[index].Bounds.Equals(bounds))
+            {
+                return index;
+            }
+        }
+
+        return _vm?.Settings.MonitorIndex ?? -1;
     }
 
     private void ShowSnapChip(PixelPoint cursor)
@@ -1173,7 +1314,7 @@ public partial class DockWindow : Window, IDockHost
     /// </summary>
     private void ScheduleAutoHide()
     {
-        if (_vm is null || _vm.IsPinned || !_vm.IsDockVisible || _vm.IsPointerOver)
+        if (_vm is null || _dockDragging || _vm.IsPinned || !_vm.IsDockVisible || _vm.IsPointerOver || _isMoreMenuOpen)
         {
             return;
         }
@@ -1267,7 +1408,7 @@ public partial class DockWindow : Window, IDockHost
 
     private void ApplyPosition(double progress)
     {
-        // 拖动手柄期间窗口跟手，别的重定位来源一律让路
+        // 拖动期间窗口跟手，别的重定位来源一律让路
         if (_vm is null || _dockDragging)
         {
             return;
@@ -1305,7 +1446,9 @@ public partial class DockWindow : Window, IDockHost
 
         (int x, int y) = DockPlacement.Anchor(
             work.X, work.Y, work.Width, work.Height,
-            dockWidth, dockHeight, _vm.Settings.Edge, DockMargin, offset);
+            dockWidth, dockHeight, _vm.Settings.Edge,
+            (int)Math.Round((DockMargin - WindowShadowMargin) * scaling, MidpointRounding.AwayFromZero),
+            offset);
 
         var target = new PixelPoint(x, y);
         if (Position != target)
@@ -1447,7 +1590,7 @@ public partial class DockWindow : Window, IDockHost
     {
         SearchBox.Focus();
         SearchBox.SelectAll();
-    }, DispatcherPriority.Input);
+    }, DispatcherPriority.Loaded);
 
     /// <summary>被第二个实例或托盘唤醒：显示并激活。</summary>
     public void ActivateFromExternal()
@@ -1584,6 +1727,13 @@ public partial class DockWindow : Window, IDockHost
         exit.Click += (_, _) => Exit();
         flyout.Items.Add(exit);
 
+        _isMoreMenuOpen = true;
+        _hideTimer.Stop();
+        flyout.Closed += (_, _) =>
+        {
+            _isMoreMenuOpen = false;
+            ScheduleAutoHide();
+        };
         flyout.ShowAt(MoreButton);
     }
 
