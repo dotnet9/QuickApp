@@ -5,6 +5,7 @@ using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Primitives.PopupPositioning;
 using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -30,13 +31,16 @@ public partial class DockWindow : Window, IDockHost
 {
     private const int DockMargin = 10;
     private const int WindowShadowMargin = 12;
-    private const int EdgeBand = 6;
     private const double DragThreshold = 5;
 
     private readonly DispatcherTimer _animator;
     private readonly DispatcherTimer _hideTimer;
-    private readonly DispatcherTimer _edgeTimer;
+    private readonly DispatcherTimer _revealTimer;
     private DockViewModel? _vm;
+    private Window? _revealHandleWindow;
+    private Border? _revealHandleBar;
+    private Border? _revealHandleHitTarget;
+    private bool _isRevealHandlePointerOver;
     private bool _isHidden;
     private bool _isMoreMenuOpen;
     private bool _isContextMenuOpen;
@@ -74,16 +78,14 @@ public partial class DockWindow : Window, IDockHost
         _hideTimer.Tick += (_, _) =>
         {
             _hideTimer.Stop();
-            if (_vm is not null && !_dockDragging && !_vm.IsPointerOver && !_vm.IsPinned && !_vm.IsSearchOpen && !_vm.IsEditMode && !_isMoreMenuOpen && !_isContextMenuOpen)
+            if (_vm is not null && !_dockDragging && !_isRevealHandlePointerOver && !_vm.IsPointerOver && !_vm.IsPinned && !_vm.IsSearchOpen && !_vm.IsEditMode && !_isMoreMenuOpen && !_isContextMenuOpen)
             {
                 _vm.IsDockVisible = false;
             }
         };
 
-        // 「触边滑出」：收起后用 150ms 的光标轮询判断是否贴边，
-        // 比再开一个置顶透明热区窗口简单，也不会抢焦点。
-        _edgeTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(150) };
-        _edgeTimer.Tick += (_, _) => CheckEdgeReveal();
+        _revealTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+        _revealTimer.Tick += OnRevealTimerTick;
 
         // 内容尺寸变化会经 SizeToContent 反映到窗口尺寸上，SizeChanged 已覆盖重定位
         SizeChanged += OnWindowResized;
@@ -115,6 +117,7 @@ public partial class DockWindow : Window, IDockHost
         viewModel.PropertyChanged += OnViewModelPropertyChanged;
 
         BuildActionIcons();
+        CreateRevealHandle();
 
         // 在面板隧道阶段识别空白区域拖动；子控件的交互仍由各自处理器接管。
         Panel.AddHandler(PointerPressedEvent, OnPanelPointerPressed, RoutingStrategies.Tunnel);
@@ -122,7 +125,6 @@ public partial class DockWindow : Window, IDockHost
         Panel.AddHandler(PointerReleasedEvent, OnPanelPointerReleased, RoutingStrategies.Tunnel);
         Panel.AddHandler(PointerCaptureLostEvent, OnPanelPointerCaptureLost, RoutingStrategies.Tunnel);
 
-        AddButton.Click += OnAddClicked;
         MoreButton.Click += OnMoreClicked;
 
         // 图标区交互：左键执行、右键菜单、编辑模式拖动排序、双击改名、键盘导航
@@ -135,6 +137,7 @@ public partial class DockWindow : Window, IDockHost
         ItemsHost.AddHandler(KeyUpEvent, OnRenameBoxKeyUp, RoutingStrategies.Tunnel);
         ItemsHost.AddHandler(LostFocusEvent, OnRenameBoxLostFocus, RoutingStrategies.Bubble);
         ItemsHost.AddHandler(ContextRequestedEvent, OnContextRequested, RoutingStrategies.Tunnel);
+        InstalledItemsHost.AddHandler(KeyDownEvent, OnItemsKeyDown, RoutingStrategies.Tunnel);
 
         // 滚动 chrome（原型：滚轮横扫、两端渐隐、指示条）
         ItemsScroll.PointerWheelChanged += OnScrollWheel;
@@ -149,10 +152,14 @@ public partial class DockWindow : Window, IDockHost
             UpdatePinState();
             ReportTransparencyLevel();
             UpdateScrollChromeLayout();
-            _edgeTimer.Start();
+            UpdateRevealHandleVisibility();
         };
 
-        Closed += (_, _) => _edgeTimer.Stop();
+        Closed += (_, _) =>
+        {
+            _revealTimer.Stop();
+            _revealHandleWindow?.Hide();
+        };
     }
 
     private void OnItemsChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -191,8 +198,13 @@ public partial class DockWindow : Window, IDockHost
                 }
                 break;
 
+            case nameof(DockViewModel.SearchQuery):
+                SetFocused(null);
+                break;
+
             case nameof(DockViewModel.IsPinned):
                 UpdatePinState();
+                UpdateRevealHandleVisibility();
                 ScheduleAutoHide();
                 break;
 
@@ -388,6 +400,8 @@ public partial class DockWindow : Window, IDockHost
                 ? _vm?.AccentBrush ?? Brushes.DodgerBlue
                 : _vm?.TextDimBrush ?? Brushes.Gray;
         }
+
+        ToolTip.SetTip(PinButton, pinned ? "取消钉住 Dock" : "钉住 Dock");
     }
 
     /// <summary>
@@ -428,7 +442,6 @@ public partial class DockWindow : Window, IDockHost
         // 原型中的紧凑工具区使用高对比度图标，采用正文色（深色主题下接近白色），避免过暗。
         IBrush color = _vm?.TextBrush ?? Brushes.White;
         SetIcon(SearchButton, Icons.Search, 15, color);
-        SetIcon(AddButton, Icons.Plus, 16, color);
         SetIcon(MoreButton, Icons.More, 16, color);
         if (MoreButton.Content is Path morePath)
         {
@@ -439,6 +452,193 @@ public partial class DockWindow : Window, IDockHost
         SetIcon(CollapseButton, Icons.ChevronUp, 14, color);
 
         UpdateCollapseIcon();
+    }
+
+    private void CreateRevealHandle()
+    {
+        var bar = new Border
+        {
+            Width = 54,
+            Height = 5,
+            CornerRadius = new CornerRadius(3),
+            Background = _vm?.TextDimBrush ?? Brushes.Gray,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
+            IsHitTestVisible = false
+        };
+        var hitTarget = new Border
+        {
+            Width = 78,
+            Height = 24,
+            Background = Brushes.Transparent,
+            Child = bar
+        };
+        hitTarget.PointerEntered += OnRevealHandlePointerEntered;
+        hitTarget.PointerExited += OnRevealHandlePointerExited;
+        hitTarget.PointerPressed += OnRevealHandlePointerPressed;
+        _revealHandleBar = bar;
+        _revealHandleHitTarget = hitTarget;
+
+        _revealHandleWindow = new Window
+        {
+            Title = "QuickApp Dock handle",
+            Width = 78,
+            Height = 24,
+            ShowInTaskbar = false,
+            ShowActivated = false,
+            CanResize = false,
+            Topmost = true,
+            WindowDecorations = WindowDecorations.None,
+            WindowStartupLocation = WindowStartupLocation.Manual,
+            Background = Brushes.Transparent,
+            TransparencyLevelHint = new[] { WindowTransparencyLevel.Transparent },
+            TransparencyBackgroundFallback = Brushes.Transparent,
+            Content = hitTarget
+        };
+
+        UpdateRevealHandleLayout();
+    }
+
+    private void UpdateRevealHandleLayout()
+    {
+        if (_revealHandleWindow is null || _revealHandleBar is null || _revealHandleHitTarget is null)
+        {
+            return;
+        }
+
+        DockEdge edge = _vm?.Settings.Edge ?? DockEdge.Top;
+        bool vertical = DockPlacement.IsVertical(edge);
+        _revealHandleWindow.Width = vertical ? 24 : 78;
+        _revealHandleWindow.Height = vertical ? 78 : 24;
+        _revealHandleHitTarget.Width = vertical ? 24 : 78;
+        _revealHandleHitTarget.Height = vertical ? 78 : 24;
+        _revealHandleBar.Width = vertical ? 5 : 54;
+        _revealHandleBar.Height = vertical ? 54 : 5;
+        _revealHandleBar.HorizontalAlignment = edge switch
+        {
+            DockEdge.Left => Avalonia.Layout.HorizontalAlignment.Left,
+            DockEdge.Right => Avalonia.Layout.HorizontalAlignment.Right,
+            _ => Avalonia.Layout.HorizontalAlignment.Center
+        };
+        _revealHandleBar.VerticalAlignment = edge switch
+        {
+            DockEdge.Top => Avalonia.Layout.VerticalAlignment.Top,
+            DockEdge.Bottom => Avalonia.Layout.VerticalAlignment.Bottom,
+            _ => Avalonia.Layout.VerticalAlignment.Center
+        };
+        UpdateRevealHandlePosition();
+    }
+
+    private void UpdateRevealHandlePosition()
+    {
+        if (_revealHandleWindow is null || _vm is null)
+        {
+            return;
+        }
+
+        var screen = ResolveScreen();
+        if (screen is null)
+        {
+            return;
+        }
+
+        double scaling = screen.Value.Scaling <= 0 ? 1 : screen.Value.Scaling;
+        int width = (int)Math.Ceiling(_revealHandleWindow.Width * scaling);
+        int height = (int)Math.Ceiling(_revealHandleWindow.Height * scaling);
+        int inset = (int)Math.Round(5 * scaling, MidpointRounding.AwayFromZero);
+        PixelRect bounds = screen.Value.Bounds;
+        (int x, int y) = DockPlacement.AnchorHandle(
+            bounds.X, bounds.Y, bounds.Width, bounds.Height, width, height, _vm.Settings.Edge, inset);
+        _revealHandleWindow.Position = new PixelPoint(x, y);
+    }
+
+    private void UpdateRevealHandleVisibility()
+    {
+        if (_vm is null || _revealHandleWindow is null)
+        {
+            return;
+        }
+
+        bool show = _isHidden && _progress >= 0.98 && !_vm.IsPinned;
+        if (!show)
+        {
+            _revealTimer.Stop();
+            if (!_vm.IsDockVisible)
+            {
+                _isRevealHandlePointerOver = false;
+            }
+
+            if (_revealHandleBar is not null)
+            {
+                _revealHandleBar.Background = _vm.TextDimBrush;
+            }
+
+            _revealHandleWindow.Hide();
+            return;
+        }
+
+        UpdateRevealHandleLayout();
+        if (!_revealHandleWindow.IsVisible)
+        {
+            _revealHandleWindow.Show();
+        }
+    }
+
+    private void OnRevealHandlePointerEntered(object? sender, PointerEventArgs e)
+    {
+        _isRevealHandlePointerOver = true;
+        if (_revealHandleBar is not null)
+        {
+            _revealHandleBar.Background = _vm?.AccentBrush ?? Brushes.White;
+        }
+
+        if (_vm?.Settings.RevealOnEdgeTouch == true && _isHidden)
+        {
+            _revealTimer.Stop();
+            _revealTimer.Start();
+        }
+    }
+
+    private void OnRevealHandlePointerExited(object? sender, PointerEventArgs e)
+    {
+        _isRevealHandlePointerOver = false;
+        _revealTimer.Stop();
+        if (_revealHandleBar is not null)
+        {
+            _revealHandleBar.Background = _vm?.TextDimBrush ?? Brushes.Gray;
+        }
+
+        if (_vm?.IsDockVisible == true)
+        {
+            ScheduleAutoHide();
+        }
+    }
+
+    private void OnRevealHandlePointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        Border? hitTarget = _revealHandleHitTarget;
+        if (_vm is null || hitTarget is null
+            || !e.GetCurrentPoint(hitTarget).Properties.IsLeftButtonPressed)
+        {
+            return;
+        }
+
+        _revealTimer.Stop();
+        _vm.IsDockVisible = true;
+        e.Handled = true;
+    }
+
+    private void OnRevealTimerTick(object? sender, EventArgs e)
+    {
+        _revealTimer.Stop();
+        if (_isRevealHandlePointerOver
+            && _vm is not null
+            && _isHidden
+            && !_vm.IsPinned
+            && _vm.Settings.RevealOnEdgeTouch)
+        {
+            _vm.IsDockVisible = true;
+        }
     }
 
     private static void SetIcon(Button button, Geometry geometry, double size, IBrush stroke)
@@ -821,36 +1021,75 @@ public partial class DockWindow : Window, IDockHost
             return;
         }
 
-        if (e.Key == Key.Enter && _vm.Items.Count > 0)
+        if (e.Key == Key.Down)
         {
-            _vm.RunCommand.Execute(_vm.Items[0]);
+            MoveFocus(1);
             e.Handled = true;
         }
-        else if (e.Key == Key.Enter && _vm.InstalledItems.Count > 0)
+        else if (e.Key == Key.Up)
         {
-            _vm.RunCommand.Execute(_vm.InstalledItems[0]);
+            MoveFocus(-1);
             e.Handled = true;
+        }
+        else if (e.Key == Key.Enter)
+        {
+            List<ItemViewModel> results = NavigableItems();
+            ItemViewModel? selected = _focused is not null && results.Contains(_focused)
+                ? _focused
+                : results.FirstOrDefault();
+            if (selected is not null)
+            {
+                _vm.RunCommand.Execute(selected);
+                e.Handled = true;
+            }
         }
     }
 
     private void MoveFocus(int step)
     {
-        if (_vm is null || _vm.Items.Count == 0)
+        List<ItemViewModel> results = NavigableItems();
+        if (results.Count == 0)
         {
             return;
         }
 
-        int index = _focused is null ? -1 : _vm.Items.IndexOf(_focused);
+        int index = _focused is null ? -1 : results.IndexOf(_focused);
         index = index < 0
-            ? (step > 0 ? 0 : _vm.Items.Count - 1)
-            : (index + step + _vm.Items.Count) % _vm.Items.Count;
+            ? (step > 0 ? 0 : results.Count - 1)
+            : (index + step + results.Count) % results.Count;
 
-        SetFocused(_vm.Items[index]);
+        ItemViewModel selected = results[index];
+        SetFocused(selected);
+        Dispatcher.UIThread.Post(() =>
+        {
+            Control? target = ItemsHost.GetVisualDescendants()
+                .Concat(InstalledItemsHost.GetVisualDescendants())
+                .OfType<Control>()
+                .FirstOrDefault(control => control.Focusable && ReferenceEquals(control.DataContext, selected));
+            target?.Focus();
+            target?.BringIntoView();
+        }, DispatcherPriority.Input);
+    }
+
+    private List<ItemViewModel> NavigableItems()
+    {
+        if (_vm is null)
+        {
+            return new List<ItemViewModel>();
+        }
+
+        var results = _vm.Items.ToList();
+        if (_vm.IsSearchGrouped)
+        {
+            results.AddRange(_vm.InstalledItems);
+        }
+
+        return results;
     }
 
     private void OnItemsKeyDown(object? sender, KeyEventArgs e)
     {
-        if (_vm is null || e.Source is TextBox)
+        if (_vm is null || (e.Source as Visual)?.GetSelfAndVisualAncestors().Any(visual => visual is TextBox or Button) == true)
         {
             return;
         }
@@ -907,41 +1146,25 @@ public partial class DockWindow : Window, IDockHost
 
         if (item is null)
         {
-            menu.Items.Add(MenuEntry("添加文件…", () => _ = AddFilesAsync()));
-            menu.Items.Add(MenuEntry("添加命令行…", () => _ = AddCommandAsync()));
-            menu.Items.Add(MenuEntry("进入编辑模式", () => _vm.ToggleEditCommand.Execute(null)));
-            menu.Items.Add(new Separator());
-
-            foreach (DockEdge edge in new[] { DockEdge.Top, DockEdge.Bottom, DockEdge.Left, DockEdge.Right })
-            {
-                DockEdge captured = edge;
-                bool current = _vm.Settings.Edge == captured;
-                menu.Items.Add(MenuEntry(
-                    "停靠到" + DockPlacement.Label(captured) + "边缘" + (current ? "（当前）" : string.Empty),
-                    () => _vm.SetEdgeCommand.Execute(captured),
-                    enabled: !current));
-            }
-
-            menu.Items.Add(new Separator());
-            menu.Items.Add(MenuEntry("设置…", ShowSettings));
-            menu.Items.Add(MenuEntry("退出", Exit));
+            // 与原型 dockMenuSpec 一致：分组标题 + 图标 + danger 红色 + 四向停靠选择器
+            AddDockMenuEntries(menu.Items, () => _contextMenu?.Close());
         }
         else
         {
             ItemViewModel captured = item;
-            menu.Items.Add(MenuEntry("运行", () => _vm.RunCommand.Execute(captured)));
+            menu.Items.Add(MenuEntry("运行", Icons.Play, () => _vm.RunCommand.Execute(captured)));
             menu.Items.Add(new Separator());
-            menu.Items.Add(MenuEntry("编辑名称", () =>
+            menu.Items.Add(MenuEntry("重命名", Icons.Pencil, () =>
             {
                 _vm.BeginRename(captured);
                 FocusRenameBox();
             }));
-            menu.Items.Add(MenuEntry("更换图标", () => Dispatcher.UIThread.Post(() => OpenIconPicker(captured))));
-            menu.Items.Add(MenuEntry("复制路径", () => CopyToClipboard(captured.Model.Target)));
-            menu.Items.Add(MenuEntry("复制为命令", () => CopyToClipboard(ItemQuery.ToCommandText(captured.Model))));
-            menu.Items.Add(MenuEntry("在资源管理器中显示", () => RevealInExplorer(captured.Model.Target)));
+            menu.Items.Add(MenuEntry("图标…", Icons.Grid, () => Dispatcher.UIThread.Post(() => OpenIconPicker(captured))));
+            menu.Items.Add(MenuEntry("复制路径", Icons.Copy, () => CopyToClipboard(captured.Model.Target)));
+            menu.Items.Add(MenuEntry("复制命令", Icons.Terminal, () => CopyToClipboard(ItemQuery.ToCommandText(captured.Model))));
+            menu.Items.Add(MenuEntry("打开位置", Icons.Folder, () => RevealInExplorer(captured.Model.Target)));
             menu.Items.Add(new Separator());
-            menu.Items.Add(MenuEntry("从 Dock 移除", () =>
+            menu.Items.Add(MenuEntry("移除", Icons.Trash, () =>
             {
                 _vm.RemoveCommand.Execute(captured);
                 Dispatcher.UIThread.Post(() =>
@@ -951,7 +1174,7 @@ public partial class DockWindow : Window, IDockHost
                         menu.Close();
                     }
                 });
-            }));
+            }, danger: true));
         }
 
         menu.PlacementTarget = ItemsHost;
@@ -959,9 +1182,139 @@ public partial class DockWindow : Window, IDockHost
         menu.Open(ItemsHost);
     }
 
-    private static MenuItem MenuEntry(string header, Action action, bool enabled = true)
+    /// <summary>原型 dockMenuSpec 的实现：「更多」菜单与空白处右键菜单共用。</summary>
+    private void AddDockMenuEntries(System.Collections.IList items, Action closeMenu)
     {
-        var entry = new MenuItem { Header = header, IsEnabled = enabled };
+        items.Add(MenuTitle("添加"));
+        items.Add(MenuEntry("文件…", Icons.Upload, () => _ = AddFilesAsync()));
+        items.Add(MenuEntry("命令行…", Icons.Terminal, () => _ = AddCommandAsync()));
+        items.Add(new Separator());
+        items.Add(MenuTitle("管理"));
+        items.Add(MenuEntry("编辑模式", Icons.Pencil, () => _vm!.ToggleEditCommand.Execute(null)));
+        items.Add(MenuEntry("清空", Icons.Trash, () => _vm!.ClearAllCommand.Execute(null), danger: true));
+        items.Add(new Separator());
+        items.Add(MenuTitle("停靠"));
+        items.Add(BuildEdgePicker(closeMenu));
+        items.Add(new Separator());
+        items.Add(MenuEntry("设置", Icons.Gear, ShowSettings));
+        items.Add(new Separator());
+        items.Add(MenuEntry("退出", Icons.Power, Exit, danger: true));
+    }
+
+    /// <summary>停靠位置四向选择器：桌面示意框，点哪条边停靠哪条边；当前边强调色高亮（原型 .dock-pos）。</summary>
+    private Control BuildEdgePicker(Action closeMenu)
+    {
+        var grid = new Grid { Width = 168, Height = 96, Margin = new Thickness(2, 2, 2, 6) };
+        var frame = new Border { BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(9) };
+        if (this.TryFindResource("QAHoverBrush", Avalonia.Styling.ThemeVariant.Default, out var hover) && hover is IBrush hoverBrush)
+        {
+            frame.Background = hoverBrush;
+        }
+        if (this.TryFindResource("QALineBrush", Avalonia.Styling.ThemeVariant.Default, out var line) && line is IBrush lineBrush)
+        {
+            frame.BorderBrush = lineBrush;
+        }
+        grid.Children.Add(frame);
+
+        var buttons = new Dictionary<DockEdge, Button>();
+        void AddEdge(DockEdge edge, Thickness margin, double barWidth, double barHeight,
+            HorizontalAlignment hAlign, VerticalAlignment vAlign)
+        {
+            var button = new Button
+            {
+                Classes = { "edge-pick" },
+                Margin = margin,
+                HorizontalAlignment = hAlign,
+                VerticalAlignment = vAlign
+            };
+            if (!double.IsNaN(barWidth))
+            {
+                button.Width = 20;
+            }
+            if (!double.IsNaN(barHeight))
+            {
+                button.Height = 20;
+            }
+
+            // 内部小 Dock 药丸随按钮前景色变化（选中时变强调色上的墨色）
+            var bar = new Border { Width = barWidth, Height = barHeight, CornerRadius = new CornerRadius(3) };
+            bar.Bind(Border.BackgroundProperty, button.GetObservable(Button.ForegroundProperty));
+            button.Content = bar;
+
+            if (_vm?.Settings.Edge == edge)
+            {
+                button.Classes.Add("active");
+            }
+            buttons[edge] = button;
+
+            button.Click += (_, _) =>
+            {
+                _vm!.SetEdgeCommand.Execute(edge);
+                foreach (var (key, b) in buttons)
+                {
+                    b.Classes.Set("active", key == edge);
+                }
+                closeMenu();
+            };
+            grid.Children.Add(button);
+        }
+
+        AddEdge(DockEdge.Top, new Thickness(30, 5, 30, 5), 40, 6, HorizontalAlignment.Stretch, VerticalAlignment.Top);
+        AddEdge(DockEdge.Bottom, new Thickness(30, 5, 30, 5), 40, 6, HorizontalAlignment.Stretch, VerticalAlignment.Bottom);
+        AddEdge(DockEdge.Left, new Thickness(5, 30, 5, 30), 6, 40, HorizontalAlignment.Left, VerticalAlignment.Stretch);
+        AddEdge(DockEdge.Right, new Thickness(5, 30, 5, 30), 6, 40, HorizontalAlignment.Right, VerticalAlignment.Stretch);
+        return grid;
+    }
+
+    /// <summary>菜单分组标题：原型 .menu-title，11px 淡色、不响应悬停。</summary>
+    private static MenuItem MenuTitle(string text)
+    {
+        var title = new MenuItem { Header = text, IsHitTestVisible = false, Focusable = false };
+        title.Classes.Add("menu-item");
+        title.Classes.Add("title");
+        return title;
+    }
+
+    /// <summary>
+    /// 菜单条目：对应原型 .menu-item——16px 淡色图标 + 文本 + 右侧 11px 徽章（mi-note），
+    /// danger 红色文字与图标。
+    /// </summary>
+    private static MenuItem MenuEntry(string header, Geometry? icon, Action action,
+        bool danger = false, string? note = null, bool enabled = true)
+    {
+        object content = header;
+        if (!string.IsNullOrEmpty(note))
+        {
+            var panel = new DockPanel { LastChildFill = true };
+            var badge = new TextBlock { Text = note, VerticalAlignment = VerticalAlignment.Center };
+            badge.Classes.Add("menu-note");
+            DockPanel.SetDock(badge, Dock.Right);
+            panel.Children.Add(badge);
+            panel.Children.Add(new TextBlock { Text = header, VerticalAlignment = VerticalAlignment.Center });
+            content = panel;
+        }
+
+        var entry = new MenuItem
+        {
+            Header = content,
+            Icon = icon is null
+                ? null
+                : new Path
+                {
+                    Data = icon,
+                    Width = 16,
+                    Height = 16,
+                    Stretch = Stretch.Uniform,
+                    HorizontalAlignment = HorizontalAlignment.Center,
+                    Classes = { "mi-icon" }
+                },
+            IsEnabled = enabled
+        };
+        entry.Classes.Add("menu-item");
+        if (danger)
+        {
+            entry.Classes.Add("danger");
+        }
         entry.Click += (_, _) => action();
         return entry;
     }
@@ -1333,6 +1686,7 @@ public partial class DockWindow : Window, IDockHost
     {
         if (over)
         {
+            _isRevealHandlePointerOver = false;
             _hideTimer.Stop();
             if (_vm is not null && !_vm.IsDockVisible)
             {
@@ -1346,25 +1700,35 @@ public partial class DockWindow : Window, IDockHost
     }
 
     /// <summary>
-    /// 未钉住时启动自动隐藏倒计时。
-    /// 触边唤出时鼠标停在热区、从没进入过 Dock，不会产生「离开」转换——
-    /// 所以唤出时也要开始计时，否则 Dock 会一直挂着不收。
+    /// 未钉住时启动自动隐藏倒计时。把手仍悬停时先等待指针离开，再开始计时。
     /// </summary>
     private void ScheduleAutoHide()
     {
-        if (_vm is null || _dockDragging || _vm.IsPinned || !_vm.IsDockVisible || _vm.IsPointerOver || _isMoreMenuOpen || _isContextMenuOpen)
+        _hideTimer.Stop();
+        if (_vm is null
+            || _dockDragging
+            || _vm.IsPinned
+            || !_vm.IsDockVisible
+            || _isRevealHandlePointerOver
+            || _vm.IsPointerOver
+            || _isMoreMenuOpen
+            || _isContextMenuOpen
+            || _vm.Settings.AutoHideDelayMs <= 0)
         {
             return;
         }
 
-        _hideTimer.Interval = TimeSpan.FromMilliseconds(Math.Max(0, _vm.Settings.AutoHideDelayMs));
-        _hideTimer.Stop();
+        _hideTimer.Interval = TimeSpan.FromMilliseconds(_vm.Settings.AutoHideDelayMs);
         _hideTimer.Start();
     }
+
+    public void AutoHideDelayChanged() => ScheduleAutoHide();
 
     private void SetDockVisible(bool visible, bool animate)
     {
         _isHidden = !visible;
+        _revealTimer.Stop();
+        UpdateRevealHandleVisibility();
         if (visible)
         {
             ScheduleAutoHide();
@@ -1374,6 +1738,7 @@ public partial class DockWindow : Window, IDockHost
         {
             _progress = visible ? 0 : 1;
             ApplyPosition(_progress);
+            UpdateRevealHandleVisibility();
             return;
         }
 
@@ -1390,44 +1755,12 @@ public partial class DockWindow : Window, IDockHost
             _progress = target;
             ApplyPosition(_progress);
             _animator.Stop();
+            UpdateRevealHandleVisibility();
             return;
         }
 
         _progress += delta * 0.22;
         ApplyPosition(_progress);
-    }
-
-    /// <summary>光标贴到停靠边时把 Dock 唤出来。</summary>
-    /// <summary>光标贴到停靠边时把 Dock 唤出来。钉住只表示「不自动隐藏」，不影响触边唤出。</summary>
-    private void CheckEdgeReveal()
-    {
-        if (!OperatingSystem.IsWindows()
-            || _vm is null || _vm.IsDockVisible || !_vm.Settings.RevealOnEdgeTouch)
-        {
-            return;
-        }
-
-        var screen = ResolveScreen();
-        if (screen is null || !OperatingSystem.IsWindows()
-            || !NativeMethods.GetCursorPos(out NativeMethods.POINT point))
-        {
-            return;
-        }
-
-        PixelRect work = screen.Value.Work;
-        bool near = _vm.Settings.Edge switch
-        {
-            DockEdge.Top => point.Y <= work.Y + EdgeBand,
-            DockEdge.Bottom => point.Y >= work.Y + work.Height - EdgeBand,
-            DockEdge.Left => point.X <= work.X + EdgeBand,
-            DockEdge.Right => point.X >= work.X + work.Width - EdgeBand,
-            _ => false
-        };
-
-        if (near)
-        {
-            _vm.IsDockVisible = true;
-        }
     }
 
     // ---------------- 定位 ----------------
@@ -1437,6 +1770,7 @@ public partial class DockWindow : Window, IDockHost
     {
         _vm?.ApplySettings(paletteChanged: false, sizeChanged: true, save: false);
         UpdateCollapseIcon();
+        UpdateRevealHandleLayout();
         SetFocused(null);
         UpdateScrollChromeLayout();
         ScheduleReposition();
@@ -1444,7 +1778,17 @@ public partial class DockWindow : Window, IDockHost
 
     /// <summary>内容尺寸变化后重新贴边（布局要等一帧才稳定）。</summary>
     public void ScheduleReposition()
-        => Dispatcher.UIThread.Post(() => ApplyPosition(_progress), DispatcherPriority.Background);
+        => Dispatcher.UIThread.Post(() =>
+        {
+            ApplyPosition(_progress);
+            UpdateRevealHandlePosition();
+        }, DispatcherPriority.Background);
+
+    public void MonitorSelectionChanged()
+    {
+        UpdateRevealHandlePosition();
+        ScheduleReposition();
+    }
 
     private void ApplyPosition(double progress)
     {
@@ -1666,22 +2010,6 @@ public partial class DockWindow : Window, IDockHost
         });
     }
 
-    private async void OnAddClicked(object? sender, RoutedEventArgs e)
-    {
-        // 原型：加号弹菜单（添加文件 / 添加命令行），不是直接开文件选择器
-        var flyout = new MenuFlyout();
-
-        var files = new MenuItem { Header = "添加文件…" };
-        files.Click += (_, _) => _ = AddFilesAsync();
-        flyout.Items.Add(files);
-
-        var command = new MenuItem { Header = "添加命令行…" };
-        command.Click += (_, _) => _ = AddCommandAsync();
-        flyout.Items.Add(command);
-
-        flyout.ShowAt(AddButton);
-    }
-
     private async System.Threading.Tasks.Task AddCommandAsync()
     {
         if (_vm is null)
@@ -1743,47 +2071,35 @@ public partial class DockWindow : Window, IDockHost
             return;
         }
 
-        var flyout = new MenuFlyout();
+        DockEdge edge = _vm.Settings.Edge;
+        var flyout = new MenuFlyout
+        {
+            Placement = edge switch
+            {
+                DockEdge.Bottom => PlacementMode.TopEdgeAlignedRight,
+                DockEdge.Left => PlacementMode.RightEdgeAlignedTop,
+                DockEdge.Right => PlacementMode.LeftEdgeAlignedTop,
+                _ => PlacementMode.BottomEdgeAlignedRight
+            },
+            HorizontalOffset = edge switch
+            {
+                DockEdge.Left => 8,
+                DockEdge.Right => -8,
+                _ => 0
+            },
+            VerticalOffset = edge switch
+            {
+                DockEdge.Bottom => -8,
+                DockEdge.Top => 8,
+                _ => 0
+            },
+            PlacementConstraintAdjustment = PopupPositionerConstraintAdjustment.FlipX
+                | PopupPositionerConstraintAdjustment.FlipY
+                | PopupPositionerConstraintAdjustment.SlideX
+                | PopupPositionerConstraintAdjustment.SlideY
+        };
 
-        var addFile = new MenuItem { Header = "添加文件…" };
-        addFile.Click += (_, _) => _ = AddFilesAsync();
-        flyout.Items.Add(addFile);
-
-        var addCommand = new MenuItem { Header = "添加命令行…" };
-        addCommand.Click += (_, _) => _ = AddCommandAsync();
-        flyout.Items.Add(addCommand);
-
-        flyout.Items.Add(new Separator());
-
-        var edit = new MenuItem { Header = "进入编辑模式" };
-        edit.Click += (_, _) => _vm.ToggleEditCommand.Execute(null);
-        flyout.Items.Add(edit);
-
-        var pin = new MenuItem { Header = _vm.IsPinned ? "取消钉住" : "钉住 Dock" };
-        pin.Click += (_, _) => _vm.TogglePinCommand.Execute(null);
-        flyout.Items.Add(pin);
-
-        flyout.Items.Add(new Separator());
-
-        flyout.Items.Add(CreateEdgeItem("停靠到上边缘", DockEdge.Top));
-        flyout.Items.Add(CreateEdgeItem("停靠到下边缘", DockEdge.Bottom));
-        flyout.Items.Add(CreateEdgeItem("停靠到左边缘（竖向）", DockEdge.Left));
-        flyout.Items.Add(CreateEdgeItem("停靠到右边缘（竖向）", DockEdge.Right));
-        flyout.Items.Add(new Separator());
-
-        var settings = new MenuItem { Header = "设置…" };
-        settings.Click += (_, _) => ShowSettings();
-        flyout.Items.Add(settings);
-
-        var about = new MenuItem { Header = "关于" };
-        about.Click += (_, _) => AboutRequested?.Invoke(this, EventArgs.Empty);
-        flyout.Items.Add(about);
-
-        flyout.Items.Add(new Separator());
-
-        var exit = new MenuItem { Header = "退出" };
-        exit.Click += (_, _) => Exit();
-        flyout.Items.Add(exit);
+        AddDockMenuEntries(flyout.Items, () => flyout.Hide());
 
         _isMoreMenuOpen = true;
         _hideTimer.Stop();
@@ -1793,14 +2109,6 @@ public partial class DockWindow : Window, IDockHost
             ScheduleAutoHide();
         };
         flyout.ShowAt(MoreButton);
-    }
-
-    private MenuItem CreateEdgeItem(string header, DockEdge edge)
-    {
-        bool current = _vm?.Settings.Edge == edge;
-        var item = new MenuItem { Header = current ? header + "（当前）" : header, IsEnabled = !current };
-        item.Click += (_, _) => _vm?.SetEdgeCommand.Execute(edge);
-        return item;
     }
 
     // ---------------- IDockHost ----------------
@@ -1832,6 +2140,7 @@ public partial class DockWindow : Window, IDockHost
     private void OnWindowResized(object? sender, SizeChangedEventArgs e)
     {
         ApplyPosition(_progress);
+        UpdateRevealHandlePosition();
         UpdateScrollChrome();
     }
 }

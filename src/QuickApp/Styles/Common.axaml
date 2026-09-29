@@ -26,4 +26,66 @@
     <Setter Property="FontSize" Value="13" />
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
+
+  <!-- ============================ 菜单 / 设置页导航（原型对齐） ============================ -->
+
+  <!-- 使用约定：MenuItem 加 Classes="menu-item" 应用 QAMenuItem 主题；分组标题再加 "title" -->
+  <Style Selector="MenuItem.menu-item">
+    <Setter Property="Theme" Value="{DynamicResource QAMenuItem}" />
+  </Style>
+
+  <!-- 菜单容器：原型 .menu min-width 196 / padding 6 / r11 -->
+  <Style Selector="ContextMenu">
+    <Setter Property="MinWidth" Value="196" />
+    <Setter Property="Padding" Value="6" />
+    <Setter Property="CornerRadius" Value="11" />
+  </Style>
+  <Style Selector="MenuFlyoutPresenter">
+    <Setter Property="MinWidth" Value="196" />
+    <Setter Property="Padding" Value="6" />
+    <Setter Property="CornerRadius" Value="11" />
+  </Style>
+
+  <!-- 菜单分隔线：原型 .menu-sep 1px，边距 5 8 -->
+  <Style Selector="Separator">
+    <Setter Property="Height" Value="1" />
+    <Setter Property="Margin" Value="5,8" />
+    <Setter Property="Background" Value="{DynamicResource QALineBrush}" />
+  </Style>
+
+  <!-- 菜单图标：16px 描边，颜色随主题（danger 由菜单项级联覆盖） -->
+  <Style Selector="Path.mi-icon">
+    <Setter Property="StrokeThickness" Value="1.6" />
+    <Setter Property="StrokeLineCap" Value="Round" />
+    <Setter Property="StrokeJoin" Value="Round" />
+  </Style>
+
+  <!-- 菜单右侧徽章：原型 .mi-note 11px 淡色 -->
+  <Style Selector="TextBlock.menu-note">
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="Foreground" Value="{DynamicResource QATextDimBrush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <!-- 设置页导航条：原型 .settings-nav 背景 + 右缘分隔线 -->
+  <Style Selector="TabControl.settings-tabs TabStrip">
+    <Setter Property="Background" Value="{DynamicResource QAHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource QALineBrush}" />
+    <Setter Property="BorderThickness" Value="0,0,1,0" />
+  </Style>
+
+  <!-- 设置页标签使用 QATabItem 主题 -->
+  <Style Selector="TabItem.settings-tab">
+    <Setter Property="Theme" Value="{DynamicResource QATabItem}" />
+  </Style>
+
+  <!-- 开关（ToggleButton + Classes="switch"）应用 QASwitch 主题 -->
+  <Style Selector="ToggleButton.switch">
+    <Setter Property="Theme" Value="{DynamicResource QASwitch}" />
+  </Style>
+
+  <!-- 停靠四向选择器边按钮应用 EdgePickButton 主题 -->
+  <Style Selector="Button.edge-pick">
+    <Setter Property="Theme" Value="{DynamicResource EdgePickButton}" />
+  </Style>
 </Styles>

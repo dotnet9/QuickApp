@@ -33,6 +33,7 @@
                 BorderBrush="{Binding RingBrush}"
                 BorderThickness="0"
                 ToolTip.Tip="{Binding Tooltip}"
+                Focusable="True"
                 DragDrop.AllowDrop="True">
           <Panel>
             <!-- 真实图标（从 exe/lnk 提取并缓存） -->
@@ -127,6 +128,7 @@
               Margin="1"
               Width="220"
               Cursor="Hand"
+              Focusable="True"
               PointerPressed="OnInstalledResultPointerPressed">
         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="7">
           <Border Width="36"
@@ -212,6 +214,17 @@
       <Setter Property="BoxShadow" Value="none" />
     </Style>
 
+    <!-- 空状态提示的底板：Dock 面板是透明的，提示文字直接浮在壁纸上，
+         浅色壁纸下淡灰字不可读，给它一块近不透明的菜单底色（任意壁纸可读）。 -->
+    <Style Selector="Border.empty-pill">
+      <Setter Property="Background" Value="{DynamicResource QAMenuBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource QALineBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="11" />
+      <Setter Property="Padding" Value="14,8" />
+      <Setter Property="BoxShadow" Value="0 6 16 0 #3D000000" />
+    </Style>
+
     <Style Selector="TextBlock.label">
       <Setter Property="FontSize" Value="12" />
       <Setter Property="HorizontalAlignment" Value="Center" />
@@ -293,7 +306,7 @@
             <TextBox Grid.Column="1"
                      Name="SearchBox"
                      Text="{Binding SearchQuery}"
-                     PlaceholderText="搜索应用、网址、命令…"
+                     PlaceholderText="搜索应用、网址、命令、拼音或首字母…"
                      FontSize="13"
                      Background="Transparent"
                      BorderThickness="0" />
@@ -379,27 +392,31 @@
             </ScrollViewer>
 
             <!-- 空状态属于图标区，保持左侧视口和右侧操作区的布局稳定。 -->
-            <TextBlock IsVisible="{Binding IsSearchEmpty}"
-                       Text="{Binding EmptyStateText}"
-                       FontSize="12"
-                       Margin="18,0"
-                       HorizontalAlignment="Left"
-                       VerticalAlignment="Center"
-                       Foreground="{Binding TextDimBrush}"
-                       TextWrapping="NoWrap"
-                       TextTrimming="CharacterEllipsis"
-                       IsHitTestVisible="False" />
+            <Border IsVisible="{Binding IsSearchEmpty}"
+                    Classes="empty-pill"
+                    Margin="10,0"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    IsHitTestVisible="False">
+              <TextBlock Text="{Binding EmptyStateText}"
+                         FontSize="12"
+                         Foreground="{Binding TextDimBrush}"
+                         TextWrapping="NoWrap"
+                         TextTrimming="CharacterEllipsis" />
+            </Border>
 
-            <TextBlock IsVisible="{Binding IsDockEmpty}"
-                       Text="{Binding EmptyStateText}"
-                       FontSize="12"
-                       Margin="18,0"
-                       HorizontalAlignment="Left"
-                       VerticalAlignment="Center"
-                       Foreground="{Binding TextDimBrush}"
-                       TextWrapping="NoWrap"
-                       TextTrimming="CharacterEllipsis"
-                       IsHitTestVisible="False" />
+            <Border IsVisible="{Binding IsDockEmpty}"
+                    Classes="empty-pill"
+                    Margin="10,0"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    IsHitTestVisible="False">
+              <TextBlock Text="{Binding EmptyStateText}"
+                         FontSize="12"
+                         Foreground="{Binding TextDimBrush}"
+                         TextWrapping="NoWrap"
+                         TextTrimming="CharacterEllipsis" />
+            </Border>
 
             <!-- 两端渐隐：轴向随停靠边，位置与显隐由视图按滚动位置计算 -->
             <Border Name="FadeStart" IsHitTestVisible="False" IsVisible="False" />
@@ -430,17 +447,17 @@
             <StackPanel Orientation="{Binding BodyOrientation}" Spacing="3">
               <Border Width="{Binding DividerWidth}"
                       Height="{Binding DividerHeight}"
+                      HorizontalAlignment="Center"
                       Background="{Binding PanelBorderBrush}" />
 
               <WrapPanel Orientation="Horizontal"
                          ItemWidth="28"
                          ItemHeight="28"
+                         HorizontalAlignment="Center"
                          MaxWidth="{Binding ActionMaxWidth}"
                          MaxHeight="{Binding ActionMaxHeight}"
-                         HorizontalAlignment="Left"
                          VerticalAlignment="Center">
                 <Button Theme="{StaticResource IconButton}" Name="SearchButton" Width="28" Height="28" Command="{Binding ToggleSearchCommand}" ToolTip.Tip="搜索（S）" />
-                <Button Theme="{StaticResource IconButton}" Name="AddButton" Width="28" Height="28" ToolTip.Tip="添加文件或命令行" />
                 <Button Theme="{StaticResource IconButton}" Name="PinButton" Width="28" Height="28" Command="{Binding TogglePinCommand}" ToolTip.Tip="钉住 Dock" />
                 <Button Theme="{StaticResource IconButton}" Name="MoreButton" Width="28" Height="28" ToolTip.Tip="更多操作" />
                 <Button Theme="{StaticResource IconButton}" Classes="low-priority" Name="CollapseButton" Width="28" Height="28" Command="{Binding HideCommand}" ToolTip.Tip="收起" />
@@ -485,12 +502,14 @@
           </StackPanel>
         </Border>
 
-        <!-- 编辑模式工具条（原型 .dock-editbar：上边线 + 12px 提示 + primary 完成钮） -->
+        <!-- 编辑模式工具条（原型 .dock-editbar：上边线 + 11px 提示 + primary 完成钮；竖向时提示隐藏只留完成钮） -->
         <StackPanel IsVisible="{Binding IsEditMode}" Margin="8,2,8,2">
           <Border Height="1" Margin="2,0,2,6" Background="{Binding PanelBorderBrush}" />
-          <StackPanel Orientation="Horizontal" Spacing="8">
-            <TextBlock Text="拖动排序 · 双击改名 · 点 × 移除"
-                       FontSize="12"
+          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+            <TextBlock Name="EditHint"
+                       IsVisible="{Binding !IsVertical}"
+                       Text="拖动排序 · 双击改名 · × 移除"
+                       FontSize="11"
                        VerticalAlignment="Center"
                        Foreground="{Binding TextDimBrush}" />
             <Button Theme="{StaticResource LinkButton}" Classes="primary" Content="完成" Command="{Binding ToggleEditCommand}" />

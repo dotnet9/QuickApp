@@ -263,4 +263,173 @@
     </Style>
   </ControlTheme>
 
+  <!-- 设置窗口的开关：原型 .switch 38x22 r11，滑块 16，选中强调色 -->
+  <ControlTheme x:Key="QASwitch" TargetType="ToggleButton">
+    <Setter Property="Width" Value="38" />
+    <Setter Property="Height" Value="22" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="PART_Track"
+                CornerRadius="11"
+                Background="{DynamicResource QAHoverBrush}"
+                BorderBrush="{DynamicResource QALineBrush}"
+                BorderThickness="1">
+          <Ellipse Name="PART_Knob"
+                   Width="16"
+                   Height="16"
+                   Margin="2,2,0,0"
+                   HorizontalAlignment="Left"
+                   VerticalAlignment="Center"
+                   Fill="{DynamicResource QATextDimBrush}" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^ /template/ Ellipse#PART_Knob">
+      <Setter Property="Transitions">
+        <Transitions>
+          <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="^:pointerover /template/ Border#PART_Track">
+      <Setter Property="Background" Value="{DynamicResource QAActiveBrush}" />
+    </Style>
+    <Style Selector="^:checked /template/ Border#PART_Track">
+      <Setter Property="Background" Value="{DynamicResource QAAccentBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource QAAccentBrush}" />
+    </Style>
+    <Style Selector="^:checked /template/ Ellipse#PART_Knob">
+      <Setter Property="Fill" Value="White" />
+      <Setter Property="RenderTransform" Value="translateX(16px)" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 设置窗口左侧导航的标签：原型 .settings-tab 38px 高，选中强调色 + 左缘 3px 白色缺口条 -->
+  <ControlTheme x:Key="QATabItem" TargetType="TabItem">
+    <Setter Property="Height" Value="38" />
+    <Setter Property="Margin" Value="0,1" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Foreground" Value="{DynamicResource QATextDimBrush}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="PART_Bg" Height="38" Background="Transparent">
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="18,0">
+            <Border Name="PART_Notch"
+                    Width="3"
+                    Height="24"
+                    Margin="-18,0,9,0"
+                    HorizontalAlignment="Left"
+                    CornerRadius="0,3,3,0"
+                    IsVisible="False"
+                    Background="{DynamicResource QAAccentInkBrush}"
+                    Opacity="0.7" />
+            <ContentPresenter Content="{TemplateBinding Header}" VerticalAlignment="Center" />
+          </StackPanel>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover /template/ Border#PART_Bg">
+      <Setter Property="Background" Value="{DynamicResource QAActiveBrush}" />
+    </Style>
+    <Style Selector="^:pointerover">
+      <Setter Property="Foreground" Value="{DynamicResource QATextBrush}" />
+    </Style>
+    <Style Selector="^:selected /template/ Border#PART_Bg">
+      <Setter Property="Background" Value="{DynamicResource QAAccentBrush}" />
+    </Style>
+    <Style Selector="^:selected /template/ Border#PART_Notch">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+    <Style Selector="^:selected">
+      <Setter Property="Foreground" Value="{DynamicResource QAAccentInkBrush}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+    <Style Selector="^ Path.tab-icon">
+      <Setter Property="Stroke" Value="{DynamicResource QATextDimBrush}" />
+    </Style>
+    <Style Selector="^:selected Path.tab-icon">
+      <Setter Property="Stroke" Value="{DynamicResource QAAccentInkBrush}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 菜单项：原型 .menu-item 30px 高 r7，图标 16 淡色，danger 红色，右侧 mi-note 徽章 -->
+  <ControlTheme x:Key="QAMenuItem" TargetType="MenuItem">
+    <Setter Property="MinHeight" Value="30" />
+    <Setter Property="Padding" Value="10,0" />
+    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="Foreground" Value="{DynamicResource QATextBrush}" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="PART_Bg"
+                MinHeight="30"
+                Background="Transparent"
+                CornerRadius="7">
+          <StackPanel Orientation="Horizontal"
+                      VerticalAlignment="Center"
+                      Margin="{TemplateBinding Padding}"
+                      Spacing="9">
+            <ContentPresenter Name="PART_Icon"
+                              Content="{TemplateBinding Icon}"
+                              VerticalAlignment="Center" />
+            <ContentPresenter Name="PART_ContentPresenter"
+                              Content="{TemplateBinding Header}"
+                              HorizontalAlignment="Stretch"
+                              VerticalAlignment="Center"
+                              TextElement.Foreground="{TemplateBinding Foreground}"
+                              TextElement.FontSize="{TemplateBinding FontSize}" />
+          </StackPanel>
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover /template/ Border#PART_Bg">
+      <Setter Property="Background" Value="{DynamicResource QAMenuHoverBrush}" />
+    </Style>
+    <!-- 分组标题：menu-title 11px 淡色，不响应悬停 -->
+    <Style Selector="^.title">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Foreground" Value="{DynamicResource QATextDimBrush}" />
+    </Style>
+    <Style Selector="^.title /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Margin" Value="0,7,0,5" />
+    </Style>
+    <Style Selector="^.danger">
+      <Setter Property="Foreground" Value="{DynamicResource QADangerBrush}" />
+    </Style>
+    <Style Selector="^ Path.mi-icon">
+      <Setter Property="Stroke" Value="{DynamicResource QATextDimBrush}" />
+    </Style>
+    <Style Selector="^.danger Path.mi-icon">
+      <Setter Property="Stroke" Value="{DynamicResource QADangerBrush}" />
+    </Style>
+  </ControlTheme>
+
+  <!-- 停靠位置四向选择器的边按钮：悬停淡底，选中强调色（原型 .dock-pos .edge） -->
+  <ControlTheme x:Key="EdgePickButton" TargetType="Button">
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{DynamicResource QATextDimBrush}" />
+    <Setter Property="Cursor" Value="Hand" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <Border Name="PART_Bg" Background="{TemplateBinding Background}" CornerRadius="7">
+          <ContentPresenter Content="{TemplateBinding Content}"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center" />
+        </Border>
+      </ControlTemplate>
+    </Setter>
+    <Style Selector="^:pointerover /template/ Border#PART_Bg">
+      <Setter Property="Background" Value="{DynamicResource QAMenuHoverBrush}" />
+    </Style>
+    <Style Selector="^:pointerover">
+      <Setter Property="Foreground" Value="{DynamicResource QATextBrush}" />
+    </Style>
+    <Style Selector="^.active /template/ Border#PART_Bg">
+      <Setter Property="Background" Value="{DynamicResource QAAccentBrush}" />
+    </Style>
+    <Style Selector="^.active">
+      <Setter Property="Foreground" Value="{DynamicResource QAAccentInkBrush}" />
+    </Style>
+  </ControlTheme>
+
 </ResourceDictionary>

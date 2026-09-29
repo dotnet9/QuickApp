@@ -139,25 +139,33 @@ public partial class App : Application
         {
             var menu = new NativeMenu();
 
-            var toggle = new NativeMenuItem("显示 / 隐藏 Dock");
-            toggle.Click += (_, _) => viewModel.IsDockVisible = !viewModel.IsDockVisible;
+            var toggle = new NativeMenuItem(viewModel.IsDockVisible ? "隐藏" : "显示");
+            toggle.Click += (_, _) =>
+            {
+                viewModel.IsDockVisible = !viewModel.IsDockVisible;
+                toggle.Header = viewModel.IsDockVisible ? "隐藏" : "显示";
+            };
             menu.Items.Add(toggle);
 
-            var pin = new NativeMenuItem("钉住（不自动隐藏）");
-            pin.Click += (_, _) => viewModel.TogglePinCommand.Execute(null);
+            var pin = new NativeMenuItem("钉住（" + (viewModel.IsPinned ? "开" : "关") + "）");
+            pin.Click += (_, _) =>
+            {
+                viewModel.TogglePinCommand.Execute(null);
+                pin.Header = "钉住（" + (viewModel.IsPinned ? "开" : "关") + "）";
+            };
             menu.Items.Add(pin);
 
-            var autoStart = new NativeMenuItem("开机启动");
-            autoStart.Click += (_, _) => viewModel.ToggleAutoStartCommand.Execute(null);
+            var autoStart = new NativeMenuItem("开机启动（" + (viewModel.Settings.AutoStart ? "开" : "关") + "）");
+            autoStart.Click += (_, _) =>
+            {
+                viewModel.ToggleAutoStartCommand.Execute(null);
+                autoStart.Header = "开机启动（" + (viewModel.Settings.AutoStart ? "开" : "关") + "）";
+            };
             menu.Items.Add(autoStart);
 
             menu.Items.Add(new NativeMenuItemSeparator());
 
-            var check = new NativeMenuItem("检查更新");
-            check.Click += (_, _) => _ = viewModel.CheckUpdateAsync();
-            menu.Items.Add(check);
-
-            var settings = new NativeMenuItem("设置…");
+            var settings = new NativeMenuItem("设置");
             settings.Click += (_, _) => ShowSettings();
             menu.Items.Add(settings);
 
@@ -187,12 +195,29 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// 运行时画应用图标，省得带二进制资源（也避免 AOT 资源加载的坑）。
-    /// 对应原型 .tray-icon：145° 蓝紫渐变圆角方块 + 白色「应用」描边图形。
+    /// 应用图标来自仓库根目录 logo.ico：csproj 里以 ApplicationIcon 嵌入 exe，
+    /// 同时作为 AvaloniaResource 内嵌，供窗口、托盘加载同一份图标。
     /// </summary>
     private static WindowIcon CreateAppIcon()
     {
+        try
+        {
+            using Stream stream = AssetLoader.Open(new Uri("avares://QuickApp/Assets/logo.ico"));
+            return new WindowIcon(stream);
+        }
+        catch (Exception ex)
+        {
+            // 资源加载意外失败时退回矢量绘制，窗口/托盘不至于没有图标
+            AppLog.Error("加载内嵌 logo.ico 失败，改用运行时绘制", ex);
+            return DrawAppIcon();
+        }
+    }
+
+    /// <summary>logo 的矢量兜底绘制：品牌蓝渐变圆角方块 + 白色 Q 环 + 琥珀闪电尾巴，坐标同 logo.svg。</summary>
+    private static WindowIcon DrawAppIcon()
+    {
         const int size = 32;
+        const double k = size / 512.0;
         var bitmap = new RenderTargetBitmap(new PixelSize(size, size), new Vector(96, 96));
 
         using (DrawingContext context = bitmap.CreateDrawingContext())
@@ -203,23 +228,34 @@ public partial class App : Application
                 EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
                 GradientStops =
                 {
-                    new GradientStop(Color.Parse("#4A6CF7"), 0),
+                    new GradientStop(Color.Parse("#5B82F8"), 0),
+                    new GradientStop(Color.Parse("#3D5CE8"), 0.55),
                     new GradientStop(Color.Parse("#2F49C9"), 1)
                 }
             };
-            context.DrawRectangle(background, null, new RoundedRect(new Rect(0, 0, size, size), 7));
+            context.DrawRectangle(background, null, new RoundedRect(new Rect(0, 0, size, size), 112 * k));
 
-            // 原型 GLYPHS.app：24 网格的圆角矩形 + 顶部横线，等比放到 32px
-            Geometry glyph = Geometry.Parse(
-                "M10,4.67 L22,4.67 C24.95,4.67 27.33,7.05 27.33,10 L27.33,22 " +
-                "C27.33,24.95 24.95,27.33 22,27.33 L10,27.33 C7.05,27.33 4.67,24.95 4.67,22 " +
-                "L4.67,10 C4.67,7.05 7.05,4.67 10,4.67 Z M4.67,11.33 L27.33,11.33");
-            var stroke = new Pen(new SolidColorBrush(Colors.White), 2.3)
+            using (context.PushTransform(Matrix.CreateScale(k, k)))
             {
-                LineCap = PenLineCap.Round,
-                LineJoin = PenLineJoin.Round
-            };
-            context.DrawGeometry(null, stroke, glyph);
+                // Q 环：圆心 (254,244) 半径 124，线宽 60
+                var ringPen = new Pen(new SolidColorBrush(Colors.White), 60);
+                context.DrawEllipse(null, ringPen, new Point(254, 244), 124, 124);
+
+                // Q 的尾巴：一道闪电，fill + 同色描边得到圆角连接，顶点与 logo.svg 一致
+                var boltBrush = new LinearGradientBrush
+                {
+                    StartPoint = new RelativePoint(0.5, 0, RelativeUnit.Relative),
+                    EndPoint = new RelativePoint(0.5, 1, RelativeUnit.Relative),
+                    GradientStops =
+                    {
+                        new GradientStop(Color.Parse("#FFD44E"), 0),
+                        new GradientStop(Color.Parse("#FFAB1F"), 1)
+                    }
+                };
+                Geometry bolt = Geometry.Parse(
+                    "M315.5,221.9 L283.4,343.3 L329.7,326.4 L347.1,420.2 L384.4,280.3 L333.9,298.6 Z");
+                context.DrawGeometry(boltBrush, new Pen(boltBrush, 16) { LineJoin = PenLineJoin.Round }, bolt);
+            }
         }
 
         using var stream = new MemoryStream();

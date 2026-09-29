@@ -68,6 +68,39 @@ public static class Icons
 
     // ---------------- 以下图标供「更换图标」选择器使用（对应原型 PICKER_ICONS） ----------------
 
+    /// <summary>应用网格（更换图标）。</summary>
+    public static Geometry Grid { get; } = Geometry.Parse(
+        RoundedRect(4, 4, 7, 7, 2) + " " + RoundedRect(13, 4, 7, 7, 2) + " " +
+        RoundedRect(4, 13, 7, 7, 2) + " " + RoundedRect(13, 13, 7, 7, 2));
+
+    /// <summary>上传（添加文件）。</summary>
+    public static Geometry Upload { get; } = Geometry.Parse(
+        "M12,15.5 L12,4 M8,8 L12,4 L16,8 " +
+        "M5,15 L5,18.5 C5,19.33 5.67,20 6.5,20 L17.5,20 C18.33,20 19,19.33 19,18.5 L19,15");
+
+    /// <summary>垃圾桶（移除类操作）。</summary>
+    public static Geometry Trash { get; } = Geometry.Parse(
+        "M4,7 L20,7 M9.5,7 L9.5,5 L14.5,5 L14.5,7 M6.5,7 L7.5,20 L16.5,20 L17.5,7 " +
+        "M10.5,11 L10.5,17 M13.5,11 L13.5,17");
+
+    /// <summary>复制（复制路径）。</summary>
+    public static Geometry Copy { get; } = Geometry.Parse(
+        RoundedRect(9, 9, 11, 11, 2) + " M15,9 L15,6 C15,4.9 14.1,4 13,4 L8,4 C6.9,4 6,4.9 6,6 L6,13 C6,14.1 6.9,15 8,15 L9,15");
+
+    /// <summary>文件夹（在资源管理器中显示）。</summary>
+    public static Geometry Folder { get; } = Geometry.Parse(
+        "M3,7.5 C3,6.67 3.67,6 4.5,6 L8.5,6 L10.5,8.5 L18,8.5 C18.83,8.5 19.5,9.17 19.5,10 L19.5,11 " +
+        "M3,10 L20.2,10 L18.1,18 L5,18 Z");
+
+    /// <summary>电源（退出工具）。</summary>
+    public static Geometry Power { get; } = Geometry.Parse(
+        "M12,3 L12,12 " +
+        "M7.6,6.6 C5.65,8.01 4.5,10.27 4.5,12.67 C4.5,16.82 7.86,20.17 12,20.17 " +
+        "C16.14,20.17 19.5,16.82 19.5,12.67 C19.5,10.27 18.35,8.01 16.4,6.6");
+
+    /// <summary>三横线（列表，左右停靠边缘）。</summary>
+    public static Geometry List { get; } = Geometry.Parse("M4,6.5 L20,6.5 M4,12 L20,12 M4,17.5 L20,17.5");
+
     /// <summary>对话气泡。</summary>
     public static Geometry Chat { get; } = Geometry.Parse(
         "M20.5,11.5 C20.5,16 16.9,19.5 12,19.5 C10.8,19.5 9.7,19.3 8.7,18.9 L3,21 L4.6,15.6 " +
