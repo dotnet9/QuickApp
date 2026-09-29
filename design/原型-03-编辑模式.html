@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark" data-style="glass" data-label="icon" data-search-open="false" data-edit="true" data-edge="top">
+<head>
+<meta charset="utf-8">
+<title>原型 03 · 编辑模式</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="../logo.svg">
+<link rel="stylesheet" href="assets/proto.css">
+</head>
+<body class="dock-visible">
+
+<div class="taskbar" aria-hidden="true">
+  <i></i><i></i><i></i><span class="clock">原型演示 · 模拟桌面</span>
+</div>
+
+<a class="proto-back" href="index.html">← 原型目录</a>
+
+<!-- 编辑态 Dock：面板展开、图标带移除角标、可拖动排序、双击改名 -->
+<div class="dock" id="dock" role="toolbar" aria-label="快捷 Dock 编辑">
+  <div class="dock-body">
+    <div class="items-wrap">
+      <div class="dock-items" id="dockItems" role="list"></div>
+      <div class="fade fade-left" id="fadeLeft"></div>
+      <div class="fade fade-right" id="fadeRight"></div>
+      <div class="scroll-indicator" id="scrollIndicator" hidden><i id="scrollThumb"></i></div>
+    </div>
+    <div class="dock-tools">
+      <div class="dock-divider"></div>
+      <div class="dock-actions">
+        <button class="icon-btn" id="btnSearch" data-icon="search" title="搜索（S）" aria-label="搜索"></button>
+        <button class="icon-btn" id="btnPin" data-icon="pin" title="钉住 Dock" aria-label="钉住 Dock" aria-pressed="false"></button>
+        <button class="icon-btn" id="btnMenu" data-icon="more" title="更多操作" aria-label="更多操作" aria-haspopup="menu" aria-expanded="false"></button>
+        <button class="icon-btn low-priority" id="btnHide" data-icon="chevron-up" title="收起" aria-label="收起"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 编辑工具条 -->
+  <div class="dock-editbar" id="dockEditbar">
+    <span>拖动排序 · 双击改名 · × 移除</span>
+    <span class="spacer"></span>
+    <button class="chip" id="editReset"><span class="chip-icon" data-icon="undo"></span>重置</button>
+    <button class="chip primary" id="editDone"><span class="chip-icon" data-icon="check"></span>完成</button>
+  </div>
+</div>
+
+<div class="overlay-layer" id="overlayLayer">
+  <div class="bubble" id="bubble" hidden>
+    <span class="bubble-name" id="bubbleName"></span>
+    <span class="bubble-target" id="bubbleTarget"></span>
+  </div>
+  <div class="drop-line" id="dropLine" hidden></div>
+</div>
+
+<div class="proto-panel" id="protoPanel">
+  <div class="proto-head">
+    <strong>原型控制台</strong><span>不属于产品界面</span>
+    <button class="icon-btn" id="protoHide" data-icon="x" title="隐藏控制台" aria-label="隐藏控制台"></button>
+  </div>
+  <div class="proto-body">
+    <div class="proto-row"><span>主题</span>
+      <div class="seg sm" data-control="themePref">
+        <button data-value="dark">深</button><button data-value="light">浅</button>
+      </div></div>
+    <div class="proto-row"><span>停靠边</span>
+      <div class="seg sm" data-control="edge" role="group" aria-label="停靠边缘">
+        <button data-value="top">上</button><button data-value="bottom">下</button>
+        <button data-value="left">左</button><button data-value="right">右</button>
+      </div></div>
+    <div class="proto-note">编辑模式下图标不悬浮放大（放大只服务于启动场景，编辑态会盖住 × 角标）；点击图标不会运行，只提示先「完成」；移除可撤销（Toast 内「撤销」按钮）。</div>
+  </div>
+</div>
+<button class="proto-toggle" id="protoToggle" title="显示原型控制台" aria-label="显示原型控制台" hidden>?</button>
+
+<script src="assets/proto.js"></script>
+<script>
+(function(){
+  'use strict';
+  const st = {
+    themePref:'dark', wall:'auto', style:'glass', label:'icon',
+    tileSize:44, radius:18, alpha:.4,
+    pinned:true, edge:'top', edit:true
+  };
+  let items = QA.SEED.map((it, i) => ({...it, id:'i' + i}));
+  const els = {
+    items:QA.$('#dockItems'), overlay:QA.$('#overlayLayer'), dropLine:QA.$('#dropLine'),
+    fadeL:QA.$('#fadeLeft'), fadeR:QA.$('#fadeRight'),
+    indicator:QA.$('#scrollIndicator'), thumb:QA.$('#scrollThumb'),
+    panel:QA.$('#protoPanel'), toggle:QA.$('#protoToggle')
+  };
+  const fades = {left:els.fadeL, right:els.fadeR, indicator:els.indicator, thumb:els.thumb};
+  let lastRemoved = {item:null, index:-1};
+
+  function refresh(){
+    QA.applyTokens(st);
+    QA.setCollapseBtn(QA.$('#btnHide'), st.edge);
+    QA.renderTiles(els.items, items, st, {edit:true, emptyText:'右键空白处添加应用'});
+    requestAnimationFrame(() => QA.updateScrollChrome(els.items, fades));
+  }
+
+  function removeItem(id){
+    const index = items.findIndex(it => it.id === id);
+    if(index < 0) return;
+    const item = items.splice(index, 1)[0];
+    lastRemoved = {item, index};
+    refresh();
+    QA.toast('已移除 ' + item.name, {actionLabel:'撤销', onAction:() => {
+      items.splice(lastRemoved.index, 0, lastRemoved.item);
+      lastRemoved = {item:null, index:-1};
+      refresh();
+      QA.toast('已恢复');
+    }});
+  }
+
+  /* 就地改名：输入框覆盖在原图标位置 */
+  let renaming = null;
+  function startRename(id){
+    const it = items.find(x => x.id === id);
+    const node = QA.$('.dock-item[data-id="' + id + '"]', els.items);
+    if(!it || !node) return;
+    cancelRename();
+    renaming = id;
+    node.classList.add('renaming');
+    const tileRect = QA.$('.tile', node).getBoundingClientRect();
+    const width = Math.max(120, tileRect.width + 70);
+    const input = QA.h('input', {
+      class:'rename-input', type:'text', value:it.name, 'aria-label':'编辑名称',
+      style:'width:' + width + 'px;left:' + (tileRect.left + tileRect.width / 2 - width / 2) + 'px;top:' +
+            (tileRect.top + tileRect.height / 2 - 16) + 'px'
+    });
+    input.addEventListener('keydown', e => {
+      e.stopPropagation();
+      if(e.key === 'Enter') commitRename();
+      else if(e.key === 'Escape') cancelRename();
+    });
+    input.addEventListener('blur', commitRename);
+    els.overlay.append(input);
+    input.focus();
+    input.select();
+  }
+  function commitRename(){
+    if(!renaming) return;
+    const id = renaming;
+    renaming = null;
+    const input = QA.$('.rename-input', els.overlay);
+    const value = input ? input.value.trim() : '';
+    if(input) input.remove();
+    const it = items.find(x => x.id === id);
+    if(it && value && value !== it.name){
+      it.name = value;
+      QA.toast('已重命名为 ' + value);
+    }
+    refresh();
+  }
+  function cancelRename(){
+    const input = QA.$('.rename-input', els.overlay);
+    if(input) input.remove();
+    renaming = null;
+    QA.$$('.dock-item.renaming', els.items).forEach(n => n.classList.remove('renaming'));
+  }
+
+  /* 图标事件：移除 / 双击改名；编辑模式点击不运行 */
+  els.items.addEventListener('click', e => {
+    const remove = e.target.closest('.remove');
+    if(remove){ removeItem(remove.dataset.id); return; }
+    const tile = e.target.closest('.tile');
+    if(tile) QA.toast('编辑模式下不运行 · 点「完成」退出');
+  });
+  els.items.addEventListener('dblclick', e => {
+    const item = e.target.closest('.dock-item');
+    if(item) startRename(item.dataset.id);
+  });
+
+  /* 拖拽排序（HTML5 DnD，轴向随停靠边；蓝色插入线指示落点） */
+  let dragId = null;
+  function vertical(){ return st.edge === 'left' || st.edge === 'right'; }
+  function dropIndexFor(x, y){
+    const kids = QA.$$('.dock-item', els.items);
+    const pos = vertical() ? y : x;
+    for(let i = 0; i < kids.length; i++){
+      const r = kids[i].getBoundingClientRect();
+      const mid = vertical() ? r.top + r.height / 2 : r.left + r.width / 2;
+      if(pos < mid) return i;
+    }
+    return kids.length;
+  }
+  function positionDropLine(x, y){
+    const kids = QA.$$('.dock-item', els.items);
+    if(!kids.length) return;
+    const idx = dropIndexFor(x, y);
+    const scRect = els.items.getBoundingClientRect();
+    const line = els.dropLine.style;
+    if(vertical()){
+      let yy;
+      if(idx <= 0) yy = kids[0].getBoundingClientRect().top - 4;
+      else if(idx >= kids.length) yy = kids[kids.length - 1].getBoundingClientRect().bottom + 4;
+      else yy = (kids[idx - 1].getBoundingClientRect().bottom + kids[idx].getBoundingClientRect().top) / 2;
+      line.left = (scRect.left + 16) + 'px';
+      line.top = yy + 'px';
+      line.width = Math.max(24, scRect.width - 32) + 'px';
+      line.height = '3px';
+    }else{
+      let xx;
+      if(idx <= 0) xx = kids[0].getBoundingClientRect().left - 4;
+      else if(idx >= kids.length) xx = kids[kids.length - 1].getBoundingClientRect().right + 4;
+      else xx = (kids[idx - 1].getBoundingClientRect().right + kids[idx].getBoundingClientRect().left) / 2;
+      line.left = xx + 'px';
+      line.top = (scRect.top + 16) + 'px';
+      line.width = '3px';
+      line.height = Math.max(24, scRect.height - 32) + 'px';
+    }
+    els.dropLine.hidden = false;
+  }
+  els.items.addEventListener('dragstart', e => {
+    const item = e.target.closest('.dock-item');
+    if(!item){ e.preventDefault(); return; }
+    dragId = item.dataset.id;
+    item.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    try{ e.dataTransfer.setData('text/plain', dragId); }catch(err){}
+  });
+  els.items.addEventListener('dragover', e => {
+    if(!dragId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    positionDropLine(e.clientX, e.clientY);
+  });
+  els.items.addEventListener('drop', e => {
+    if(!dragId) return;
+    e.preventDefault();
+    const kids = QA.$$('.dock-item', els.items);
+    const anchor = kids[dropIndexFor(e.clientX, e.clientY)];
+    const from = items.findIndex(it => it.id === dragId);
+    if(from >= 0){
+      const moved = items.splice(from, 1)[0];
+      let insertAt = items.length;
+      if(anchor && anchor.dataset.id !== dragId){
+        const anchorIdx = items.findIndex(it => it.id === anchor.dataset.id);
+        if(anchorIdx >= 0) insertAt = anchorIdx;
+      }else if(anchor){
+        insertAt = from;
+      }
+      items.splice(insertAt, 0, moved);
+    }
+    dragId = null;
+    els.dropLine.hidden = true;
+    refresh();
+    QA.toast('顺序已保存');
+  });
+  els.items.addEventListener('dragend', () => {
+    dragId = null;
+    els.dropLine.hidden = true;
+    QA.$$('.dock-item.dragging', els.items).forEach(n => n.classList.remove('dragging'));
+  });
+
+  /* 工具条与操作区 */
+  QA.$('#editDone').addEventListener('click', () => { location.href = '原型-01-主面板.html'; });
+  QA.$('#editReset').addEventListener('click', () => {
+    items = QA.SEED.map((it, i) => ({...it, id:'i' + i}));
+    refresh();
+    QA.toast('演示数据已重置（' + items.length + ' 项）');
+  });
+  QA.$('#btnSearch').addEventListener('click', () => { location.href = '原型-02-搜索.html'; });
+  QA.$('#btnMenu').addEventListener('click', () => { location.href = '原型-04-更多操作菜单.html'; });
+  QA.$('#btnPin').addEventListener('click', () => {
+    st.pinned = !st.pinned;
+    QA.$('#btnPin').classList.toggle('active', st.pinned);
+    QA.$('#btnPin').setAttribute('aria-pressed', String(st.pinned));
+  });
+  QA.$('#btnHide').addEventListener('click', () => { location.href = '原型-01-主面板.html'; });
+  document.addEventListener('keydown', e => {
+    if(e.key === 'Escape' && !QA.$('.menu')) location.href = '原型-01-主面板.html';
+  });
+
+  QA.hydrateIcons();
+  QA.bindControls(els.panel, st, key => {
+    refresh();
+    if(key === 'edge') QA.toast('编辑面板随 Dock 停靠到' + QA.EDGE_LABEL[st.edge] + '边缘');
+  });
+  QA.wireConsoleHide(els.panel, els.toggle);
+
+  refresh();
+})();
+</script>
+</body>
+</html>

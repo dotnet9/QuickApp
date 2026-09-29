@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark" data-style="glass" data-label="icon" data-pinned="false" data-search-open="false" data-edit="false" data-edge="top">
+<head>
+<meta charset="utf-8">
+<title>原型 01 · 主面板（Dock 常规态）</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="../logo.svg">
+<link rel="stylesheet" href="assets/proto.css">
+</head>
+<body class="dock-visible">
+
+<!-- 模拟桌面 -->
+<div class="taskbar" aria-hidden="true">
+  <i></i><i></i><i></i><span class="clock">原型演示 · 模拟桌面</span>
+</div>
+
+<a class="proto-back" href="index.html">← 原型目录</a>
+
+<!-- 收起后的唤出把手：悬停停留 300ms 或点击展开 -->
+<button class="dock-handle" id="dockHandle" type="button" title="悬停停留后展开 Dock" aria-label="展开 Dock"></button>
+
+<!-- Dock 主面板 -->
+<div class="dock" id="dock" role="toolbar" aria-label="快捷 Dock">
+  <div class="dock-body">
+    <div class="items-wrap">
+      <div class="dock-items" id="dockItems" role="list"></div>
+      <div class="fade fade-left" id="fadeLeft"></div>
+      <div class="fade fade-right" id="fadeRight"></div>
+      <div class="scroll-indicator" id="scrollIndicator" hidden><i id="scrollThumb"></i></div>
+    </div>
+    <div class="dock-tools">
+      <div class="dock-divider"></div>
+      <div class="dock-actions">
+        <button class="icon-btn" id="btnSearch" data-icon="search" title="搜索（S）" aria-label="搜索"></button>
+        <button class="icon-btn" id="btnPin" data-icon="pin" title="钉住 Dock" aria-label="钉住 Dock" aria-pressed="false"></button>
+        <button class="icon-btn" id="btnMenu" data-icon="more" title="更多操作" aria-label="更多操作" aria-haspopup="menu" aria-expanded="false"></button>
+        <button class="icon-btn low-priority" id="btnHide" data-icon="chevron-up" title="收起" aria-label="收起"></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 悬停气泡 -->
+<div class="overlay-layer">
+  <div class="bubble" id="bubble" hidden>
+    <span class="bubble-name" id="bubbleName"></span>
+    <span class="bubble-target" id="bubbleTarget"></span>
+  </div>
+</div>
+
+<!-- 原型控制台 -->
+<div class="proto-panel" id="protoPanel">
+  <div class="proto-head">
+    <strong>原型控制台</strong><span>不属于产品界面</span>
+    <button class="icon-btn" id="protoHide" data-icon="x" title="隐藏控制台" aria-label="隐藏控制台"></button>
+  </div>
+  <div class="proto-body">
+    <div class="proto-row"><span>主题</span>
+      <div class="seg sm" data-control="themePref">
+        <button data-value="dark">深</button><button data-value="light">浅</button>
+      </div></div>
+    <div class="proto-row"><span>停靠边</span>
+      <div class="seg sm" data-control="edge" role="group" aria-label="停靠边缘">
+        <button data-value="top">上</button><button data-value="bottom">下</button>
+        <button data-value="left">左</button><button data-value="right">右</button>
+      </div></div>
+    <div class="proto-row"><span>标签</span>
+      <div class="seg sm" data-control="label">
+        <button data-value="icon">仅图标</button><button data-value="iconText">图标+名称</button>
+      </div></div>
+    <div class="proto-row"><span>钉住</span>
+      <div class="seg sm" data-control="pinned"><button data-value="false">关</button><button data-value="true">开</button></div></div>
+    <div class="proto-row"><span>图标尺寸</span>
+      <input type="range" id="rgTile" min="32" max="64" step="2" value="44" aria-label="图标尺寸">
+      <output id="outTile">44px</output></div>
+    <div class="proto-note">演示数据 10 项（真实默认亦为 10 项）；超出一屏沿停靠方向滚动，两端渐隐 + 强调色指示条。<br>悬浮放大不裁剪：滚动区四周留白 18px（含 5px 朝内位移、1.52 峰值缩放），四边停靠均不得裁切图标。<br>多显示器（定稿）：Dock 只在「目标显示器」上；收起 = 同一窗口缩为贴边的唤出把手（一窗两态），全局热键跨屏兜底；显示器被拔掉时回落主显示器。</div>
+  </div>
+</div>
+<button class="proto-toggle" id="protoToggle" title="显示原型控制台" aria-label="显示原型控制台" hidden>?</button>
+
+<script src="assets/proto.js"></script>
+<script>
+(function(){
+  'use strict';
+  const st = {
+    themePref:'dark', wall:'auto', style:'glass', label:'icon',
+    tileSize:44, radius:18, alpha:.4,
+    pinned:false, edge:'top', dockVisible:true
+  };
+  const items = QA.SEED.map((it, i) => ({...it, id:'i' + i}));
+  const els = {
+    items:QA.$('#dockItems'), fadeL:QA.$('#fadeLeft'), fadeR:QA.$('#fadeRight'),
+    indicator:QA.$('#scrollIndicator'), thumb:QA.$('#scrollThumb'),
+    handle:QA.$('#dockHandle'), bubble:QA.$('#bubble'),
+    panel:QA.$('#protoPanel'), toggle:QA.$('#protoToggle')
+  };
+  const fades = {left:els.fadeL, right:els.fadeR, indicator:els.indicator, thumb:els.thumb};
+
+  function refresh(){
+    QA.applyTokens(st);
+    document.body.classList.toggle('dock-visible', st.dockVisible);
+    document.body.classList.toggle('dock-pinned', st.pinned);
+    els.handle.title = '悬停停留后展开 Dock';
+    const pin = QA.$('#btnPin');
+    pin.classList.toggle('active', st.pinned);
+    pin.setAttribute('aria-pressed', String(st.pinned));
+    QA.setCollapseBtn(QA.$('#btnHide'), st.edge);
+    QA.renderTiles(els.items, items, st);
+    requestAnimationFrame(() => QA.updateScrollChrome(els.items, fades));
+  }
+
+  /* 悬停气泡：仅「仅图标」模式 */
+  QA.attachBubble(QA.$('#dock'), els.items, els.bubble, st,
+    id => items.find(it => it.id === id));
+
+  /* 图标点击：运行反馈 */
+  els.items.addEventListener('click', e => {
+    const tile = e.target.closest('.tile');
+    if(!tile) return;
+    const it = items.find(x => x.id === tile.dataset.id);
+    if(!it) return;
+    tile.classList.add('running');
+    setTimeout(() => tile.classList.remove('running'), 340);
+    QA.toast('正在启动：' + it.name);
+    if(!st.pinned) setTimeout(() => { st.dockVisible = false; refresh(); }, 600);
+  });
+
+  /* 滚轮与拖拽平移（轴向随停靠边） */
+  els.items.addEventListener('wheel', e => {
+    const vertical = st.edge === 'left' || st.edge === 'right';
+    const delta = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+    if(!delta) return;
+    if(vertical) els.items.scrollBy({top:delta, behavior:'smooth'});
+    else els.items.scrollBy({left:delta, behavior:'smooth'});
+    e.preventDefault();
+  }, {passive:false});
+  els.items.addEventListener('scroll', () => QA.updateScrollChrome(els.items, fades));
+
+  /* 操作区 */
+  QA.$('#btnSearch').addEventListener('click', () => { location.href = '原型-02-搜索.html'; });
+  QA.$('#btnMenu').addEventListener('click', () => { location.href = '原型-04-更多操作菜单.html'; });
+  QA.$('#btnHide').addEventListener('click', () => { st.dockVisible = false; refresh(); QA.toast('已收起 · 悬停边缘可唤出'); });
+  QA.$('#btnPin').addEventListener('click', () => {
+    st.pinned = !st.pinned;
+    if(st.pinned) st.dockVisible = true;
+    refresh();
+    QA.toast(st.pinned ? '已钉住' : '已取消钉住');
+  });
+
+  /* 收起把手：悬停停留唤出 */
+  let revealTimer = null;
+  els.handle.addEventListener('pointerenter', () => {
+    revealTimer = setTimeout(() => { st.dockVisible = true; refresh(); }, 300);
+  });
+  els.handle.addEventListener('pointerleave', () => clearTimeout(revealTimer));
+  els.handle.addEventListener('click', () => { clearTimeout(revealTimer); st.dockVisible = true; refresh(); });
+
+  /* 控制台 */
+  QA.hydrateIcons();
+  QA.bindControls(els.panel, st, key => {
+    if(key === 'pinned'){
+      if(st.pinned) st.dockVisible = true;
+      refresh();
+      QA.toast(st.pinned ? '已钉住' : '已取消钉住');
+      return;
+    }
+    refresh();
+    if(key === 'edge') QA.toast('已停靠到' + QA.EDGE_LABEL[st.edge] + '边缘');
+  });
+  QA.$('#rgTile').addEventListener('input', e => {
+    st.tileSize = Number(e.target.value);
+    QA.$('#outTile').textContent = st.tileSize + 'px';
+    refresh();
+  });
+  QA.wireConsoleHide(els.panel, els.toggle);
+
+  refresh();
+})();
+</script>
+</body>
+</html>

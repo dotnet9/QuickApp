@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark" data-style="glass" data-label="icon" data-search-open="false" data-edit="false" data-edge="top">
+<head>
+<meta charset="utf-8">
+<title>原型 04 · 更多操作菜单</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="../logo.svg">
+<link rel="stylesheet" href="assets/proto.css">
+</head>
+<body class="dock-visible">
+
+<div class="taskbar" aria-hidden="true">
+  <i></i><i></i><i></i><span class="clock">原型演示 · 模拟桌面</span>
+</div>
+
+<a class="proto-back" href="index.html">← 原型目录</a>
+
+<div class="dock" id="dock" role="toolbar" aria-label="快捷 Dock">
+  <div class="dock-body">
+    <div class="items-wrap">
+      <div class="dock-items" id="dockItems" role="list"></div>
+      <div class="fade fade-left" id="fadeLeft"></div>
+      <div class="fade fade-right" id="fadeRight"></div>
+      <div class="scroll-indicator" id="scrollIndicator" hidden><i id="scrollThumb"></i></div>
+    </div>
+    <div class="dock-tools">
+      <div class="dock-divider"></div>
+      <div class="dock-actions">
+        <button class="icon-btn" id="btnSearch" data-icon="search" title="搜索（S）" aria-label="搜索"></button>
+        <button class="icon-btn" id="btnPin" data-icon="pin" title="钉住 Dock" aria-label="钉住 Dock" aria-pressed="false"></button>
+        <button class="icon-btn" id="btnMenu" data-icon="more" title="更多操作" aria-label="更多操作" aria-haspopup="menu" aria-expanded="false"></button>
+        <button class="icon-btn low-priority" id="btnHide" data-icon="chevron-up" title="收起" aria-label="收起"></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay-layer">
+  <div class="bubble" id="bubble" hidden>
+    <span class="bubble-name" id="bubbleName"></span>
+    <span class="bubble-target" id="bubbleTarget"></span>
+  </div>
+</div>
+
+<!-- 更换图标：选本地图片（png/jpg/ico 等），不内置图标库 -->
+<input type="file" id="iconFile" accept=".png,.jpg,.jpeg,.ico,.bmp,.webp,image/*" hidden>
+
+<div class="proto-panel" id="protoPanel">
+  <div class="proto-head">
+    <strong>原型控制台</strong><span>不属于产品界面</span>
+    <button class="icon-btn" id="protoHide" data-icon="x" title="隐藏控制台" aria-label="隐藏控制台"></button>
+  </div>
+  <div class="proto-body">
+    <div class="proto-row"><span>主题</span>
+      <div class="seg sm" data-control="themePref">
+        <button data-value="dark">深</button><button data-value="light">浅</button>
+      </div></div>
+    <div class="proto-row"><span>停靠边</span>
+      <div class="seg sm" data-control="edge" role="group" aria-label="停靠边缘">
+        <button data-value="top">上</button><button data-value="bottom">下</button>
+        <button data-value="left">左</button><button data-value="right">右</button>
+      </div></div>
+    <div class="proto-row col"><span>状态直达</span>
+      <div class="proto-btns">
+        <button id="goDockMenu">更多操作菜单</button>
+        <button id="goItemMenu">图标右键菜单</button>
+      </div></div>
+    <div class="proto-note">
+      图标：右键「更换图标…」选本地图片（png/jpg/ico），不内置图标库——应用千奇百怪，内置列表填不满；未自定义的用类型占位图。<br>
+      菜单定位：贴着触发按钮、朝桌面内侧弹出，空间不足时向面板反方向翻转；Esc / 点击空白关闭。<br>
+      已知缺陷：v0.2.5 客户端点「更多操作」会异常退出，待修复；本页为目标行为。
+    </div>
+  </div>
+</div>
+<button class="proto-toggle" id="protoToggle" title="显示原型控制台" aria-label="显示原型控制台" hidden>?</button>
+
+<script src="assets/proto.js"></script>
+<script>
+(function(){
+  'use strict';
+  const st = {
+    themePref:'dark', wall:'auto', style:'glass', label:'icon',
+    tileSize:44, radius:18, alpha:.4,
+    pinned:true, edge:'top'
+  };
+  let items = QA.SEED.map((it, i) => ({...it, id:'i' + i}));
+  const els = {
+    items:QA.$('#dockItems'), bubble:QA.$('#bubble'), iconFile:QA.$('#iconFile'),
+    fadeL:QA.$('#fadeLeft'), fadeR:QA.$('#fadeRight'),
+    indicator:QA.$('#scrollIndicator'), thumb:QA.$('#scrollThumb'),
+    panel:QA.$('#protoPanel'), toggle:QA.$('#protoToggle')
+  };
+  const fades = {left:els.fadeL, right:els.fadeR, indicator:els.indicator, thumb:els.thumb};
+  let pendingIconItem = null;
+
+  /* 更换图标：打开系统文件选择器，选中本地图片后立即生效并随配置持久化 */
+  function openIconFilePicker(it){
+    pendingIconItem = it;
+    try{
+      els.iconFile.click();
+    }catch(err){
+      QA.toast('当前环境无法打开文件选择器');
+    }
+  }
+  els.iconFile.addEventListener('change', e => {
+    const file = e.target.files && e.target.files[0];
+    if(file && pendingIconItem){
+      pendingIconItem.customUrl = URL.createObjectURL(file);
+      refresh();
+      QA.toast('已更换 ' + pendingIconItem.name + ' 的图标');
+    }
+    pendingIconItem = null;
+    e.target.value = '';
+  });
+
+  function refresh(){
+    QA.applyTokens(st);
+    QA.setCollapseBtn(QA.$('#btnHide'), st.edge);
+    QA.renderTiles(els.items, items, st);
+    requestAnimationFrame(() => QA.updateScrollChrome(els.items, fades));
+  }
+  function setEdge(edge){
+    st.edge = edge;
+    els.items.scrollLeft = 0; els.items.scrollTop = 0;
+    refresh();
+    QA.toast('已停靠到' + QA.EDGE_LABEL[edge] + '边缘');
+  }
+
+  QA.attachBubble(QA.$('#dock'), els.items, els.bubble, st, id => items.find(it => it.id === id));
+
+  /* 图标点击：运行 */
+  els.items.addEventListener('click', e => {
+    const tile = e.target.closest('.tile');
+    if(!tile) return;
+    const it = items.find(x => x.id === tile.dataset.id);
+    if(it) QA.toast('正在启动：' + it.name);
+  });
+
+  /* 菜单内容 */
+  function itemMenuSpec(it){
+    return [
+      {label:'运行', icon:'play', action:() => QA.toast('正在启动：' + it.name)},
+      {sep:true},
+      {label:'重命名', icon:'pencil', action:() => { location.href = '原型-03-编辑模式.html'; }},
+      {label:'更换图标…', icon:'upload', action:() => openIconFilePicker(it)},
+      {label:'复制路径', icon:'copy', action:() => QA.toast('路径已复制：' + it.target)},
+      {label:'复制命令', icon:'terminal', action:() => QA.toast('已复制命令（原型演示）')},
+      {label:'打开位置', icon:'folder', action:() => QA.toast('在资源管理器中定位文件')},
+      {sep:true},
+      {label:'移除', icon:'trash', danger:true, action:() => {
+        items = items.filter(x => x.id !== it.id);
+        refresh();
+        QA.toast('已移除 ' + it.name, {actionLabel:'撤销', onAction:() => { items.push(it); refresh(); QA.toast('已恢复'); }});
+      }}
+    ];
+  }
+  function dockMenuSpec(){
+    return [
+      {title:'添加'},
+      {label:'文件…', icon:'upload', action:() => QA.toast('打开系统文件选择器（原型演示）')},
+      {label:'命令行…', icon:'terminal', action:() => { location.href = '原型-07-添加命令行.html'; }},
+      {sep:true},
+      {title:'管理'},
+      {label:'编辑模式', icon:'pencil', action:() => { location.href = '原型-03-编辑模式.html'; }},
+      {label:'清空', icon:'trash', danger:true, action:() => {
+        const backup = items.slice();
+        items = [];
+        refresh();
+        QA.toast('已清空 ' + backup.length + ' 项', {actionLabel:'撤销', onAction:() => { items = backup; refresh(); QA.toast('已恢复'); }});
+      }},
+      {sep:true},
+      {title:'停靠'},
+      {custom:() => QA.dockEdgePicker(st.edge, edge => { QA.closeMenu(); setEdge(edge); })},
+      {sep:true},
+      {label:'设置', icon:'gear', action:() => { location.href = '原型-06-设置窗口.html'; }},
+      {sep:true},
+      {label:'退出', icon:'power', danger:true, action:() => QA.toast('退出应用（托盘与 Alt+F4 同效）')}
+    ];
+  }
+
+  /* 更多操作：点按钮或 Dock 空白右键 */
+  QA.$('#btnMenu').addEventListener('click', e => {
+    QA.openMenuAtButton(dockMenuSpec(), e.currentTarget);
+  });
+  QA.$('#dock').addEventListener('contextmenu', e => {
+    if(e.target.closest('.dock-item')) return;
+    e.preventDefault();
+    QA.openMenu(dockMenuSpec(), e.clientX, e.clientY);
+  });
+  els.items.addEventListener('contextmenu', e => {
+    const item = e.target.closest('.dock-item');
+    if(!item) return;
+    e.preventDefault();
+    const it = items.find(x => x.id === item.dataset.id);
+    if(it) QA.openMenu(itemMenuSpec(it), e.clientX, e.clientY);
+  });
+
+  QA.$('#btnSearch').addEventListener('click', () => { location.href = '原型-02-搜索.html'; });
+  QA.$('#btnPin').addEventListener('click', () => {
+    st.pinned = !st.pinned;
+    QA.$('#btnPin').classList.toggle('active', st.pinned);
+    QA.$('#btnPin').setAttribute('aria-pressed', String(st.pinned));
+  });
+  QA.$('#btnHide').addEventListener('click', () => { location.href = '原型-01-主面板.html'; });
+
+  QA.hydrateIcons();
+  QA.bindControls(els.panel, st, key => { refresh(); });
+  QA.$('#goDockMenu').addEventListener('click', () => {
+    QA.openMenuAtButton(dockMenuSpec(), QA.$('#btnMenu'));
+  });
+  QA.$('#goItemMenu').addEventListener('click', () => {
+    const tile = QA.$('.dock-item[data-id="i6"] .tile', els.items) || QA.$('.tile', els.items);
+    if(!tile) return;
+    const it = items.find(x => x.id === tile.dataset.id);
+    const r = tile.getBoundingClientRect();
+    QA.openMenu(itemMenuSpec(it), r.left, r.bottom + 6);
+  });
+  QA.wireConsoleHide(els.panel, els.toggle);
+
+  refresh();
+})();
+</script>
+</body>
+</html>

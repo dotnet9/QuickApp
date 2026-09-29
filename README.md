@@ -4,7 +4,7 @@ QuickApp 是一个跨平台的快捷应用 Dock。它可以停靠在屏幕上、
 
 Windows 版本提供完整的系统集成功能和 NativeAOT 发布；Linux、macOS 版本使用自包含单文件运行时，核心 Dock、配置、搜索和启动功能可用。
 
-原型文件位于 [`design/index.html`](design/index.html)。它是视觉 token、交互状态和布局的参考实现；Avalonia 界面应保持与原型一致。
+界面原型按界面拆分在 [`design`](design) 目录（入口 [`design/index.html`](design/index.html)）。共享视觉 token 与组件在 `design/assets`；Avalonia 界面应保持与原型一致，修改界面先同步原型再同步实现。
 
 ## 功能
 
@@ -111,7 +111,7 @@ GitHub Actions 会在推送 `v*` 标签时分别构建 Windows、Linux 和 macOS
 ```text
 src/QuickApp.Core   平台无关的模型、搜索、启动计划、配置和停靠计算
 src/QuickApp        Avalonia 桌面应用、窗口、视图模型和 Windows 平台服务
-design              HTML 原型和交互参考
+design              HTML 原型（每界面一个文件）与共享样式、脚本
 tests               Core 层单元测试
 scripts             发布、打包和 Windows 安装包脚本
 ```
@@ -127,4 +127,4 @@ Core 层保持平台无关并可单测；Windows API 集中在 `src/QuickApp/Pla
 
 ## 贡献
 
-修改界面时先同步 [`design/index.html`](design/index.html)，再同步 Avalonia 实现。提交前运行 `dotnet test QuickApp.slnx --no-restore` 和 `git diff --check`。
+修改界面时先同步 [`design`](design) 下的对应原型页，再同步 Avalonia 实现。提交前运行 `dotnet test QuickApp.slnx --no-restore` 和 `git diff --check`。

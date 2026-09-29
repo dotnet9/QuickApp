@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark" data-style="glass" data-label="icon" class="proto-scroll">
+<head>
+<meta charset="utf-8">
+<title>原型 07 · 添加命令行与导入确认</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="../logo.svg">
+<link rel="stylesheet" href="assets/proto.css">
+<style>
+/* 舞台内渲染弹窗（区别于整页居中） */
+.stage .modal-layer{position:absolute;z-index:30}
+.stage .modal-card.small{width:400px}
+</style>
+</head>
+<body>
+
+<a class="proto-back" href="index.html">← 原型目录</a>
+
+<div class="proto-page">
+
+  <header class="proto-headline">
+    <h1>原型 07 · 添加命令行 与 导入确认</h1>
+    <p>两个小型模态对话框：入口分别是「更多操作 → 添加 → 命令行…」与「设置 → 数据 → 导入配置」。
+    对话框为 400px 卡片、遮罩可点击关闭、<code>Esc</code> 关闭；表单校验失败用 Toast 提示，不改布局。</p>
+  </header>
+
+  <div class="stage" id="stageCmd">
+    <div class="taskbar" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="modal-layer">
+      <div class="scrim"></div>
+      <div class="modal-card small" role="dialog" aria-modal="true" aria-label="添加命令行">
+        <div class="modal-head">
+          <h2>添加命令行</h2>
+          <button class="icon-btn" id="cmdClose" data-icon="x" title="关闭" aria-label="关闭"></button>
+        </div>
+        <div class="modal-body">
+          <div class="stack">
+            <label for="cmdName">名称</label>
+            <input id="cmdName" type="text" placeholder="例如：192.168.1.133" autocomplete="off">
+            <label for="cmdValue">命令</label>
+            <input id="cmdValue" type="text" placeholder="例如：mstsc /v:192.168.1.133" autocomplete="off">
+          </div>
+          <div class="row">
+            <span class="spacer"></span>
+            <button class="chip" id="cmdCancel">取消</button>
+            <button class="chip primary" id="cmdSubmit"><span class="chip-icon" data-icon="check"></span>添加</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="stage-caption"><span class="s-badge">A</span>添加命令行 —— 名称与命令都必填；回车跳转下一输入框，末尾回车提交；成功后新图标追加到 Dock 末尾并 Toast「已添加命令行：名称」。</div>
+
+  <div class="stage" id="stageImport">
+    <div class="taskbar" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="modal-layer">
+      <div class="scrim"></div>
+      <div class="modal-card small" role="dialog" aria-modal="true" aria-label="确认导入配置">
+        <div class="modal-head"><h2>替换快捷配置？</h2></div>
+        <div class="modal-body">
+          <p class="row-note" id="importSummary">导入将替换当前 10 个快捷项及设置。</p>
+          <div class="row" style="justify-content:flex-end;margin-top:12px">
+            <button class="chip" id="importCancel" type="button">取消</button>
+            <button class="chip primary" id="importConfirm" type="button">替换当前配置</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="stage-caption"><span class="s-badge">B</span>导入确认 —— 摘要行动态显示将被替换的快捷项数量；「取消」返回设置页，确认后整体替换并 Toast 结果。危险操作必须二次确认。</div>
+
+  <div class="spec">
+    <b>交互要点</b>
+    <ul>
+      <li>两个对话框共用遮罩层：<code>Esc</code> / 点击遮罩 / 「取消」都只关对话框，不动 Dock。</li>
+      <li>表单输入回车顺序：<code>名称 → 命令 → 提交</code>；空白提交 Toast「名称和命令都要填写」，不关窗。</li>
+      <li>「添加文件…」走系统文件选择器（无对话框）；<code>.url / .lnk</code> 按网页类型导入。</li>
+    </ul>
+  </div>
+
+</div>
+
+<script src="assets/proto.js"></script>
+<script>
+(function(){
+  'use strict';
+  QA.hydrateIcons();
+
+  /* 添加命令行 */
+  const name = QA.$('#cmdName'), value = QA.$('#cmdValue');
+  function submitCmd(){
+    const n = name.value.trim(), v = value.value.trim();
+    if(!n || !v){ QA.toast('名称和命令都要填写'); return; }
+    QA.toast('已添加命令行：' + n + '（原型演示）');
+    name.value = ''; value.value = '';
+    name.focus();
+  }
+  QA.$('#cmdSubmit').addEventListener('click', submitCmd);
+  QA.$('#cmdCancel').addEventListener('click', () => QA.toast('已取消（返回 Dock）'));
+  QA.$('#cmdClose').addEventListener('click', () => QA.toast('已关闭（返回 Dock）'));
+  name.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.stopPropagation(); value.focus(); } });
+  value.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.stopPropagation(); submitCmd(); } });
+
+  /* 导入确认 */
+  QA.$('#importConfirm').addEventListener('click', () => QA.toast('已导入示例配置，替换 10 个快捷项（原型演示）'));
+  QA.$('#importCancel').addEventListener('click', () => QA.toast('已取消导入，返回设置页'));
+})();
+</script>
+</body>
+</html>

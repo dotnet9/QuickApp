@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark" data-style="glass" data-label="icon" class="proto-scroll">
+<head>
+<meta charset="utf-8">
+<title>原型 05 · 更新提示（新版本横幅布局规范）</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="../logo.svg">
+<link rel="stylesheet" href="assets/proto.css">
+<style>
+/* 本页专用：横向演示舞台压矮一点，只露 Dock 与更新条 */
+.stage.slim{height:224px}
+.stage .update-card{position:absolute;z-index:40}
+/* proto.css 的竖排规则挂在 html[data-edge] 上；舞台内改挂在 stage 上 */
+.stage[data-edge="left"]{--pop-x:5px;--pop-y:0px}
+.stage[data-edge="right"]{--pop-x:-5px;--pop-y:0px}
+.stage[data-edge="bottom"]{--pop-x:0px;--pop-y:-5px}
+.stage[data-edge="left"] .dock-body,.stage[data-edge="right"] .dock-body{flex-direction:column;align-items:stretch;gap:6px}
+.stage[data-edge="left"] .dock-tools,.stage[data-edge="right"] .dock-tools{flex-direction:column;align-items:center;gap:2px;padding:2px;align-self:center}
+.stage[data-edge="left"] .items-wrap,.stage[data-edge="right"] .items-wrap{flex-direction:column}
+.stage[data-edge="left"] .dock-items,.stage[data-edge="right"] .dock-items{
+  flex-direction:column;align-items:stretch;gap:4px;padding:14px 18px;
+  overflow-x:hidden;overflow-y:auto;
+  max-width:none;max-height:320px;
+}
+.stage[data-edge="left"] .dock-item,.stage[data-edge="right"] .dock-item{flex-direction:row;align-items:center;gap:8px;width:100%}
+.stage[data-edge="right"] .dock-item{flex-direction:row-reverse}
+.stage[data-edge="left"] .dock-divider,.stage[data-edge="right"] .dock-divider{width:28px;height:1px;align-self:center}
+.stage[data-edge="left"] .update-bar,.stage[data-edge="right"] .update-bar{margin:6px 2px 0}
+</style>
+</head>
+<body>
+
+<a class="proto-back" href="index.html">← 原型目录</a>
+
+<div class="proto-page">
+
+  <header class="proto-headline">
+    <h1>原型 05 · 更新提示</h1>
+    <p>修复目标：<b>v0.2.5 中出现「发现新版本」提示时，竖排 Dock 窗口被压扁、文本被截断</b>（见缺陷截图）。
+    本页定义横排与竖排两种停靠下的更新提示布局，以及 S1–S4 四个状态的内容与按钮；
+    交互与文案与 <code>DockViewModel</code> 的更新状态机一致：检查 → 下载（可取消）→ 二次确认安装 / 打开发布页。</p>
+  </header>
+
+  <div class="stage tall" id="liveStage" data-edge="top">
+    <div class="taskbar" aria-hidden="true"><i></i><i></i><i></i><span class="clock">交互演示 · 点「下载」体验完整状态机</span></div>
+    <div class="dock" id="liveDock" role="toolbar" aria-label="更新提示演示 Dock">
+      <div class="dock-body">
+        <div class="items-wrap">
+          <div class="dock-items" id="liveItems" role="list"></div>
+        </div>
+        <div class="dock-tools">
+          <div class="dock-divider"></div>
+          <div class="dock-actions">
+            <button class="icon-btn" data-icon="search" title="搜索（见原型 02）" aria-label="搜索"></button>
+            <button class="icon-btn" data-icon="pin" title="钉住 Dock" aria-label="钉住 Dock" aria-pressed="false"></button>
+            <button class="icon-btn" data-icon="more" title="更多操作（见原型 04）" aria-label="更多操作"></button>
+            <button class="icon-btn low-priority" data-icon="chevron-up" title="收起" aria-label="收起"></button>
+          </div>
+        </div>
+      </div>
+      <!-- 更新条 / 胶囊由脚本按状态与停靠边注入 -->
+    </div>
+  </div>
+  <div class="stage-caption"><span class="s-badge">演示</span>可交互：切换 S1–S4、点「下载」看进度；停靠边可切到左/右查看竖排形态。通知类反馈（下载完成等）走 Toast，见原型 08。</div>
+
+  <div class="spec">
+    <b>布局规范</b>
+    <ul>
+      <li><b>横排（上/下边缘）</b>：更新条是 Dock 面板内的一行，位于图标区下方；<code>min-width:330px</code>，面板宽度取「图标区 + 工具区」与更新条的较大值；<b>更新条永远不反向压缩图标区</b>。</li>
+      <li><b>竖排（左/右边缘）</b>：Dock 宽度不变，只在工具区下方追加 <code>新版本</code> 胶囊（强调色描边 + 呼吸圆点）；点击胶囊弹出 <code>290px</code> 更新卡片，锚在 Dock 内侧（左停靠 → 卡片在右；右停靠 → 卡片在左），垂直中心与胶囊对齐。</li>
+      <li><b>文本</b>：单行，超出省略号；版本号加粗；按钮恒靠右，不换行、不换列。</li>
+      <li><b>给 Avalonia 的实现注记</b>：窗口是 <code>SizeToContent</code>，更新条内部<b>禁止使用星号（<code>*</code>）列</b>——星号列在按内容测宽时塌缩为 0，正是把整窗压扁的原因；文本区用固定/最大宽度 + 截断，按钮用 Auto 列。</li>
+    </ul>
+  </div>
+
+  <header class="proto-headline"><h1 style="font-size:16px">横排 Dock（上边缘）· 四状态</h1></header>
+
+  <div class="stage slim" data-edge="top" data-u="found">
+    <div class="taskbar" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="dock"><div class="dock-body"><div class="items-wrap"><div class="dock-items" data-seed></div></div></div></div>
+  </div>
+  <div class="stage-caption"><span class="s-badge">S1</span>发现新版本 —— 主按钮「下载」（有匹配资产时）+ 次按钮「忽略」；忽略后本次运行不再提示。</div>
+
+  <div class="stage slim" data-edge="top" data-u="downloading">
+    <div class="taskbar" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="dock"><div class="dock-body"><div class="items-wrap"><div class="dock-items" data-seed></div></div></div></div>
+  </div>
+  <div class="stage-caption"><span class="s-badge">S2</span>下载中 —— 文本行下方 4px 进度条（强调色），按钮只剩「取消」；下载期间忽略按钮隐藏。</div>
+
+  <div class="stage slim" data-edge="top" data-u="ready">
+    <div class="taskbar" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="dock"><div class="dock-body"><div class="items-wrap"><div class="dock-items" data-seed></div></div></div></div>
+  </div>
+  <div class="stage-caption"><span class="s-badge">S3</span>已就绪 —— 图标转成功色，主按钮变「安装」（非 Windows 安装包资产时为「打开安装包」）+「忽略」；点击安装后由系统安装器接管，程序退出。</div>
+
+  <div class="stage slim" data-edge="top" data-u="noasset">
+    <div class="taskbar" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="dock"><div class="dock-body"><div class="items-wrap"><div class="dock-items" data-seed></div></div></div></div>
+  </div>
+  <div class="stage-caption"><span class="s-badge">S4</span>没有匹配资产 —— 找不到当前系统/架构的下载资产时降级为「打开发布页」，避免下错文件。</div>
+
+  <header class="proto-headline"><h1 style="font-size:16px">竖排 Dock（左边缘）· 胶囊 + 弹出卡片</h1></header>
+
+  <div class="stage tall" data-edge="left" data-u="downloading" data-flyout="1">
+    <div class="taskbar" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="dock"><div class="dock-body"><div class="items-wrap"><div class="dock-items" data-seed></div></div></div></div>
+  </div>
+  <div class="stage-caption"><span class="s-badge">S2</span>竖排时 Dock 只出现「● 新版本」胶囊（呼吸点提示），Dock 宽度不被更新内容撑开；点击胶囊在 Dock 内侧弹出卡片。</div>
+
+  <div class="stage tall" data-edge="right" data-u="ready" data-flyout="1">
+    <div class="taskbar" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="dock"><div class="dock-body"><div class="items-wrap"><div class="dock-items" data-seed></div></div></div></div>
+  </div>
+  <div class="stage-caption"><span class="s-badge">S3</span>右边缘对称：卡片弹在 Dock 左侧。卡片内容与横排更新条一致（S1–S4 同一套状态机）。</div>
+
+  <div class="spec">
+    <b>状态机与文案（与 DockViewModel 对齐）</b>
+    <ul>
+      <li><b>S1</b> 文本 <code>发现新版本 v0.2.5</code>；按钮 <code>下载</code>（AssetUrl 与 ChecksumUrl 均存在时）/ <code>忽略</code>。</li>
+      <li><b>S2</b> 文本 <code>正在下载 v0.2.5 · 45%</code> + 进度条；按钮 <code>取消</code>。Toast 同步「正在下载更新 · 45%」。</li>
+      <li><b>S3</b> 文本 <code>v0.2.5 下载完成</code>；按钮 <code>安装</code> / <code>打开安装包</code>（按资产是否为 <code>*-setup.exe</code>）+ <code>忽略</code>；Toast「下载完成，请点击安装」。</li>
+      <li><b>S4</b> 文本 <code>发现新版本 v0.2.5 · 没有匹配当前系统的安装包</code>；按钮 <code>打开发布页</code> + <code>忽略</code>。</li>
+      <li>下载失败 → Toast「下载失败，请重试」，回到 S1；取消 → 回到 S1。</li>
+    </ul>
+  </div>
+
+</div>
+
+<script src="assets/proto.js"></script>
+<script>
+(function(){
+  'use strict';
+  QA.hydrateIcons();
+
+  /* ---- 静态舞台：图标 + 工具区 + 更新条/胶囊/卡片 ---- */
+  const TOOLS_HTML =
+    '<div class="dock-tools"><div class="dock-divider"></div><div class="dock-actions">' +
+    '<button class="icon-btn" data-icon="search" title="搜索" aria-label="搜索"></button>' +
+    '<button class="icon-btn" data-icon="pin" title="钉住 Dock" aria-label="钉住 Dock" aria-pressed="false"></button>' +
+    '<button class="icon-btn" data-icon="more" title="更多操作" aria-label="更多操作"></button>' +
+    '<button class="icon-btn low-priority" data-icon="chevron-up" title="收起" aria-label="收起"></button>' +
+    '</div></div>';
+  const noop = {};
+  QA.$$('[data-u]').forEach(stage => {
+    const phase = stage.dataset.u;
+    const dock = QA.$('.dock', stage);
+    const body = QA.$('.dock-body', stage);
+    body.insertAdjacentHTML('beforeend', TOOLS_HTML);
+    QA.setCollapseBtn(QA.$('.dock-actions .low-priority', dock), stage.dataset.edge);
+    const itemsEl = QA.$('[data-seed]', stage);
+    const st = {themePref:document.documentElement.dataset.theme, label:'icon', tileSize:44};
+    const vertical = stage.dataset.edge === 'left' || stage.dataset.edge === 'right';
+    const source = vertical ? QA.SEED.slice(0, 6) : QA.SEED.slice(0, 10);
+    const items = source.map((it, i) => ({...it, id:'i' + i}));
+    QA.renderTiles(itemsEl, items, st);
+
+    const u = {phase, tag:'v0.2.5', progress:phase === 'downloading' ? 45 : 100, installer:true};
+    if(!vertical){
+      dock.append(QA.updateBarNode(u, noop));
+    }else{
+      dock.append(QA.updatePillNode(() => {}));
+      if(stage.dataset.flyout){
+        const card = QA.updateCardNode(u, noop);
+        stage.append(card);
+        requestAnimationFrame(() => {
+          const dr = dock.getBoundingClientRect();
+          const sr = stage.getBoundingClientRect();
+          const cr = card.getBoundingClientRect();
+          if(stage.dataset.edge === 'left') card.style.left = (dr.right - sr.left + 12) + 'px';
+          else card.style.left = (dr.left - sr.left - cr.width - 12) + 'px';
+          card.style.top = Math.max(12, (sr.height - cr.height) / 2) + 'px';
+        });
+      }
+    }
+  });
+  QA.hydrateIcons();
+
+  /* ---- 交互演示 ---- */
+  const live = {
+    edge:'top', phase:'found', progress:0, timer:null
+  };
+  const stage = QA.$('#liveStage'), dock = QA.$('#liveDock'), itemsEl = QA.$('#liveItems');
+  const items = QA.SEED.slice(0, 10).map((it, i) => ({...it, id:'i' + i}));
+  QA.renderTiles(itemsEl, items, {label:'icon', tileSize:44});
+
+  let cardEl = null;
+  function actions(){
+    return {
+      download(){ startDownload(); },
+      dismiss(){ live.phase = 'none'; QA.toast('已忽略本次更新提示'); renderLive(); },
+      cancel(){ clearInterval(live.timer); live.phase = 'found'; QA.toast('已取消更新下载'); renderLive(); },
+      install(){ clearInterval(live.timer); live.phase = 'none'; QA.toast('已启动安装包（原型演示），程序随后退出'); renderLive(); },
+      openPage(){ QA.toast('打开 GitHub Releases 页面（原型演示）'); }
+    };
+  }
+  function startDownload(){
+    clearInterval(live.timer);
+    live.phase = 'downloading';
+    live.progress = 0;
+    renderLive();
+    live.timer = setInterval(() => {
+      live.progress = Math.min(100, live.progress + 9);
+      if(live.progress >= 100){
+        clearInterval(live.timer);
+        live.phase = 'ready';
+        QA.toast('下载完成，请点击安装');
+      }
+      renderLive();
+    }, 420);
+  }
+  function renderLive(){
+    const vertical = live.edge === 'left' || live.edge === 'right';
+    QA.$('.update-bar', dock)?.remove();
+    QA.$('.update-pill', dock)?.remove();
+    if(cardEl){ cardEl.remove(); cardEl = null; }
+    if(live.phase === 'none') { applyEdge(); return; }
+
+    const u = {phase:live.phase, tag:'v0.2.5', progress:live.progress, installer:true};
+    if(!vertical){
+      dock.append(QA.updateBarNode(u, actions()));
+    }else{
+      dock.append(QA.updatePillNode(() => {
+        if(cardEl){ cardEl.remove(); cardEl = null; return; }
+        cardEl = QA.updateCardNode({phase:live.phase, tag:'v0.2.5', progress:live.progress, installer:true}, actions());
+        stage.append(cardEl);
+        const dr = dock.getBoundingClientRect(), sr = stage.getBoundingClientRect(), cr = cardEl.getBoundingClientRect();
+        if(live.edge === 'left') cardEl.style.left = (dr.right - sr.left + 12) + 'px';
+        else cardEl.style.left = (dr.left - sr.left - cr.width - 12) + 'px';
+        cardEl.style.top = Math.max(12, (sr.height - cr.height) / 2) + 'px';
+      }));
+    }
+    applyEdge();
+  }
+  function applyEdge(){
+    stage.dataset.edge = live.edge;
+    QA.setCollapseBtn(QA.$('.dock-actions .low-priority', dock), live.edge);
+  }
+
+  /* 控制台（页内简化版） */
+  const panel = QA.h('div', {class:'proto-panel', id:'protoPanel'},
+    QA.h('div', {class:'proto-head'},
+      QA.h('strong', {text:'原型控制台'}), QA.h('span', {text:'不属于产品界面'}),
+      QA.h('button', {class:'icon-btn', 'data-icon':'x', title:'隐藏控制台'})));
+  const body = QA.h('div', {class:'proto-body'});
+  body.append(QA.h('div', {class:'proto-row'}, QA.h('span', {text:'状态'}),
+    (() => {
+      const seg = QA.h('div', {class:'seg sm', id:'phaseSeg'});
+      [['found','S1 发现'],['downloading','S2 下载中'],['ready','S3 就绪'],['noasset','S4 无资产']].forEach(([v, t]) => {
+        seg.append(QA.h('button', {'data-phase':v, onclick:() => {
+          clearInterval(live.timer);
+          live.phase = v;
+          if(v === 'downloading') live.progress = 45;
+          renderLive();
+        }}, QA.h('span', {text:t})));
+      });
+      return seg;
+    })()));
+  body.append(QA.h('div', {class:'proto-row'}, QA.h('span', {text:'停靠边'}),
+    (() => {
+      const seg = QA.h('div', {class:'seg sm', id:'edgeSeg'});
+      ['top','bottom','left','right'].forEach(v => {
+        seg.append(QA.h('button', {'data-edge':v, onclick:() => {
+          live.edge = v; renderLive();
+        }}, QA.h('span', {text:QA.EDGE_LABEL[v]})));
+      });
+      return seg;
+    })()));
+  body.append(QA.h('div', {class:'proto-note'}));
+  panel.append(body);
+  document.body.append(panel);
+
+  function syncSegs(){
+    QA.$$('#phaseSeg button').forEach(b => b.classList.toggle('active', b.dataset.phase === live.phase));
+    QA.$$('#edgeSeg button').forEach(b => b.classList.toggle('active', b.dataset.edge === live.edge));
+  }
+  const observer = new MutationObserver(syncSegs);
+  observer.observe(stage, {attributes:true});
+  new MutationObserver(syncSegs).observe(dock, {childList:true});
+  syncSegs();
+  renderLive();
+})();
+</script>
+</body>
+</html>

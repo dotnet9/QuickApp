@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark" data-style="glass" data-label="icon" class="proto-scroll">
+<head>
+<meta charset="utf-8">
+<title>原型 08 · 托盘菜单与 Toast 通知</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="icon" href="../logo.svg">
+<link rel="stylesheet" href="assets/proto.css">
+<style>
+/* 托盘预览在舞台里绝对定位到右上角 */
+.stage .tray-preview{position:absolute}
+</style>
+</head>
+<body>
+
+<a class="proto-back" href="index.html">← 原型目录</a>
+
+<div class="proto-page">
+
+  <header class="proto-headline">
+    <h1>原型 08 · 托盘菜单与 Toast 通知</h1>
+    <p>托盘图标左键/右键弹出菜单（显示·隐藏、开机启动、钉住、设置、退出）；
+    Toast 是全局轻通知，出现在桌面底部居中（任务栏上方 56px），可带动作按钮与下载进度。</p>
+  </header>
+
+  <div class="stage" id="stageTray">
+    <div class="taskbar" aria-hidden="true"><i></i><i></i><i></i><span class="clock">托盘图标在系统通知区，此处为形态预览</span></div>
+    <div class="tray-preview" id="trayPreview">
+      <div class="tray-head">
+        <img class="tray-icon" src="../logo.svg" alt="QuickApp 托盘图标">
+        <span>托盘图标 · 浏览器中为形态预览</span>
+        <button class="icon-btn" id="trayClose" data-icon="x" title="关闭" aria-label="关闭"></button>
+      </div>
+      <div class="menu" id="trayMenu"></div>
+    </div>
+  </div>
+  <div class="stage-caption"><span class="s-badge">A</span>托盘菜单 —— 「开机启动」「钉住」为开关项，右侧标注当前态；「退出」为危险项（红色）；Windows 托盘为真实系统菜单，样式尽力贴近。</div>
+
+  <div class="stage tall" id="stageToast">
+    <div class="taskbar" aria-hidden="true"><i></i><i></i><i></i><span class="clock">点下方按钮试播 Toast</span></div>
+    <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:20" class="proto-btns" id="toastBtns">
+      <button data-toast="run">正在启动：微信</button>
+      <button data-toast="remove">已移除（含撤销）</button>
+      <button data-toast="download">下载进度</button>
+      <button data-toast="done">下载完成</button>
+      <button data-toast="fail">检查更新失败</button>
+      <button data-toast="pin">已钉住 / 已取消钉住</button>
+    </div>
+    <!-- Toast 在舞台内演示（真实应用出现在桌面底部居中） -->
+    <div class="toast-layer" id="stageToastLayer" style="position:absolute"></div>
+  </div>
+  <div class="stage-caption"><span class="s-badge">B</span>Toast 样式 —— 单行文本 + 可选动作按钮；下载中带 2px 进度条；同类 Toast 连续触发先撤旧再弹新，不堆叠。</div>
+
+  <div class="spec">
+    <b>规范要点</b>
+    <ul>
+      <li>Toast 停留：带动作 5s，纯提示 2.2s；淡入上浮 180ms，淡出下沉 160ms。</li>
+      <li>「撤销」类动作（移除、清空）给 5s 反悔期；超时后真正生效。</li>
+      <li>下载进度 Toast 与 Dock 更新条（原型 05）并行展示同一进度；点「取消」两处同时停止。</li>
+      <li>托盘菜单打开时不影响 Dock 自动隐藏计时；「设置」「退出」与更多操作菜单语义一致。</li>
+    </ul>
+  </div>
+
+</div>
+
+<script src="assets/proto.js"></script>
+<script>
+(function(){
+  'use strict';
+  QA.hydrateIcons();
+  QA.setToastLayer(QA.$('#stageToastLayer'));
+
+  /* 托盘菜单 */
+  const trayState = {autoStart:true, pinned:false};
+  function renderTray(){
+    const menu = QA.$('#trayMenu');
+    menu.replaceChildren(
+      QA.menuRow({label:'隐藏', icon:'chevron-up', action:() => QA.toast('隐藏 Dock（原型演示）')}),
+      QA.menuRow({label:'开机启动', icon:'check', note:trayState.autoStart ? '开' : '关',
+        action:() => { trayState.autoStart = !trayState.autoStart; renderTray(); }}),
+      QA.menuRow({label:'钉住', icon:'pin', note:trayState.pinned ? '开' : '关',
+        action:() => { trayState.pinned = !trayState.pinned; renderTray(); }}),
+      QA.h('div', {class:'menu-sep'}),
+      QA.menuRow({label:'设置', icon:'gear', action:() => { location.href = '原型-06-设置窗口.html'; }}),
+      QA.h('div', {class:'menu-sep'}),
+      QA.menuRow({label:'退出', icon:'power', danger:true, action:() => QA.toast('退出应用（原型演示）')})
+    );
+  }
+  renderTray();
+  QA.$('#trayClose').addEventListener('click', () => QA.toast('托盘预览已关闭（真实托盘在系统通知区）'));
+
+  /* Toast 试播 */
+  let downloadTimer = null;
+  let downloadDismiss = null;
+  function simulateDownload(){
+    clearInterval(downloadTimer);
+    let value = 0;
+    const step = () => {
+      downloadDismiss = QA.toast('正在下载更新 · ' + value + '%', {
+        duration:5000, progress:value, actionLabel:'取消',
+        onAction:() => { clearInterval(downloadTimer); QA.toast('已取消更新下载'); }
+      });
+      if(value >= 100){
+        clearInterval(downloadTimer);
+        setTimeout(() => {
+          QA.toast('更新已下载完成', {actionLabel:'安装', onAction:() => QA.toast('已启动安装包（原型演示）')});
+        }, 400);
+        return;
+      }
+      downloadTimer = setTimeout(() => { value = Math.min(100, value + 16); step(); }, 420);
+    };
+    step();
+  }
+  QA.$('#toastBtns').addEventListener('click', e => {
+    const btn = e.target.closest('[data-toast]');
+    if(!btn) return;
+    switch(btn.dataset.toast){
+      case 'run': QA.toast('正在启动：微信'); break;
+      case 'remove': QA.toast('已移除 微信', {actionLabel:'撤销', onAction:() => QA.toast('已恢复')}); break;
+      case 'download': simulateDownload(); break;
+      case 'done': QA.toast('更新已下载完成', {actionLabel:'安装', onAction:() => QA.toast('已启动安装包（原型演示）')}); break;
+      case 'fail': QA.toast('检查更新失败，将下次启动重试'); break;
+      case 'pin': QA.toast('已钉住，Dock 常驻显示'); break;
+    }
+  });
+})();
+</script>
+</body>
+</html>
