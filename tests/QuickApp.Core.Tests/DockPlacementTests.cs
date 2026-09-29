@@ -122,6 +122,23 @@ public sealed class DockPlacementTests
         => Assert.Equal(expected, DockPlacement.IsVertical(edge));
 
     [Theory]
+    [InlineData(DockEdge.Top, -999, 45)]
+    [InlineData(DockEdge.Bottom, -999, 1051)]
+    [InlineData(DockEdge.Left, -1915, 521)]
+    [InlineData(DockEdge.Right, -29, 521)]
+    public void Handle_is_centered_and_inset_from_the_physical_monitor_edge(DockEdge edge, int expectedX, int expectedY)
+    {
+        (int x, int y) = DockPlacement.AnchorHandle(-1920, 40, 1920, 1040, 78, 24, edge, 5);
+        if (DockPlacement.IsVertical(edge))
+        {
+            (x, y) = DockPlacement.AnchorHandle(-1920, 40, 1920, 1040, 24, 78, edge, 5);
+        }
+
+        Assert.Equal(expectedX, x);
+        Assert.Equal(expectedY, y);
+    }
+
+    [Theory]
     [InlineData(960, 60, DockEdge.Top)]
     [InlineData(960, 990, DockEdge.Bottom)]
     [InlineData(10, 500, DockEdge.Left)]

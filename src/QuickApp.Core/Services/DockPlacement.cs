@@ -71,6 +71,26 @@ public static class DockPlacement
             _ => -(dockHeight + gap + beyondEdge)
         };
 
+    /// <summary>把手按原型内缩显示在显示器边界内，坐标使用完整边界而非工作区。</summary>
+    public static (int X, int Y) AnchorHandle(
+        int screenX,
+        int screenY,
+        int screenWidth,
+        int screenHeight,
+        int handleWidth,
+        int handleHeight,
+        Models.DockEdge edge,
+        int inset)
+    {
+        return edge switch
+        {
+            Models.DockEdge.Bottom => (screenX + (screenWidth - handleWidth) / 2, screenY + screenHeight - handleHeight - inset),
+            Models.DockEdge.Left => (screenX + inset, screenY + (screenHeight - handleHeight) / 2),
+            Models.DockEdge.Right => (screenX + screenWidth - handleWidth - inset, screenY + (screenHeight - handleHeight) / 2),
+            _ => (screenX + (screenWidth - handleWidth) / 2, screenY + inset)
+        };
+    }
+
     /// <summary>左/右边缘是竖向 Dock。</summary>
     public static bool IsVertical(Models.DockEdge edge)
         => edge is Models.DockEdge.Left or Models.DockEdge.Right;
