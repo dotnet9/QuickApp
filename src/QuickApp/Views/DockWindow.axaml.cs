@@ -39,6 +39,8 @@ public partial class DockWindow : Window, IDockHost
     private DockViewModel? _vm;
     private bool _isHidden;
     private bool _isMoreMenuOpen;
+    private bool _isContextMenuOpen;
+    private ContextMenu? _contextMenu;
     private double _progress;
 
     private ItemViewModel? _focused;
@@ -72,7 +74,7 @@ public partial class DockWindow : Window, IDockHost
         _hideTimer.Tick += (_, _) =>
         {
             _hideTimer.Stop();
-            if (_vm is not null && !_dockDragging && !_vm.IsPointerOver && !_vm.IsPinned && !_vm.IsSearchOpen && !_vm.IsEditMode && !_isMoreMenuOpen)
+            if (_vm is not null && !_dockDragging && !_vm.IsPointerOver && !_vm.IsPinned && !_vm.IsSearchOpen && !_vm.IsEditMode && !_isMoreMenuOpen && !_isContextMenuOpen)
             {
                 _vm.IsDockVisible = false;
             }
@@ -888,7 +890,20 @@ public partial class DockWindow : Window, IDockHost
             return;
         }
 
+        _contextMenu?.Close();
         var menu = new ContextMenu();
+        _contextMenu = menu;
+        _isContextMenuOpen = true;
+        _hideTimer.Stop();
+        menu.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(_contextMenu, menu))
+            {
+                _contextMenu = null;
+                _isContextMenuOpen = false;
+                ScheduleAutoHide();
+            }
+        };
 
         if (item is null)
         {
@@ -928,8 +943,14 @@ public partial class DockWindow : Window, IDockHost
             menu.Items.Add(new Separator());
             menu.Items.Add(MenuEntry("从 Dock 移除", () =>
             {
-                menu.Close();
                 _vm.RemoveCommand.Execute(captured);
+                Dispatcher.UIThread.Post(() =>
+                {
+                    if (menu.IsOpen)
+                    {
+                        menu.Close();
+                    }
+                });
             }));
         }
 
@@ -1331,7 +1352,7 @@ public partial class DockWindow : Window, IDockHost
     /// </summary>
     private void ScheduleAutoHide()
     {
-        if (_vm is null || _dockDragging || _vm.IsPinned || !_vm.IsDockVisible || _vm.IsPointerOver || _isMoreMenuOpen)
+        if (_vm is null || _dockDragging || _vm.IsPinned || !_vm.IsDockVisible || _vm.IsPointerOver || _isMoreMenuOpen || _isContextMenuOpen)
         {
             return;
         }
