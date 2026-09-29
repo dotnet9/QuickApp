@@ -7,6 +7,8 @@
     <RootNamespace>QuickApp</RootNamespace>
     <AssemblyName>QuickApp</AssemblyName>
     <ApplicationManifest Condition="'$(TargetFramework)' == 'net10.0-windows'">app.manifest</ApplicationManifest>
+    <!-- 应用程序图标：exe/PE 资源，安装包与快捷方式沿用；源文件在仓库根目录 -->
+    <ApplicationIcon Condition="'$(TargetFramework)' == 'net10.0-windows'">..\..\logo.ico</ApplicationIcon>
 
     <!-- NativeAOT：关闭 COM 互操作（本项目全走 P/Invoke），LibraryImport 需要 unsafe -->
     <BuiltInComInteropSupport>false</BuiltInComInteropSupport>
@@ -19,6 +21,12 @@
   <ItemGroup>
     <!-- 裁剪根描述符：Avalonia / ReactiveUI / DI 走反射的地方整份保留，见文件内注释 -->
     <TrimmerRootDescriptor Include="Roots.xml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Logo 内嵌资源（窗口/托盘/关于页），与根目录 logo.svg 同源 -->
+    <AvaloniaResource Include="..\..\logo.ico" Link="Assets/logo.ico" />
+    <AvaloniaResource Include="..\..\logo.png" Link="Assets/logo.png" />
   </ItemGroup>
 
   <ItemGroup>
