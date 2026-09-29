@@ -5,7 +5,7 @@ namespace QuickApp.Platform.Windows;
 
 /// <summary>
 /// 全部 Win32 调用集中在这里，统一用源生成的 LibraryImport（AOT 下没有运行时代码生成）。
-/// 刻意不使用 COM：NativeAOT 已关闭内置 COM 互操作。
+/// 不使用运行时 COM 互操作；快捷方式解析通过原生接口 vtable 完成。
 /// </summary>
 internal static unsafe partial class NativeMethods
 {
@@ -14,6 +14,10 @@ internal static unsafe partial class NativeMethods
     internal const int ShgfiSmallIcon = 0x000000001;
     internal const int ShgfiUseFileAttributes = 0x000000010;
     internal const int ShgfiIconLocation = 0x000001000;
+
+    internal const uint ClsctxInprocServer = 0x00000001;
+    internal const uint CoInitMultithreaded = 0x00000000;
+    internal const uint StgmRead = 0x00000000;
 
     internal const int DiNormal = 0x0003;
     internal const int DibRgbColors = 0;
@@ -80,6 +84,16 @@ internal static unsafe partial class NativeMethods
     [LibraryImport("shell32.dll", EntryPoint = "SHDefExtractIconW", StringMarshalling = StringMarshalling.Utf16)]
     internal static partial int SHDefExtractIcon(
         string pszIconFile, int iIndex, uint uFlags, out IntPtr phiconLarge, IntPtr phiconSmall, uint nIconSize);
+
+    [LibraryImport("ole32.dll")]
+    internal static partial int CoInitializeEx(IntPtr pvReserved, uint dwCoInit);
+
+    [LibraryImport("ole32.dll")]
+    internal static partial void CoUninitialize();
+
+    [LibraryImport("ole32.dll")]
+    internal static partial int CoCreateInstance(
+        in Guid rclsid, IntPtr pUnkOuter, uint dwClsContext, in Guid riid, out IntPtr ppv);
 
     [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]

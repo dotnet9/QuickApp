@@ -108,15 +108,29 @@ public sealed class IconProvider : IIconProvider
             }
         }
 
+        bool isShortcut = Path.GetExtension(item.Target).Equals(".lnk", StringComparison.OrdinalIgnoreCase);
+        if (isShortcut && Path.GetExtension(iconFile).Equals(".lnk", StringComparison.OrdinalIgnoreCase)
+            && ShellLinkIconResolver.TryGetIconResource(item.Target, out string shortcutIconFile, out int shortcutIconIndex))
+        {
+            iconFile = shortcutIconFile;
+            iconIndex = shortcutIconIndex;
+        }
+
         // 2) 取大尺寸 HICON
         uint iconSize = (uint)(size | (size << 16));
         int hr = NativeMethods.SHDefExtractIcon(iconFile, iconIndex, 0, out IntPtr hIcon, IntPtr.Zero, iconSize);
         if (hr != 0 || hIcon == IntPtr.Zero)
         {
-            // 退化：直接问 Shell 要大图标（最大 32px，会偏小但总比没有好）
+            // 退化：快捷方式从解析出的目标程序取图标，避免 Shell 合成快捷方式箭头。
+            if (isShortcut && Path.GetExtension(iconFile).Equals(".lnk", StringComparison.OrdinalIgnoreCase))
+            {
+                return IntPtr.Zero;
+            }
+
             var fallback = new NativeMethods.SHFILEINFO();
             IntPtr ok = NativeMethods.SHGetFileInfo(
-                item.Target, 0, ref fallback, (uint)Marshal.SizeOf<NativeMethods.SHFILEINFO>(),
+                isShortcut ? iconFile : item.Target, 0, ref fallback,
+                (uint)Marshal.SizeOf<NativeMethods.SHFILEINFO>(),
                 NativeMethods.ShgfiIcon | NativeMethods.ShgfiLargIcon);
             if (ok == IntPtr.Zero || fallback.hIcon == IntPtr.Zero)
             {
@@ -265,7 +279,7 @@ public sealed class IconProvider : IIconProvider
 
     private static string CacheKey(LauncherItem item)
     {
-        string raw = string.Join('|', item.Target, item.IconKey ?? string.Empty, IconSize.ToString());
+        string raw = string.Join('|', "icon-v2", item.Target, item.IconKey ?? string.Empty, IconSize.ToString());
         byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(raw.ToUpperInvariant()));
         return Convert.ToHexString(hash.AsSpan(0, 12)).ToLowerInvariant();
     }
