@@ -12,7 +12,7 @@ namespace QuickApp.Core.Services;
 /// </summary>
 public sealed class ConfigStore
 {
-    private readonly string _configFile;
+    private string _configFile;
     private readonly Action<string>? _log;
 
     public ConfigStore(string baseDirectory, Action<string>? log = null)
@@ -70,7 +70,9 @@ public sealed class ConfigStore
 
             if (File.Exists(_configFile))
             {
-                File.Replace(temp, _configFile, AppPaths.ConfigBackupFile(_configFile), ignoreMetadataErrors: true);
+                // 滚动备份：config.1 最新……config.4 最旧，加上当前文件共 5 个时间点
+                RotateRollingBackups();
+                File.Replace(temp, _configFile, AppPaths.ConfigRollingBackupFile(_configFile, 1), ignoreMetadataErrors: true);
             }
             else
             {
@@ -83,6 +85,97 @@ public sealed class ConfigStore
         {
             _log?.Invoke($"保存配置失败：{ex.Message}");
             return false;
+        }
+    }
+
+    private void RotateRollingBackups()
+    {
+        for (int i = AppPaths.RollingBackupCount; i >= 2; i--)
+        {
+            string src = AppPaths.ConfigRollingBackupFile(_configFile, i - 1);
+            if (File.Exists(src))
+            {
+                File.Move(src, AppPaths.ConfigRollingBackupFile(_configFile, i), overwrite: true);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 切换安装版/便携版：写入或移除 portable.txt，把当前配置（含滚动备份）复制到新模式的位置，
+    /// 存储器随即指向新路径。成功返回 null，失败返回错误信息（标记与配置路径回滚到切换前）。
+    /// </summary>
+    public string? SwitchStorageMode(bool toPortable, string baseDirectory)
+    {
+        string oldFile = _configFile;
+        string marker = Path.Combine(baseDirectory, AppPaths.PortableMarker);
+        bool wasPortable = File.Exists(marker);
+        try
+        {
+            if (toPortable)
+            {
+                File.WriteAllText(marker, string.Empty);
+            }
+            else if (wasPortable)
+            {
+                File.Delete(marker);
+            }
+
+            _configFile = AppPaths.ConfigFile(baseDirectory);
+            if (_configFile == oldFile)
+            {
+                return null;
+            }
+
+            string? dir = Path.GetDirectoryName(_configFile);
+            if (!string.IsNullOrEmpty(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+
+            if (!File.Exists(_configFile) && File.Exists(oldFile))
+            {
+                File.Copy(oldFile, _configFile);
+            }
+
+            for (int i = 1; i <= AppPaths.RollingBackupCount; i++)
+            {
+                string src = AppPaths.ConfigRollingBackupFile(oldFile, i);
+                string dst = AppPaths.ConfigRollingBackupFile(_configFile, i);
+                if (File.Exists(src) && !File.Exists(dst))
+                {
+                    File.Copy(src, dst);
+                }
+            }
+
+            _log?.Invoke("存储模式已切换：" + _configFile);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            // 回滚：标记与配置路径恢复到切换前
+            try
+            {
+                bool nowPortable = File.Exists(marker);
+                if (nowPortable != wasPortable)
+                {
+                    if (wasPortable)
+                    {
+                        File.WriteAllText(marker, string.Empty);
+                    }
+                    else
+                    {
+                        File.Delete(marker);
+                    }
+                }
+
+                _configFile = AppPaths.ConfigFile(baseDirectory);
+            }
+            catch
+            {
+                // 回滚失败时保留原路径，至少当前会话还能读写
+            }
+
+            return ex.Message;
         }
     }
 

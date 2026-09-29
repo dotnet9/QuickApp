@@ -26,6 +26,12 @@ public interface IDockHost
     /// <summary>停靠边变化后重新摆放窗口（朝向、尺寸、收起方向都会变）。</summary>
     void ApplyEdge(DockEdge edge);
 
+    /// <summary>目标显示器变化后重新定位主 Dock 和收起把手。</summary>
+    void MonitorSelectionChanged();
+
+    /// <summary>自动隐藏设置变化后重置 Dock 隐藏计时。</summary>
+    void AutoHideDelayChanged();
+
     void ShowSettings();
 
     void Exit();
@@ -46,6 +52,7 @@ public sealed class DockViewModel : ViewModelBase
     private readonly List<ItemViewModel> _allItems = new();
     private readonly List<LauncherItem> _installedCatalog = new();
     private readonly Dictionary<string, ItemViewModel> _installedViewModels = new(StringComparer.OrdinalIgnoreCase);
+    private List<(LauncherItem Item, int Index)>? _lastRemovedItems;
 
     private IDockHost? _host;
     private string _searchQuery = string.Empty;
@@ -55,6 +62,7 @@ public sealed class DockViewModel : ViewModelBase
     private bool _isPointerOver;
     private bool _glassDegraded;
     private string? _statusMessage;
+    private string? _storageModeResult;
     private UpdateInfo? _pendingUpdate;
     private bool _isCheckingUpdate;
     private int _toastToken;
@@ -87,6 +95,7 @@ public sealed class DockViewModel : ViewModelBase
         RunCommand = ReactiveCommand.Create<ItemViewModel>(RunItem);
         RemoveCommand = ReactiveCommand.Create<ItemViewModel>(RemoveItem);
         AddInstalledCommand = ReactiveCommand.Create<ItemViewModel>(AddInstalledItem);
+        ClearAllCommand = ReactiveCommand.Create(ClearAllItems);
         UndoRemoveCommand = ReactiveCommand.Create(UndoRemove);
         ClearSearchCommand = ReactiveCommand.Create(() => SearchQuery = string.Empty);
         ToggleSearchCommand = ReactiveCommand.Create(() => IsSearchOpen = !IsSearchOpen);
@@ -180,6 +189,11 @@ public sealed class DockViewModel : ViewModelBase
             }
 
             Settings.Pinned = value;
+            if (value)
+            {
+                IsDockVisible = true;
+            }
+
             this.RaisePropertyChanged();
             Save();
             Toast(value ? "已钉住，Dock 常驻显示" : "已取消钉住，鼠标离开后自动隐藏");
@@ -194,7 +208,7 @@ public sealed class DockViewModel : ViewModelBase
 
     public double ListSpacing => IsVertical ? 4 : 6;
 
-    public double DividerWidth => IsVertical ? Math.Round(Settings.TileSize * 1.2, 1) : 1;
+    public double DividerWidth => IsVertical ? 28 : 1;
 
     public double DividerHeight => IsVertical ? 1 : Math.Round(Settings.TileSize * 1.2, 1);
 
@@ -219,8 +233,8 @@ public sealed class DockViewModel : ViewModelBase
         ? Math.Round(Settings.TileSize + 40)
         : 0;
 
-    /// <summary>操作区横向停靠为三列，纵向停靠为两列，按钮保持轻量紧凑。</summary>
-    public double ActionMaxWidth => IsVertical ? 60 : 88;
+    /// <summary>四个常驻操作按钮始终按两列排列。</summary>
+    public double ActionMaxWidth => 60;
 
     public double ActionMaxHeight => IsVertical ? 88 : double.PositiveInfinity;
 
@@ -252,7 +266,7 @@ public sealed class DockViewModel : ViewModelBase
     };
 
     /// <summary>为悬浮放大和两端 peek 留出缓冲，滚动视口只包住应用图标。</summary>
-    public Thickness ListPadding => new(24);
+    public Thickness ListPadding => new(10);
 
     // ---------------- 更新状态 ----------------
 
@@ -327,6 +341,31 @@ public sealed class DockViewModel : ViewModelBase
     public bool AutoStartEnabled => _autoStart.IsEnabled(AppName);
 
     public string ConfigFilePath => _store.ConfigFile;
+
+    /// <summary>存储模式说明（安装版 = %APPDATA%，便携版 = 程序目录）。</summary>
+    public string StorageModeText => AppPaths.IsPortable(AppContext.BaseDirectory)
+        ? "便携版 · 配置随程序目录"
+        : "安装版 · 配置在 %APPDATA%\\QuickApp";
+
+    /// <summary>切换到另一模式的按钮文案。</summary>
+    public string StorageModeSwitchText => AppPaths.IsPortable(AppContext.BaseDirectory) ? "切换为安装版" : "切换为便携版";
+
+    /// <summary>切换存储模式的结果说明（设置页展示）。</summary>
+    public string? StorageModeResult
+    {
+        get => _storageModeResult;
+        private set => Set(ref _storageModeResult, value);
+    }
+
+    public void ToggleStorageMode()
+    {
+        string? error = _store.SwitchStorageMode(!AppPaths.IsPortable(AppContext.BaseDirectory), AppContext.BaseDirectory);
+        StorageModeResult = error is null ? "已切换并迁移配置，立即生效" : "切换失败：" + error;
+        Toast(StorageModeResult);
+        this.RaisePropertyChanged(nameof(StorageModeText));
+        this.RaisePropertyChanged(nameof(StorageModeSwitchText));
+        this.RaisePropertyChanged(nameof(ConfigFilePath));
+    }
 
     public string? StatusMessage
     {
@@ -405,10 +444,8 @@ public sealed class DockViewModel : ViewModelBase
             {
                 IsDockVisible = true;
             }
-            else
-            {
-                SearchQuery = string.Empty;
-            }
+
+            RefreshFilter();
         }
     }
 
@@ -424,7 +461,7 @@ public sealed class DockViewModel : ViewModelBase
         }
     }
 
-    public bool IsSearchGrouped => SearchQuery.Trim().Length > 0;
+    public bool IsSearchGrouped => IsSearchOpen && SearchQuery.Trim().Length > 0;
 
     public string ConfiguredGroupTitle => "已配置 · " + Items.Count;
 
@@ -434,18 +471,18 @@ public sealed class DockViewModel : ViewModelBase
 
     public bool HasInstalledResults => IsSearchGrouped && InstalledItems.Count > 0;
 
-    public string CountText => SearchQuery.Trim().Length > 0
+    public string CountText => IsSearchGrouped
         ? (Items.Count + InstalledItems.Count) + " 个结果"
         : Items.Count + " / " + _allItems.Count;
 
-    public bool IsSearchEmpty => Items.Count == 0 && InstalledItems.Count == 0 && SearchQuery.Trim().Length > 0;
+    public bool IsSearchEmpty => Items.Count == 0 && InstalledItems.Count == 0 && IsSearchGrouped;
 
-    public string EmptyStateText => SearchQuery.Trim().Length > 0
+    public string EmptyStateText => IsSearchGrouped
         ? "没有匹配「" + SearchQuery.Trim() + "」的项目"
-        : "Dock 是空的 · 点右侧 + 添加第一个应用";
+        : "空空如也";
 
     /// <summary>Dock 一个项都没有（与「搜索无结果」区分开，给出添加引导）。</summary>
-    public bool IsDockEmpty => Items.Count == 0 && SearchQuery.Trim().Length == 0;
+    public bool IsDockEmpty => Items.Count == 0 && !IsSearchGrouped;
 
     // ---------------- 编辑模式 ----------------
 
@@ -481,6 +518,8 @@ public sealed class DockViewModel : ViewModelBase
     public ICommand RemoveCommand { get; }
 
     public ICommand AddInstalledCommand { get; }
+
+    public ICommand ClearAllCommand { get; }
 
     public ICommand UndoRemoveCommand { get; }
 
@@ -594,7 +633,8 @@ public sealed class DockViewModel : ViewModelBase
             vmById[vm.Id] = vm;
         }
 
-        IReadOnlyList<LauncherItem> filtered = ItemQuery.Filter(_config.Items, SearchQuery);
+        string activeQuery = IsSearchOpen ? SearchQuery : string.Empty;
+        IReadOnlyList<LauncherItem> filtered = ItemQuery.Filter(_config.Items, activeQuery);
 
         Items.Clear();
         foreach (LauncherItem model in filtered)
@@ -606,7 +646,7 @@ public sealed class DockViewModel : ViewModelBase
         }
 
         InstalledItems.Clear();
-        if (SearchQuery.Trim().Length > 0)
+        if (IsSearchGrouped)
         {
             var configuredTargets = new HashSet<string>(
                 _config.Items.Select(item => NormalizeTarget(item.Target)),
@@ -615,7 +655,7 @@ public sealed class DockViewModel : ViewModelBase
                 _config.Items.Select(item => item.Name),
                 StringComparer.OrdinalIgnoreCase);
 
-            foreach (LauncherItem model in ItemQuery.Filter(_installedCatalog, SearchQuery))
+            foreach (LauncherItem model in ItemQuery.Filter(_installedCatalog, activeQuery))
             {
                 if (configuredTargets.Contains(NormalizeTarget(model.Target))
                     || configuredNames.Contains(model.Name))
@@ -760,33 +800,54 @@ public sealed class DockViewModel : ViewModelBase
             return;
         }
 
-        _lastRemoved = (vm.Model, index);
+        _lastRemovedItems = new List<(LauncherItem Item, int Index)> { (vm.Model, index) };
         RefreshFilter();
         Save();
         Toast("已移除 " + vm.Name, "撤销", UndoRemoveCommand, 5000);
     }
 
-    /// <summary>移除撤销（原型 toast 的「撤销」动作）：把项插回原位置。</summary>
+    private void ClearAllItems()
+    {
+        if (_config.Items.Count == 0)
+        {
+            Toast("列表已经是空的");
+            return;
+        }
+
+        _lastRemovedItems = _config.Items
+            .Select((item, index) => (Item: item, Index: index))
+            .ToList();
+        int count = _lastRemovedItems.Count;
+        _config.Items.Clear();
+        _allItems.Clear();
+        RefreshFilter();
+        Save();
+        Toast("已清空 " + count + " 项", "撤销", UndoRemoveCommand, 5000);
+    }
+
+    /// <summary>撤销单项移除或清空列表，按原顺序恢复。</summary>
     private void UndoRemove()
     {
-        if (_lastRemoved is not { } removed)
+        if (_lastRemovedItems is not { Count: > 0 } removedItems)
         {
             return;
         }
 
-        _lastRemoved = null;
-        int index = Math.Clamp(removed.Index, 0, Math.Min(_allItems.Count, _config.Items.Count));
-        var vm = new ItemViewModel(removed.Item, RunItem, RemoveItem);
-        _config.Items.Insert(Math.Min(removed.Index, _config.Items.Count), removed.Item);
-        _allItems.Insert(index, vm);
-        _ = LoadIconAsync(vm);
+        _lastRemovedItems = null;
+        foreach ((LauncherItem item, int originalIndex) in removedItems.OrderBy(entry => entry.Index))
+        {
+            int index = Math.Clamp(originalIndex, 0, Math.Min(_allItems.Count, _config.Items.Count));
+            var vm = new ItemViewModel(item, RunItem, RemoveItem);
+            _config.Items.Insert(index, item);
+            _allItems.Insert(index, vm);
+            _ = LoadIconAsync(vm);
+        }
+
         ApplyItemLayout();
         RefreshFilter();
         Save();
         Toast("已恢复");
     }
-
-    private (LauncherItem Item, int Index)? _lastRemoved;
 
     /// <summary>添加目标（设置里选择文件，或将来的拖入）。</summary>
     public void AddTargets(IEnumerable<string> paths)
@@ -880,6 +941,7 @@ public sealed class DockViewModel : ViewModelBase
         }
 
         bool edgeChanged = imported.Settings.Edge != Settings.Edge;
+        bool monitorChanged = imported.Settings.MonitorIndex != Settings.MonitorIndex;
         _config.SchemaVersion = imported.SchemaVersion;
         _config.Settings = imported.Settings;
         _config.Items = imported.Items;
@@ -891,6 +953,12 @@ public sealed class DockViewModel : ViewModelBase
         {
             _host?.ApplyEdge(Settings.Edge);
         }
+        else if (monitorChanged)
+        {
+            _host?.MonitorSelectionChanged();
+        }
+
+        _host?.AutoHideDelayChanged();
 
         Save();
         Toast("已导入 " + _config.Items.Count + " 项");
@@ -914,6 +982,21 @@ public sealed class DockViewModel : ViewModelBase
         _host?.ApplyEdge(edge);
         Toast("Dock 已停靠到" + EdgeLabel);
     }
+
+    public void SelectMonitorIndex(int index)
+    {
+        if (Settings.MonitorIndex == index)
+        {
+            return;
+        }
+
+        Settings.MonitorIndex = index;
+        Save();
+        _host?.MonitorSelectionChanged();
+        Toast("Dock 已移动到显示器 " + (index + 1));
+    }
+
+    public void AutoHideDelayChanged() => _host?.AutoHideDelayChanged();
 
     private void ToggleAutoStart()
     {

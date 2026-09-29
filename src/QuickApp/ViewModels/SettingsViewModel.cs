@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Linq;
 using System.Windows.Input;
 using Avalonia.Media;
 using QuickApp.Core.Models;
@@ -8,12 +10,15 @@ using ReactiveUI;
 
 namespace QuickApp.ViewModels;
 
+public sealed record MonitorOption(int Index, string Label);
+
 /// <summary>
 /// 设置窗口的视图模型：每个 setter 直接改 Dock 的设置并即时生效，关闭窗口时统一存盘。
 /// </summary>
 public sealed class SettingsViewModel : ViewModelBase
 {
     private readonly DockViewModel _dock;
+    private int _primaryMonitorIndex;
 
     public SettingsViewModel(DockViewModel dock)
     {
@@ -73,6 +78,40 @@ public sealed class SettingsViewModel : ViewModelBase
     public ICommand SetLabelsCommand { get; }
 
     public ICommand SetEdgeCommand { get; }
+
+    public ObservableCollection<MonitorOption> MonitorOptions { get; } = new();
+
+    public MonitorOption? SelectedMonitor
+    {
+        get
+        {
+            int selectedIndex = Settings.MonitorIndex >= 0 ? Settings.MonitorIndex : _primaryMonitorIndex;
+            return MonitorOptions.FirstOrDefault(option => option.Index == selectedIndex)
+                ?? MonitorOptions.FirstOrDefault();
+        }
+        set
+        {
+            if (value is null || SelectedMonitor?.Index == value.Index)
+            {
+                return;
+            }
+
+            _dock.SelectMonitorIndex(value.Index);
+            this.RaisePropertyChanged();
+        }
+    }
+
+    public void SetMonitorOptions(IEnumerable<MonitorOption> options, int primaryMonitorIndex)
+    {
+        _primaryMonitorIndex = primaryMonitorIndex;
+        MonitorOptions.Clear();
+        foreach (MonitorOption option in options)
+        {
+            MonitorOptions.Add(option);
+        }
+
+        this.RaisePropertyChanged(nameof(SelectedMonitor));
+    }
 
     /// <summary>卡片外观复用 Dock 的调色板，保证两个窗口同一套配色。</summary>
     public IBrush PanelBorderBrush => _dock.PanelBorderBrush;
@@ -233,6 +272,7 @@ public sealed class SettingsViewModel : ViewModelBase
         {
             Settings.AutoHideDelayMs = (int)Math.Clamp(Math.Round(value / 100) * 100, 0, 3000);
             ApplyChange(palette: false, size: false);
+            _dock.AutoHideDelayChanged();
             this.RaisePropertyChanged();
             this.RaisePropertyChanged(nameof(AutoHideDelayText));
         }
@@ -287,6 +327,21 @@ public sealed class SettingsViewModel : ViewModelBase
     // ---------------- 数据 ----------------
 
     public string ConfigFilePath => _dock.ConfigFilePath;
+
+    public string StorageModeText => _dock.StorageModeText;
+
+    public string StorageModeSwitchText => _dock.StorageModeSwitchText;
+
+    public string StorageModeResult => _dock.StorageModeResult ?? string.Empty;
+
+    public void ToggleStorageMode()
+    {
+        _dock.ToggleStorageMode();
+        this.RaisePropertyChanged(nameof(StorageModeText));
+        this.RaisePropertyChanged(nameof(StorageModeSwitchText));
+        this.RaisePropertyChanged(nameof(StorageModeResult));
+        this.RaisePropertyChanged(nameof(ConfigFilePath));
+    }
 
     public void AddCommand(string name, string command)
     {

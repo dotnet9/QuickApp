@@ -15,19 +15,20 @@
         TransparencyLevelHint="Transparent"
         TransparencyBackgroundFallback="Transparent">
 
+  <!--
+    与原型 design/index.html 的 .settings-* 逐项对齐：
+    导航 136px 背景+右缘线、标签 38px 高选中强调色带左缘缺口条、
+    行 min-height 34 左标签（可带 11px 行内说明）右控件、分组 h3 12px 淡色。
+  -->
   <Window.Styles>
     <Style Selector="Slider">
-      <Setter Property="MinWidth" Value="150" />
+      <Setter Property="Width" Value="130" />
       <Setter Property="VerticalAlignment" Value="Center" />
-    </Style>
-    <Style Selector="ToggleSwitch">
-      <Setter Property="HorizontalAlignment" Value="Left" />
-      <Setter Property="HorizontalContentAlignment" Value="Left" />
     </Style>
     <Style Selector="TextBlock.section">
       <Setter Property="FontSize" Value="12" />
       <Setter Property="FontWeight" Value="SemiBold" />
-      <Setter Property="Margin" Value="0,14,0,8" />
+      <Setter Property="Margin" Value="0,12,0,8" />
       <Setter Property="Foreground" Value="{DynamicResource QATextDimBrush}" />
     </Style>
     <Style Selector="TextBlock.row">
@@ -40,6 +41,16 @@
       <Setter Property="TextWrapping" Value="Wrap" />
       <Setter Property="Foreground" Value="{DynamicResource QATextDimBrush}" />
     </Style>
+    <Style Selector="Grid.row">
+      <Setter Property="MinHeight" Value="34" />
+    </Style>
+    <Style Selector="TextBlock.output">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Width" Value="46" />
+      <Setter Property="TextAlignment" Value="Right" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{DynamicResource QATextDimBrush}" />
+    </Style>
     <Style Selector="TextBox">
       <Setter Property="Background" Value="{DynamicResource QAHoverBrush}" />
       <Setter Property="BorderBrush" Value="{DynamicResource QALineBrush}" />
@@ -47,35 +58,42 @@
       <Setter Property="MinHeight" Value="32" />
       <Setter Property="Foreground" Value="{DynamicResource QATextBrush}" />
     </Style>
+    <Style Selector="ComboBox">
+      <Setter Property="MinHeight" Value="28" />
+      <Setter Property="MinWidth" Value="150" />
+      <Setter Property="MaxWidth" Value="210" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="CornerRadius" Value="7" />
+      <Setter Property="Background" Value="{DynamicResource QAHoverBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource QALineBrush}" />
+    </Style>
+    <!-- 关于页链接：原型 .about-url 强调色文字，无底色 -->
+    <Style Selector="Button.about-url">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Height" Value="26" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Cursor" Value="Hand" />
+      <Setter Property="Foreground" Value="{DynamicResource QAAccentBrush}" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <ContentPresenter Content="{TemplateBinding Content}" VerticalAlignment="Center" />
+        </ControlTemplate>
+      </Setter>
+    </Style>
+    <Style Selector="Button.about-url:pointerover">
+      <Setter Property="Opacity" Value="0.78" />
+    </Style>
     <Style Selector="TabControl.settings-tabs">
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
       <Setter Property="VerticalContentAlignment" Value="Stretch" />
     </Style>
-    <Style Selector="TabItem.settings-tab">
-      <Setter Property="Width" Value="136" />
-      <Setter Property="Height" Value="38" />
-      <Setter Property="Padding" Value="14,0" />
-      <Setter Property="Margin" Value="0,1,0,1" />
-      <Setter Property="HorizontalContentAlignment" Value="Left" />
-      <Setter Property="VerticalContentAlignment" Value="Center" />
-      <Setter Property="Foreground" Value="{DynamicResource QATextDimBrush}" />
-      <Setter Property="FontSize" Value="13" />
-    </Style>
-    <Style Selector="TabItem.settings-tab:pointerover">
-      <Setter Property="Background" Value="{DynamicResource QAHoverBrush}" />
-      <Setter Property="Foreground" Value="{DynamicResource QATextBrush}" />
-    </Style>
-    <Style Selector="TabItem.settings-tab:selected">
-      <Setter Property="Background" Value="{DynamicResource QAAccentBrush}" />
-      <Setter Property="Foreground" Value="{DynamicResource QAAccentInkBrush}" />
-      <Setter Property="FontWeight" Value="SemiBold" />
-    </Style>
     <Style Selector="Border.groupsep">
       <Setter Property="Height" Value="1" />
       <Setter Property="Background" Value="{DynamicResource QALineBrush}" />
-      <Setter Property="Margin" Value="0,12,0,2" />
+      <Setter Property="Margin" Value="0,6,0,0" />
     </Style>
     <Style Selector="Border.tab-content">
       <Setter Property="Background" Value="Transparent" />
@@ -121,246 +139,284 @@
           <Border Height="1" Background="{Binding PanelBorderBrush}" />
         </StackPanel>
 
-        <TabControl Name="SettingsTabs"
-                    TabStripPlacement="Left"
-                    Classes="settings-tabs"
-                    Margin="0">
-          <TabItem Classes="settings-tab">
-            <TabItem.Header>
-              <StackPanel Orientation="Horizontal" Spacing="9">
-                <Path Data="{x:Static icons:Icons.Gear}"
-                      Stroke="{DynamicResource QATextDimBrush}"
-                      StrokeThickness="1.5"
-                      Width="16"
-                      Height="16"
-                      Stretch="Uniform" />
-                <TextBlock Text="常规" VerticalAlignment="Center" />
-              </StackPanel>
-            </TabItem.Header>
-            <Border Classes="tab-content">
-              <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-                <StackPanel Spacing="2">
-                  <TextBlock Classes="section" Text="启动与显示" />
-                  <Grid ColumnDefinitions="*,Auto" Margin="0,2,0,0">
-                    <TextBlock Classes="row" Text="开机启动" />
-                    <ToggleSwitch Grid.Column="1" IsChecked="{Binding AutoStartEnabled}" HorizontalAlignment="Right" />
-                  </Grid>
-                  <Grid ColumnDefinitions="*,Auto" Margin="0,2,0,0">
-                    <StackPanel Grid.Column="0" Spacing="1">
-                      <TextBlock Classes="row" Text="触边滑出" />
-                      <TextBlock Classes="hint" Text="鼠标移到所在边缘时唤出 Dock" />
-                    </StackPanel>
-                    <ToggleSwitch Grid.Column="1" IsChecked="{Binding RevealOnEdgeTouch}" HorizontalAlignment="Right" />
-                  </Grid>
-                  <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
-                    <TextBlock Classes="row" Text="钉住显示" />
-                    <ToggleSwitch Grid.Column="1" IsChecked="{Binding Pinned}" HorizontalAlignment="Right" />
-                  </Grid>
-                  <Grid ColumnDefinitions="145,*" Margin="0,6,0,2">
-                    <TextBlock Grid.Column="0" Classes="row" Text="停靠边缘" />
-                    <Border Grid.Column="1"
-                            HorizontalAlignment="Left"
-                            Background="{DynamicResource QAHoverBrush}"
-                            CornerRadius="9"
-                            Padding="2">
-                      <StackPanel Orientation="Horizontal" Spacing="2">
-                        <Button Theme="{StaticResource Segment}" Content="上"
-                                Classes.active="{Binding IsEdgeTop}"
-                                Command="{Binding SetEdgeCommand}" CommandParameter="top" />
-                        <Button Theme="{StaticResource Segment}" Content="下"
-                                Classes.active="{Binding IsEdgeBottom}"
-                                Command="{Binding SetEdgeCommand}" CommandParameter="bottom" />
-                        <Button Theme="{StaticResource Segment}" Content="左"
-                                Classes.active="{Binding IsEdgeLeft}"
-                                Command="{Binding SetEdgeCommand}" CommandParameter="left" />
-                        <Button Theme="{StaticResource Segment}" Content="右"
-                                Classes.active="{Binding IsEdgeRight}"
-                                Command="{Binding SetEdgeCommand}" CommandParameter="right" />
-                      </StackPanel>
-                    </Border>
-                  </Grid>
-                  <TextBlock Classes="hint" Text="也可从“更多操作”里选择停靠边缘" Margin="0,0,0,4" />
-                  <Grid ColumnDefinitions="145,*" Margin="0,4,0,2">
-                    <TextBlock Grid.Column="0" Classes="row" Text="自动隐藏延时" />
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                      <Slider Minimum="0" Maximum="2000" TickFrequency="100" Value="{Binding AutoHideDelayMs}" />
-                      <TextBlock Classes="row" Width="90" Text="{Binding AutoHideDelayText}" />
-                    </StackPanel>
-                  </Grid>
-                  <Grid ColumnDefinitions="*,Auto" Margin="0,2,0,0">
-                    <TextBlock Classes="row" Text="执行后自动收起" />
-                    <ToggleSwitch Grid.Column="1" IsChecked="{Binding CollapseAfterLaunch}" HorizontalAlignment="Right" />
-                  </Grid>
-                  <Border Classes="groupsep" />
-                  <TextBlock Classes="section" Text="快捷键" />
-                  <Grid ColumnDefinitions="145,*" Margin="0,2,0,0">
-                    <TextBlock Grid.Column="0" Classes="row" Text="全局唤起" />
-                    <TextBlock Grid.Column="1" Classes="row" Text="{Binding HotkeyText}" Foreground="{Binding TextDimBrush}" />
-                  </Grid>
-                  <TextBlock Classes="hint" Text="← → ↑ ↓ 移动 · Enter 运行 · 1–9 快速启动 · S / Ctrl+K 搜索 · E 编辑 · Esc 关闭" Margin="0,4,0,0" />
+        <!-- 导航区背景/右缘线画在下层，标签自身透明（原型 .settings-nav） -->
+        <Grid>
+          <Grid ColumnDefinitions="136,*">
+            <Border Grid.Column="0"
+                    Background="{DynamicResource QAHoverBrush}"
+                    BorderBrush="{DynamicResource QALineBrush}"
+                    BorderThickness="0,0,1,0" />
+          </Grid>
+          <TabControl Name="SettingsTabs"
+                      TabStripPlacement="Left"
+                      Classes="settings-tabs"
+                      Margin="0">
+            <TabItem Classes="settings-tab">
+              <TabItem.Header>
+                <StackPanel Orientation="Horizontal" Spacing="9">
+                  <Path Classes="tab-icon"
+                        Data="{x:Static icons:Icons.Gear}"
+                        StrokeThickness="1.5"
+                        Width="16"
+                        Height="16"
+                        Stretch="Uniform" />
+                  <TextBlock Text="常规" VerticalAlignment="Center" />
                 </StackPanel>
-              </ScrollViewer>
-            </Border>
-          </TabItem>
-
-          <TabItem Classes="settings-tab">
-            <TabItem.Header>
-              <StackPanel Orientation="Horizontal" Spacing="9">
-                <Path Data="{x:Static icons:Icons.Application}"
-                      Stroke="{DynamicResource QATextDimBrush}"
-                      StrokeThickness="1.5"
-                      Width="16"
-                      Height="16"
-                      Stretch="Uniform" />
-                <TextBlock Text="外观" VerticalAlignment="Center" />
-              </StackPanel>
-            </TabItem.Header>
-            <Border Classes="tab-content">
-              <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-                <StackPanel Spacing="2">
-                  <TextBlock Classes="section" Text="界面与显示" />
-                  <Grid ColumnDefinitions="145,*" Margin="0,2,0,2">
-                    <TextBlock Grid.Column="0" Classes="row" Text="主题" />
-                    <Border Grid.Column="1" HorizontalAlignment="Left" Background="{DynamicResource QAHoverBrush}" CornerRadius="9" Padding="2">
-                      <StackPanel Orientation="Horizontal" Spacing="2">
-                        <Button Theme="{StaticResource Segment}" Content="跟随系统" Classes.active="{Binding IsThemeSystem}" Command="{Binding SetThemeCommand}" CommandParameter="system" />
-                        <Button Theme="{StaticResource Segment}" Content="深色" Classes.active="{Binding IsThemeDark}" Command="{Binding SetThemeCommand}" CommandParameter="dark" />
-                        <Button Theme="{StaticResource Segment}" Content="浅色" Classes.active="{Binding IsThemeLight}" Command="{Binding SetThemeCommand}" CommandParameter="light" />
+              </TabItem.Header>
+              <Border Classes="tab-content">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                  <StackPanel>
+                    <TextBlock Classes="section" Text="启动与显示" />
+                    <Grid Classes="row" ColumnDefinitions="*,Auto">
+                      <TextBlock Classes="row" Text="开机启动" />
+                      <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding AutoStartEnabled}" />
+                    </Grid>
+                    <Grid Classes="row" ColumnDefinitions="*,Auto">
+                      <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                        <TextBlock Classes="row" Text="悬停唤出" />
+                        <TextBlock Classes="hint" Text="停留片刻后展开 Dock" VerticalAlignment="Center" />
                       </StackPanel>
-                    </Border>
-                  </Grid>
-                  <Grid ColumnDefinitions="145,*" Margin="0,2,0,2">
-                    <TextBlock Grid.Column="0" Classes="row" Text="风格" />
-                    <Border Grid.Column="1" HorizontalAlignment="Left" Background="{DynamicResource QAHoverBrush}" CornerRadius="9" Padding="2">
-                      <StackPanel Orientation="Horizontal" Spacing="2">
-                        <Button Theme="{StaticResource Segment}" Content="毛玻璃" Classes.active="{Binding IsStyleGlass}" Command="{Binding SetStyleCommand}" CommandParameter="glass" />
-                        <Button Theme="{StaticResource Segment}" Content="扁平" Classes.active="{Binding IsStyleFlat}" Command="{Binding SetStyleCommand}" CommandParameter="flat" />
+                      <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding RevealOnEdgeTouch}" />
+                    </Grid>
+                    <Grid Classes="row" ColumnDefinitions="*,Auto">
+                      <TextBlock Classes="row" Text="钉住" />
+                      <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding Pinned}" />
+                    </Grid>
+                    <Grid Classes="row" ColumnDefinitions="*,Auto">
+                      <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                        <TextBlock Classes="row" Text="停靠边缘" />
+                        <TextBlock Classes="hint" Text="也可从「更多操作」里选择" VerticalAlignment="Center" />
                       </StackPanel>
-                    </Border>
-                  </Grid>
-                  <Grid ColumnDefinitions="145,*" Margin="0,2,0,2">
-                    <TextBlock Grid.Column="0" Classes="row" Text="图标标签" />
-                    <Border Grid.Column="1" HorizontalAlignment="Left" Background="{DynamicResource QAHoverBrush}" CornerRadius="9" Padding="2">
-                      <StackPanel Orientation="Horizontal" Spacing="2">
-                        <Button Theme="{StaticResource Segment}" Content="仅图标"
-                                Classes.active="{Binding IsLabelsOnly}"
-                                Command="{Binding SetLabelsCommand}" CommandParameter="icon" />
-                        <Button Theme="{StaticResource Segment}" Content="图标 + 名称"
-                                Classes.active="{Binding IsLabelsWithText}"
-                                Command="{Binding SetLabelsCommand}" CommandParameter="iconText" />
-                      </StackPanel>
-                    </Border>
-                  </Grid>
-                  <Grid ColumnDefinitions="145,*" Margin="0,6,0,2">
-                    <TextBlock Grid.Column="0" Classes="row" Text="图标尺寸" />
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                      <Slider Minimum="32" Maximum="64" TickFrequency="2" Value="{Binding TileSize}" />
-                      <TextBlock Classes="row" Width="56" Text="{Binding TileSize}" />
-                    </StackPanel>
-                  </Grid>
-                  <Grid ColumnDefinitions="145,*" Margin="0,6,0,2">
-                    <TextBlock Grid.Column="0" Classes="row" Text="面板圆角" />
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                      <Slider Minimum="8" Maximum="32" TickFrequency="1" Value="{Binding CornerRadius}" />
-                      <TextBlock Classes="row" Width="56" Text="{Binding CornerRadius}" />
-                    </StackPanel>
-                  </Grid>
-                  <Grid ColumnDefinitions="145,*" Margin="0,6,0,2">
-                    <TextBlock Grid.Column="0" Classes="row" Text="面板不透明度" />
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                      <Slider Minimum="40" Maximum="100" TickFrequency="1" Value="{Binding OpacityPercent}" />
-                      <TextBlock Classes="row" Width="56" Text="{Binding OpacityPercent}" />
-                    </StackPanel>
-                  </Grid>
-                  <TextBlock Classes="hint" Text="毛玻璃在部分系统上可能退化为纯色" Margin="0,4,0,0" />
-                </StackPanel>
-              </ScrollViewer>
-            </Border>
-          </TabItem>
-
-          <TabItem Classes="settings-tab">
-            <TabItem.Header>
-              <StackPanel Orientation="Horizontal" Spacing="9">
-                <Path Data="{x:Static icons:Icons.Database}"
-                      Stroke="{DynamicResource QATextDimBrush}"
-                      StrokeThickness="1.5"
-                      Width="16"
-                      Height="16"
-                      Stretch="Uniform" />
-                <TextBlock Text="数据" VerticalAlignment="Center" />
-              </StackPanel>
-            </TabItem.Header>
-            <Border Classes="tab-content">
-              <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-                <StackPanel Spacing="2">
-                  <TextBlock Classes="section" Text="配置" />
-                  <Grid ColumnDefinitions="145,*" Margin="0,2,0,0">
-                    <TextBlock Grid.Column="0" Classes="row" Text="配置文件位置" />
-                    <TextBlock Grid.Column="1" Classes="hint" Text="{Binding ConfigFilePath}" TextWrapping="Wrap" />
-                  </Grid>
-                  <TextBlock Classes="hint" Text="导入配置会替换当前的快捷项与设置" Margin="145,4,0,4" />
-                  <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Button Theme="{StaticResource LinkButton}" Name="ImportButton" Content="导入配置…" />
-                    <Button Theme="{StaticResource LinkButton}" Name="ExportButton" Content="导出配置…" />
+                      <Border Grid.Column="1"
+                              Background="{DynamicResource QAHoverBrush}"
+                              CornerRadius="9"
+                              Padding="2">
+                        <StackPanel Orientation="Horizontal" Spacing="2">
+                          <Button Theme="{StaticResource Segment}" Content="上"
+                                  Classes.active="{Binding IsEdgeTop}"
+                                  Command="{Binding SetEdgeCommand}" CommandParameter="top" />
+                          <Button Theme="{StaticResource Segment}" Content="下"
+                                  Classes.active="{Binding IsEdgeBottom}"
+                                  Command="{Binding SetEdgeCommand}" CommandParameter="bottom" />
+                          <Button Theme="{StaticResource Segment}" Content="左"
+                                  Classes.active="{Binding IsEdgeLeft}"
+                                  Command="{Binding SetEdgeCommand}" CommandParameter="left" />
+                          <Button Theme="{StaticResource Segment}" Content="右"
+                                  Classes.active="{Binding IsEdgeRight}"
+                                  Command="{Binding SetEdgeCommand}" CommandParameter="right" />
+                        </StackPanel>
+                      </Border>
+                    </Grid>
+                    <Grid Classes="row" ColumnDefinitions="*,Auto">
+                      <TextBlock Classes="row" Text="目标显示器" />
+                      <ComboBox Grid.Column="1"
+                                ItemsSource="{Binding MonitorOptions}"
+                                SelectedItem="{Binding SelectedMonitor}">
+                        <ComboBox.ItemTemplate>
+                          <DataTemplate x:DataType="vm:MonitorOption">
+                            <TextBlock Text="{Binding Label}" />
+                          </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                      </ComboBox>
+                    </Grid>
+                    <Grid Classes="row" ColumnDefinitions="*,Auto,Auto">
+                      <TextBlock Classes="row" Text="自动隐藏延时" />
+                      <Slider Grid.Column="1" Margin="0,0,12,0"
+                              Minimum="0" Maximum="2000" TickFrequency="100" Value="{Binding AutoHideDelayMs}" />
+                      <TextBlock Grid.Column="2" Classes="output" Text="{Binding AutoHideDelayText}" />
+                    </Grid>
+                    <Grid Classes="row" ColumnDefinitions="*,Auto">
+                      <TextBlock Classes="row" Text="运行后收起" />
+                      <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding CollapseAfterLaunch}" />
+                    </Grid>
+                    <Grid Classes="row" ColumnDefinitions="*,Auto">
+                      <TextBlock Classes="row" Text="启动时检查更新" />
+                      <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding CheckUpdates}" />
+                    </Grid>
+                    <Border Classes="groupsep" />
+                    <TextBlock Classes="section" Text="快捷键" />
+                    <Grid Classes="row" ColumnDefinitions="*,Auto">
+                      <TextBlock Classes="row" Text="全局唤起" />
+                      <TextBlock Grid.Column="1" Classes="hint" VerticalAlignment="Center"
+                                 Text="{Binding HotkeyText, StringFormat=固定：{0}}" />
+                    </Grid>
+                    <TextBlock Classes="hint" Margin="0,3,0,0"
+                               Text="← → ↑ ↓ 移动 · Enter 运行 · 1–9 快速启动 · S / Ctrl+K 搜索 · E 编辑 · Esc 关闭" />
                   </StackPanel>
-                </StackPanel>
-              </ScrollViewer>
-            </Border>
-          </TabItem>
+                </ScrollViewer>
+              </Border>
+            </TabItem>
 
-          <TabItem Classes="settings-tab">
-            <TabItem.Header>
-              <StackPanel Orientation="Horizontal" Spacing="9">
-                <Path Data="{x:Static icons:Icons.Info}"
-                      Stroke="{DynamicResource QATextDimBrush}"
-                      StrokeThickness="1.5"
-                      Width="16"
-                      Height="16"
-                      Stretch="Uniform" />
-                <TextBlock Text="关于" VerticalAlignment="Center" />
-              </StackPanel>
-            </TabItem.Header>
-            <Border Classes="tab-content">
-              <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-                <StackPanel Spacing="4">
-                  <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,14,0,18">
-                    <Border Width="52" Height="52" Background="{DynamicResource QAAccentBrush}" CornerRadius="12">
-                      <Path Data="{x:Static icons:Icons.Application}"
-                            Stroke="{DynamicResource QAAccentInkBrush}"
-                            StrokeThickness="2"
-                            Width="28"
-                            Height="28"
-                            Stretch="Uniform"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center" />
-                    </Border>
-                    <StackPanel VerticalAlignment="Center" Spacing="2">
-                      <TextBlock Text="QuickApp" FontSize="18" FontWeight="SemiBold" Foreground="{Binding TextBrush}" />
-                      <TextBlock Text="快捷应用启动器" Classes="hint" />
+            <TabItem Classes="settings-tab">
+              <TabItem.Header>
+                <StackPanel Orientation="Horizontal" Spacing="9">
+                  <Path Classes="tab-icon"
+                        Data="{x:Static icons:Icons.Application}"
+                        StrokeThickness="1.5"
+                        Width="16"
+                        Height="16"
+                        Stretch="Uniform" />
+                  <TextBlock Text="外观" VerticalAlignment="Center" />
+                </StackPanel>
+              </TabItem.Header>
+              <Border Classes="tab-content">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                  <StackPanel>
+                    <TextBlock Classes="section" Text="界面与显示" />
+                    <Grid Classes="row" ColumnDefinitions="*,Auto">
+                      <TextBlock Classes="row" Text="主题" />
+                      <Border Grid.Column="1" Background="{DynamicResource QAHoverBrush}" CornerRadius="9" Padding="2">
+                        <StackPanel Orientation="Horizontal" Spacing="2">
+                          <Button Theme="{StaticResource Segment}" Content="跟随系统" Classes.active="{Binding IsThemeSystem}" Command="{Binding SetThemeCommand}" CommandParameter="system" />
+                          <Button Theme="{StaticResource Segment}" Content="深色" Classes.active="{Binding IsThemeDark}" Command="{Binding SetThemeCommand}" CommandParameter="dark" />
+                          <Button Theme="{StaticResource Segment}" Content="浅色" Classes.active="{Binding IsThemeLight}" Command="{Binding SetThemeCommand}" CommandParameter="light" />
+                        </StackPanel>
+                      </Border>
+                    </Grid>
+                    <Grid Classes="row" ColumnDefinitions="*,Auto">
+                      <TextBlock Classes="row" Text="风格" />
+                      <Border Grid.Column="1" Background="{DynamicResource QAHoverBrush}" CornerRadius="9" Padding="2">
+                        <StackPanel Orientation="Horizontal" Spacing="2">
+                          <Button Theme="{StaticResource Segment}" Content="毛玻璃" Classes.active="{Binding IsStyleGlass}" Command="{Binding SetStyleCommand}" CommandParameter="glass" />
+                          <Button Theme="{StaticResource Segment}" Content="扁平" Classes.active="{Binding IsStyleFlat}" Command="{Binding SetStyleCommand}" CommandParameter="flat" />
+                        </StackPanel>
+                      </Border>
+                    </Grid>
+                    <Grid Classes="row" ColumnDefinitions="*,Auto">
+                      <TextBlock Classes="row" Text="图标标签" />
+                      <Border Grid.Column="1" Background="{DynamicResource QAHoverBrush}" CornerRadius="9" Padding="2">
+                        <StackPanel Orientation="Horizontal" Spacing="2">
+                          <Button Theme="{StaticResource Segment}" Content="仅图标"
+                                  Classes.active="{Binding IsLabelsOnly}"
+                                  Command="{Binding SetLabelsCommand}" CommandParameter="icon" />
+                          <Button Theme="{StaticResource Segment}" Content="图标 + 名称"
+                                  Classes.active="{Binding IsLabelsWithText}"
+                                  Command="{Binding SetLabelsCommand}" CommandParameter="iconText" />
+                        </StackPanel>
+                      </Border>
+                    </Grid>
+                    <Grid Classes="row" ColumnDefinitions="*,Auto,Auto">
+                      <TextBlock Classes="row" Text="图标尺寸" />
+                      <Slider Grid.Column="1" Margin="0,0,12,0"
+                              Minimum="32" Maximum="64" TickFrequency="2" Value="{Binding TileSize}" />
+                      <TextBlock Grid.Column="2" Classes="output" Text="{Binding TileSize}" />
+                    </Grid>
+                    <Grid Classes="row" ColumnDefinitions="*,Auto,Auto">
+                      <TextBlock Classes="row" Text="面板圆角" />
+                      <Slider Grid.Column="1" Margin="0,0,12,0"
+                              Minimum="8" Maximum="32" TickFrequency="1" Value="{Binding CornerRadius}" />
+                      <TextBlock Grid.Column="2" Classes="output" Text="{Binding CornerRadius}" />
+                    </Grid>
+                    <Grid Classes="row" ColumnDefinitions="*,Auto,Auto">
+                      <TextBlock Classes="row" Text="不透明度" />
+                      <Slider Grid.Column="1" Margin="0,0,12,0"
+                              Minimum="40" Maximum="100" TickFrequency="1" Value="{Binding OpacityPercent}" />
+                      <TextBlock Grid.Column="2" Classes="output" Text="{Binding OpacityPercent, StringFormat={}{0}%}" />
+                    </Grid>
+                    <TextBlock Classes="hint" Margin="0,3,0,0" Text="毛玻璃在部分系统上可能退化为纯色" />
+                  </StackPanel>
+                </ScrollViewer>
+              </Border>
+            </TabItem>
+
+            <TabItem Classes="settings-tab">
+              <TabItem.Header>
+                <StackPanel Orientation="Horizontal" Spacing="9">
+                  <Path Classes="tab-icon"
+                        Data="{x:Static icons:Icons.Database}"
+                        StrokeThickness="1.5"
+                        Width="16"
+                        Height="16"
+                        Stretch="Uniform" />
+                  <TextBlock Text="数据" VerticalAlignment="Center" />
+                </StackPanel>
+              </TabItem.Header>
+              <Border Classes="tab-content">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                  <StackPanel>
+                    <TextBlock Classes="section" Text="配置" />
+                    <Grid Classes="row" ColumnDefinitions="*,Auto">
+                      <TextBlock Classes="row" Text="配置文件位置" />
+                      <TextBlock Grid.Column="1" Classes="hint" MaxWidth="400"
+                                 Text="{Binding ConfigFilePath}" TextAlignment="Right" TextWrapping="Wrap" />
+                    </Grid>
+                    <Grid Classes="row" ColumnDefinitions="*,Auto">
+                      <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                        <TextBlock Classes="row" Text="存储位置" />
+                        <TextBlock Classes="hint" Text="{Binding StorageModeText}" VerticalAlignment="Center" />
+                      </StackPanel>
+                      <Button Grid.Column="1" Theme="{StaticResource LinkButton}" Name="StorageModeButton"
+                              Content="{Binding StorageModeSwitchText}" />
+                    </Grid>
+                    <TextBlock Name="StorageModeResultText" Classes="hint" Margin="0,3,0,0" IsVisible="False" />
+                    <TextBlock Classes="hint" Margin="0,3,0,0" Text="导入配置会替换当前的快捷项与设置" />
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,10,0,0">
+                      <Button Theme="{StaticResource LinkButton}" Name="ImportButton" Content="导入配置" />
+                      <Button Theme="{StaticResource LinkButton}" Name="ExportButton" Content="导出配置" />
+                      <Button Theme="{StaticResource LinkButton}" Name="OpenConfigFolderButton" Content="打开配置文件夹" />
                     </StackPanel>
                   </StackPanel>
-                  <Border Classes="groupsep" />
-                  <Grid ColumnDefinitions="145,*" Margin="0,4,0,0">
-                    <TextBlock Grid.Column="0" Classes="row" Text="版本" />
-                    <TextBlock Grid.Column="1" Classes="hint" Text="{Binding VersionText}" />
-                  </Grid>
-                  <Grid ColumnDefinitions="145,*" Margin="0,2,0,0">
-                    <TextBlock Grid.Column="0" Classes="row" Text="定位" />
-                    <TextBlock Grid.Column="1" Classes="hint" Text="快速打开应用、网页与命令" />
-                  </Grid>
-                  <TextBlock Classes="hint" Text="界面原型用于视觉与交互评审。" Margin="0,8,0,4" />
-                  <StackPanel Orientation="Horizontal" Spacing="8">
-                    <Button Theme="{StaticResource LinkButton}" Content="检查更新" Command="{Binding CheckUpdateCommand}" />
-                    <TextBlock Classes="hint" Text="{Binding CheckResult}" VerticalAlignment="Center" />
-                  </StackPanel>
-                  <Border Classes="groupsep" />
-                  <TextBlock Classes="section" Text="许可证" />
-                  <TextBlock Classes="hint" TextWrapping="Wrap" Text="QuickApp 以 MIT 许可证发布。你可以自由使用、修改和分发本软件，但请保留原始版权声明。" />
+                </ScrollViewer>
+              </Border>
+            </TabItem>
+
+            <TabItem Classes="settings-tab">
+              <TabItem.Header>
+                <StackPanel Orientation="Horizontal" Spacing="9">
+                  <Path Classes="tab-icon"
+                        Data="{x:Static icons:Icons.Info}"
+                        StrokeThickness="1.5"
+                        Width="16"
+                        Height="16"
+                        Stretch="Uniform" />
+                  <TextBlock Text="关于" VerticalAlignment="Center" />
                 </StackPanel>
-              </ScrollViewer>
-            </Border>
-          </TabItem>
-        </TabControl>
+              </TabItem.Header>
+              <Border Classes="tab-content">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                  <StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,16,0,14">
+                      <Image Width="48" Height="48" Source="avares://QuickApp/Assets/logo.png" />
+                      <StackPanel VerticalAlignment="Center" Spacing="3">
+                        <TextBlock Text="QuickApp" FontSize="16" FontWeight="SemiBold" Foreground="{Binding TextBrush}" />
+                        <TextBlock Classes="hint" Text="快捷应用启动器" />
+                      </StackPanel>
+                    </StackPanel>
+                    <Border Classes="groupsep" />
+                    <Grid Classes="row" ColumnDefinitions="*,Auto">
+                      <TextBlock Classes="row" Text="版本" />
+                      <TextBlock Grid.Column="1" Classes="hint" VerticalAlignment="Center" Text="{Binding VersionText}" />
+                    </Grid>
+                    <Grid Classes="row" ColumnDefinitions="*,Auto">
+                      <TextBlock Classes="row" Text="定位" />
+                      <TextBlock Grid.Column="1" Classes="hint" VerticalAlignment="Center" Text="快速打开应用、网页与命令" />
+                    </Grid>
+                    <Border Classes="groupsep" />
+                    <TextBlock Classes="section" Text="项目信息" />
+                    <Grid Classes="row" ColumnDefinitions="*,Auto">
+                      <TextBlock Classes="row" Text="作者" />
+                      <TextBlock Grid.Column="1" Classes="hint" VerticalAlignment="Center" Text="沙漠尽头的狼" />
+                    </Grid>
+                    <Grid Classes="row" ColumnDefinitions="*,Auto">
+                      <TextBlock Classes="row" Text="官方网站" />
+                      <Button Grid.Column="1" Classes="about-url" Name="WebsiteButton" Content="https://codewf.com" />
+                    </Grid>
+                    <Grid Classes="row" ColumnDefinitions="*,Auto">
+                      <TextBlock Classes="row" Text="仓库地址" />
+                      <Button Grid.Column="1" Classes="about-url" Name="RepoButton" Content="https://github.com/dotnet9/QuickApp" />
+                    </Grid>
+                    <Border Classes="groupsep" />
+                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,14,0,0">
+                      <Button Theme="{StaticResource LinkButton}" Content="检查更新" Command="{Binding CheckUpdateCommand}" />
+                      <Button Theme="{StaticResource LinkButton}" Name="LicenseButton" Content="许可证" />
+                      <TextBlock Classes="hint" Text="{Binding CheckResult}" VerticalAlignment="Center" />
+                    </StackPanel>
+                  </StackPanel>
+                </ScrollViewer>
+              </Border>
+            </TabItem>
+          </TabControl>
+        </Grid>
       </DockPanel>
     </Border>
   </Grid>
