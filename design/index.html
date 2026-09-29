@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="dark" data-style="glass" data-label="icon" data-pinned="false" data-edit="false" data-search-open="false" data-edge="top">
+<html lang="zh-CN" data-theme="dark" data-wall="auto" data-style="glass" data-label="icon" data-pinned="false" data-edit="false" data-search-open="false" data-edge="top">
 <head>
 <meta charset="utf-8">
 <title>QuickApp 界面原型 · 四边可停靠 Dock</title>
@@ -67,6 +67,17 @@ html[data-theme="light"]{
   --taskbar:rgba(255,255,255,.72);
 }
 /* 毛玻璃 / 扁平 */
+/* 桌面壁纸独立于主题：跟随(默认)/深/浅，显式选择时覆盖主题自带的 --wall */
+html[data-wall="dark"]{
+  --wall:radial-gradient(1200px 700px at 18% 6%,#22345c 0%,transparent 60%),
+         radial-gradient(900px 600px at 85% 18%,#1d3d46 0%,transparent 55%),
+         linear-gradient(160deg,#0a0c11,#12151c 60%,#0a0c11);
+}
+html[data-wall="light"]{
+  --wall:radial-gradient(1200px 700px at 18% 6%,#cfe0ff 0%,transparent 60%),
+         radial-gradient(900px 600px at 85% 14%,#d6f0ea 0%,transparent 55%),
+         linear-gradient(160deg,#eef2f8,#e6ecf5 60%,#f5f8fc);
+}
 html[data-style="glass"]{ --panel-bg:rgba(var(--surface),var(--dock-alpha)); --panel-blur:blur(20px) saturate(160%); }
 html[data-style="flat"]{ --panel-bg:rgba(var(--surface),var(--dock-alpha)); --panel-blur:none; --panel-shadow:var(--shadow); }
 html[data-style="flat"] .menu{ box-shadow:var(--shadow); }
@@ -122,7 +133,7 @@ body.dock-pinned .dock-handle{display:none}
 }
 html[data-search-open="true"] .dock,
 html[data-edit="true"] .dock{
-  padding:8px 10px;background:var(--panel-bg);backdrop-filter:var(--panel-blur);-webkit-backdrop-filter:var(--panel-blur);
+  padding:6px 8px;background:var(--panel-bg);backdrop-filter:var(--panel-blur);-webkit-backdrop-filter:var(--panel-blur);
   border-color:var(--line);box-shadow:var(--panel-shadow);
 }
 body:not(.dock-visible) .dock{transform:translateY(calc(-100% - 22px));opacity:0;pointer-events:none}
@@ -131,7 +142,7 @@ body:not(.dock-visible) .dock{transform:translateY(calc(-100% - 22px));opacity:0
 /* 滚动区：留白保证悬停放大不被裁切 */
 .items-wrap{position:relative;display:flex;min-width:0;flex:1 1 auto}
 .dock-items{
-  display:flex;align-items:flex-start;gap:6px;padding:18px;
+  display:flex;align-items:flex-start;gap:6px;padding:10px;
   overflow-x:auto;overflow-y:hidden;min-width:0;flex:1 1 auto;max-width:var(--items-window);
   scroll-snap-type:x proximity;scroll-behavior:smooth;overscroll-behavior:contain;
   cursor:default;
@@ -193,7 +204,7 @@ html[data-label="icon"] .tile-name{display:none}
 }
 .remove:hover{background:var(--danger);transform:scale(1.12)}
 
-.dock-empty{padding:16px 18px;color:var(--text-dim);font-size:12px;white-space:nowrap}
+.dock-empty{padding:12px 14px;color:var(--text-dim);font-size:12px;white-space:nowrap}
 
 /* 两端渐隐只覆盖应用图标，提示还有内容但不挡住图标 */
 .fade{position:absolute;top:0;bottom:0;width:22px;pointer-events:none;opacity:0;transition:opacity 160ms linear;z-index:2}
@@ -248,8 +259,8 @@ html[data-edit="true"] .dock-tools{
 
 /* 编辑工具条 */
 .dock-editbar{
-  display:flex;align-items:center;gap:8px;padding:6px 8px 2px;border-top:1px solid var(--line);
-  font-size:12px;color:var(--text-dim);margin-top:2px;
+  display:flex;align-items:center;gap:6px;padding:4px 8px 0;border-top:1px solid var(--line);
+  font-size:11px;color:var(--text-dim);margin-top:2px;
 }
 .dock-editbar .spacer{flex:1 1 auto}
 .chip{
@@ -311,6 +322,17 @@ html[data-edit="true"] .dock-tools{
 .menu-sep{height:1px;margin:5px 8px;background:var(--line)}
 .menu-title{padding:7px 10px 5px;font-size:11px;color:var(--text-dim)}
 .menu-item .mi-note{margin-left:auto;font-size:11px;color:var(--text-dim)}
+/* 停靠位置四向选择：桌面示意框，点哪条边停靠哪条边（WinForms 锚定编辑器的直觉） */
+.dock-pos{position:relative;height:96px;margin:2px 8px 6px;border:1px solid var(--line);border-radius:9px;background:var(--hover)}
+.dock-pos .edge{position:absolute;display:grid;place-items:center;background:none;border:0;cursor:pointer;color:var(--text-dim);border-radius:7px;padding:0}
+.dock-pos .edge:hover{background:var(--menu-hover);color:var(--text)}
+.dock-pos .edge::before{content:"";width:58%;height:6px;border-radius:3px;background:currentColor}
+.dock-pos .e-left::before,.dock-pos .e-right::before{width:6px;height:58%}
+.dock-pos .e-top{left:30px;right:30px;top:5px;height:20px}
+.dock-pos .e-bottom{left:30px;right:30px;bottom:5px;height:20px}
+.dock-pos .e-left{top:30px;bottom:30px;left:5px;width:20px}
+.dock-pos .e-right{top:30px;bottom:30px;right:5px;width:20px}
+.dock-pos .edge.active{background:var(--accent);color:var(--accent-ink)}
 
 .tray-preview{
   position:fixed;top:12px;right:12px;z-index:320;border-radius:11px;overflow:hidden;
@@ -323,8 +345,7 @@ html[data-edit="true"] .dock-tools{
   font-size:11px;color:var(--text-dim);
 }
 .tray-preview .tray-head .tray-icon{
-  width:22px;height:22px;border-radius:6px;display:grid;place-items:center;color:#fff;
-  background:linear-gradient(145deg,#4a6cf7,#2f49c9);
+  width:22px;height:22px;border-radius:6px;display:block;
 }
 .tray-preview .menu{position:static;border:0;box-shadow:none;background:none;backdrop-filter:none;animation:none}
 
@@ -356,12 +377,14 @@ html[data-edit="true"] .dock-tools{
 .settings-content{flex:1;min-width:0;overflow:auto;padding:4px 18px 18px}
 .settings-panel .group:first-child{padding-top:12px}
 .about-hero{display:flex;align-items:center;gap:12px;padding:20px 0 14px;border-bottom:1px solid var(--line)}
-.about-mark{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;color:#fff;background:linear-gradient(145deg,#4a6cf7,#2f49c9);box-shadow:0 4px 12px rgba(0,0,0,.22)}
-.about-mark svg{width:25px;height:25px}
+.about-mark{width:48px;height:48px;border-radius:14px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.22)}
+.about-mark img{width:100%;height:100%;display:block}
 .about-hero strong,.about-hero span{display:block}
 .about-hero strong{font-size:16px;font-weight:600}
 .about-hero span{margin-top:3px;font-size:12px;color:var(--text-dim)}
 .about-links{display:flex;gap:8px;padding-top:14px}
+.about-url{max-width:100%;color:var(--accent);text-align:right;overflow-wrap:anywhere;text-decoration:none}
+.about-url:hover{text-decoration:underline}
 .group{padding:12px 0 6px;border-bottom:1px solid var(--line)}
 .group:last-child{border-bottom:0}
 .group h3{margin:0 0 8px;font-size:12px;font-weight:600;color:var(--text-dim)}
@@ -520,14 +543,14 @@ html[data-edge="right"] body:not(.dock-visible) .dock{transform:translateX(calc(
 html[data-edge="left"] .dock-body,
 html[data-edge="right"] .dock-body{flex-direction:column;align-items:stretch;gap:6px}
 html[data-edge="left"] .dock-tools,
-html[data-edge="right"] .dock-tools{flex-direction:column}
+html[data-edge="right"] .dock-tools{flex-direction:column;align-items:center;gap:2px;padding:2px;align-self:center}
 html[data-edge="left"] .items-wrap,
 html[data-edge="right"] .items-wrap{flex-direction:column;flex:1 1 auto;min-height:0}
 html[data-edge="left"] .dock-items,
 html[data-edge="right"] .dock-items{
-  flex-direction:column;align-items:stretch;gap:4px;padding:18px;
+  flex-direction:column;align-items:stretch;gap:4px;padding:10px;
   overflow-x:hidden;overflow-y:auto;min-height:0;max-width:none;
-  max-height:calc(var(--tile-size) * 10 + 72px);
+  max-height:calc(var(--tile-size) * 10 + 52px);
   scroll-snap-type:y proximity;
 }
 html[data-edge="left"] .dock-items.searching .search-result-row,
@@ -539,7 +562,7 @@ html[data-edge="left"] .tile-name,
 html[data-edge="right"] .tile-name{max-width:9em;width:auto;text-align:left}
 html[data-edge="right"] .tile-name{text-align:right}
 html[data-edge="left"] .dock-divider,
-html[data-edge="right"] .dock-divider{width:calc(var(--tile-size) * 1);height:1px}
+html[data-edge="right"] .dock-divider{width:28px;height:1px;align-self:center}
 html[data-edge="left"] .dock-actions,
 html[data-edge="right"] .dock-actions{grid-template-columns:repeat(2,28px);grid-template-rows:repeat(2,28px);column-gap:2px;row-gap:0}
 html[data-edge="left"] .remove,
@@ -547,9 +570,13 @@ html[data-edge="right"] .remove{left:auto;right:-3px}
 html[data-edge="left"] .dock-search input,
 html[data-edge="right"] .dock-search input{min-width:170px}
 html[data-edge="left"] .dock-editbar,
-html[data-edge="right"] .dock-editbar{flex-direction:column;align-items:stretch;gap:6px}
+html[data-edge="right"] .dock-editbar{flex-direction:column;align-items:center;gap:4px;padding:4px 0 0}
+html[data-edge="left"] .dock-editbar > span:first-child,
+html[data-edge="right"] .dock-editbar > span:first-child{display:none}
 html[data-edge="left"] .dock-editbar .spacer,
 html[data-edge="right"] .dock-editbar .spacer{display:none}
+html[data-edit="true"][data-edge="left"] .dock-item,
+html[data-edit="true"][data-edge="right"] .dock-item{width:auto;align-self:center}
 
 /* 左 / 右：渐隐和滚动指示线改为上下 / 竖向 */
 html[data-edge="left"] .fade-left,
@@ -645,9 +672,9 @@ body.dragging-dock .dock-tools{box-shadow:0 20px 42px rgba(0,0,0,.4)}
   </div>
 
   <div class="dock-editbar" id="dockEditbar" hidden>
-    <span>拖动排序 · 双击改名 · 点 × 移除</span>
+    <span>拖动排序 · 双击改名 · × 移除</span>
     <span class="spacer"></span>
-    <button class="chip" id="editReset"><span class="chip-icon" data-icon="undo"></span>重置演示数据</button>
+    <button class="chip" id="editReset"><span class="chip-icon" data-icon="undo"></span>重置</button>
     <button class="chip primary" id="editDone"><span class="chip-icon" data-icon="check"></span>完成</button>
   </div>
 </div>
@@ -684,7 +711,7 @@ body.dragging-dock .dock-tools{box-shadow:0 20px 42px rgba(0,0,0,.4)}
 <!-- 托盘预览 -->
 <div class="tray-preview" id="trayPreview" hidden>
   <div class="tray-head">
-    <span class="tray-icon" data-icon="app"></span>
+    <img class="tray-icon" src="../logo.svg" alt="QuickApp 托盘图标">
     <span>托盘图标 · 浏览器中为形态预览</span>
     <button class="icon-btn" id="trayClose" data-icon="x" title="关闭" aria-label="关闭"></button>
   </div>
@@ -714,10 +741,10 @@ body.dragging-dock .dock-tools{box-shadow:0 20px 42px rgba(0,0,0,.4)}
             <h3>启动与显示</h3>
             <div class="row"><label class="row-label" for="swAutoStart">开机启动</label><span class="spacer"></span>
               <button class="switch" id="swAutoStart" data-switch="autoStart" role="switch" aria-checked="true" aria-label="开机启动"><i></i></button></div>
-            <div class="row"><label class="row-label" for="swEdgeReveal">悬停把手唤出</label><span class="row-note">停留片刻后展开 Dock</span><span class="spacer"></span>
-              <button class="switch" id="swEdgeReveal" data-switch="edgeReveal" role="switch" aria-checked="true" aria-label="悬停把手唤出"><i></i></button></div>
-            <div class="row"><label class="row-label" for="swPinned">钉住显示</label><span class="spacer"></span>
-              <button class="switch" id="swPinned" data-switch="pinned" role="switch" aria-checked="false" aria-label="钉住显示"><i></i></button></div>
+            <div class="row"><label class="row-label" for="swEdgeReveal">悬停唤出</label><span class="row-note">停留片刻后展开 Dock</span><span class="spacer"></span>
+              <button class="switch" id="swEdgeReveal" data-switch="edgeReveal" role="switch" aria-checked="true" aria-label="悬停唤出"><i></i></button></div>
+            <div class="row"><label class="row-label" for="swPinned">钉住</label><span class="spacer"></span>
+              <button class="switch" id="swPinned" data-switch="pinned" role="switch" aria-checked="false" aria-label="钉住"><i></i></button></div>
             <div class="row"><span class="row-label">停靠边缘</span><span class="row-note">也可从「更多操作」里选择</span><span class="spacer"></span>
               <div class="seg" data-control="edge" role="group" aria-label="停靠边缘">
                 <button data-value="top">上</button><button data-value="bottom">下</button>
@@ -730,8 +757,8 @@ body.dragging-dock .dock-tools{box-shadow:0 20px 42px rgba(0,0,0,.4)}
             <div class="row"><label class="row-label" for="rgAutoHide">自动隐藏延时</label><span class="spacer"></span>
               <input type="range" id="rgAutoHide" data-range="autoHideDelay" min="0" max="2000" step="100" aria-label="自动隐藏延时">
               <output data-out="autoHideDelay"></output></div>
-            <div class="row"><label class="row-label" for="swAutoCollapse">执行后自动收起</label><span class="spacer"></span>
-              <button class="switch" id="swAutoCollapse" data-switch="autoCollapse" role="switch" aria-checked="true" aria-label="执行后自动收起"><i></i></button></div>
+            <div class="row"><label class="row-label" for="swAutoCollapse">运行后收起</label><span class="spacer"></span>
+              <button class="switch" id="swAutoCollapse" data-switch="autoCollapse" role="switch" aria-checked="true" aria-label="运行后收起"><i></i></button></div>
             <div class="row"><label class="row-label" for="swCheckUpdates">启动时检查更新</label><span class="spacer"></span>
               <button class="switch" id="swCheckUpdates" data-switch="checkUpdates" role="switch" aria-checked="true" aria-label="启动时检查更新"><i></i></button></div>
           </div>
@@ -759,7 +786,7 @@ body.dragging-dock .dock-tools{box-shadow:0 20px 42px rgba(0,0,0,.4)}
             <div class="row"><span class="row-label">面板圆角</span><span class="spacer"></span>
               <input type="range" data-range="radius" min="8" max="32" step="1" aria-label="面板圆角">
               <output data-out="radius"></output></div>
-            <div class="row"><span class="row-label">面板不透明度</span><span class="spacer"></span>
+            <div class="row"><span class="row-label">不透明度</span><span class="spacer"></span>
               <input type="range" data-range="alpha" min="40" max="100" step="1" aria-label="面板不透明度">
               <output data-out="alpha"></output></div>
             <div class="row"><span class="row-note">毛玻璃在部分系统上可能退化为纯色</span></div>
@@ -781,12 +808,18 @@ body.dragging-dock .dock-tools{box-shadow:0 20px 42px rgba(0,0,0,.4)}
 
         <section class="settings-panel" id="settingsAbout" role="tabpanel" aria-labelledby="tabAbout" data-settings-panel="about" hidden>
           <div class="about-hero">
-            <div class="about-mark" data-icon="app"></div>
+            <div class="about-mark"><img src="../logo.svg" alt="QuickApp logo"></div>
             <div><strong>QuickApp</strong><span>快捷应用启动器</span></div>
           </div>
           <div class="group">
             <div class="row"><span class="row-label">版本</span><span class="spacer"></span><span class="row-note">v0.2.2</span></div>
             <div class="row"><span class="row-label">定位</span><span class="spacer"></span><span class="row-note">快速打开应用、网页与命令</span></div>
+          </div>
+          <div class="group">
+            <h3>项目信息</h3>
+            <div class="row"><span class="row-label">作者</span><span class="spacer"></span><span class="row-note">沙漠尽头的狼</span></div>
+            <div class="row"><span class="row-label">官方网站</span><span class="spacer"></span><a class="row-note about-url" href="https://codewf.com" target="_blank" rel="noreferrer">https://codewf.com</a></div>
+            <div class="row"><span class="row-label">仓库地址</span><span class="spacer"></span><a class="row-note about-url" href="https://github.com/dotnet9/QuickApp" target="_blank" rel="noreferrer">https://github.com/dotnet9/QuickApp</a></div>
           </div>
           <div class="about-links">
             <button class="chip" type="button" id="aboutCheckUpdate">检查更新</button>
@@ -842,6 +875,10 @@ body.dragging-dock .dock-tools{box-shadow:0 20px 42px rgba(0,0,0,.4)}
     <div class="proto-row"><span>主题</span>
       <div class="seg sm" data-control="themePref">
         <button data-value="system">跟随</button><button data-value="dark">深</button><button data-value="light">浅</button>
+      </div></div>
+    <div class="proto-row"><span>桌面</span>
+      <div class="seg sm" data-control="wall">
+        <button data-value="auto">跟随</button><button data-value="dark">深</button><button data-value="light">浅</button>
       </div></div>
     <div class="proto-row"><span>风格</span>
       <div class="seg sm" data-control="style"><button data-value="glass">毛玻璃</button><button data-value="flat">扁平</button></div></div>
@@ -998,7 +1035,7 @@ function pinyinForms(value){
    ===================================================================== */
 const STATE = {
   /* 外观 */
-  themePref:'dark', theme:'dark', style:'glass', label:'icon',
+  themePref:'dark', theme:'dark', wall:'auto', style:'glass', label:'icon',
   tileSize:44, radius:18, alpha:.4,
   /* 行为 */
   pinned:false, edgeReveal:true, autoHideDelay:700, autoCollapse:true, autoStart:true, checkUpdates:true,
@@ -1203,7 +1240,7 @@ function renderDock(){
   }else if(!list.length){
     frag.append(h('div', {
       class:'dock-empty', role:'status',
-      text:'Dock 是空的 · 添加第一个应用'
+      text:'空空如也'
     }));
   }else{
     for(const it of list) frag.append(createDockItemNode(it));
@@ -1338,6 +1375,7 @@ function applyTokens(){
   STATE.theme = resolveTheme();
   const root = document.documentElement;
   root.dataset.theme = STATE.theme;
+  if (STATE.wall === 'auto') delete root.dataset.wall; else root.dataset.wall = STATE.wall;
   root.dataset.style = STATE.style;
   root.dataset.label = STATE.label;
   root.dataset.pinned = String(STATE.pinned);
@@ -1710,6 +1748,7 @@ function openMenu(spec, x, y){
   for(const row of spec){
     if(row.sep){ frag.append(h('div', {class:'menu-sep'})); continue; }
     if(row.title){ frag.append(h('div', {class:'menu-title', text:row.title})); continue; }
+    if(row.custom){ frag.append(row.custom()); continue; }
     const btn = h('button', {
       class:'menu-item' + (row.danger ? ' danger' : ''), type:'button', role:'menuitem',
       onclick:() => { closeMenu(); if(row.action) row.action(); }
@@ -1773,40 +1812,43 @@ function itemMenuSpec(it){
   return [
     {label:'运行', icon:'play', action:() => runItem(it)},
     {sep:true},
-    {label:'编辑名称', icon:'pencil', action:() => { setEdit(true); startRename(it.id); }},
-    {label:'更换图标', icon:'grid', action:() => openIconPicker(it)},
+    {label:'重命名', icon:'pencil', action:() => { setEdit(true); startRename(it.id); }},
+    {label:'图标…', icon:'grid', action:() => openIconPicker(it)},
     {label:'复制路径', icon:'copy', action:() => copyText(it.target, '路径已复制：' + it.target)},
-    {label:'复制为命令', icon:'terminal', action:() => copyText(cmdFor(it), '已复制命令：' + cmdFor(it))},
-    {label:'在资源管理器中显示', icon:'folder', action:() => toast('重构阶段实现：在资源管理器中定位文件')},
+    {label:'复制命令', icon:'terminal', action:() => copyText(cmdFor(it), '已复制命令：' + cmdFor(it))},
+    {label:'打开位置', icon:'folder', action:() => toast('重构阶段实现：在资源管理器中定位文件')},
     {sep:true},
-    {label:'从 Dock 移除', icon:'trash', danger:true, action:() => removeItem(it.id)}
+    {label:'移除', icon:'trash', danger:true, action:() => removeItem(it.id)}
   ];
+}
+/* 停靠位置四向选择器：桌面示意框，点哪条边停靠哪条边；当前边以强调色高亮 */
+function dockEdgePicker(){
+  const wrap = h('div', {class:'dock-pos', role:'group', 'aria-label':'停靠位置'});
+  ['top','right','bottom','left'].forEach(edge => {
+    wrap.append(h('button', {
+      class:'edge e-' + edge + (STATE.edge === edge ? ' active' : ''), type:'button',
+      'aria-label':EDGE_LABEL[edge] + '边缘', title:EDGE_LABEL[edge] + '边缘',
+      onclick:() => { if(setEdge(edge)){ toast('Dock 已停靠到' + EDGE_LABEL[edge] + '边缘'); closeMenu(); } }
+    }));
+  });
+  return wrap;
 }
 function dockMenuSpec(){
   return [
-    {title:'添加快捷项'},
-    {label:'添加文件…', icon:'upload', action:openFilePicker},
-    {label:'添加命令行…', icon:'terminal', action:openCmdDialog},
+    {title:'添加'},
+    {label:'文件…', icon:'upload', action:openFilePicker},
+    {label:'命令行…', icon:'terminal', action:openCmdDialog},
     {sep:true},
     {title:'管理'},
-    {label:'进入编辑模式', icon:'pencil', action:() => setEdit(true)},
-    {label:'从列表中移除全部', icon:'trash', danger:true, action:clearAllItems},
+    {label:'编辑模式', icon:'pencil', action:() => setEdit(true)},
+    {label:'清空', icon:'trash', danger:true, action:clearAllItems},
     {sep:true},
-    {title:'停靠到边缘'},
-    {label:'上边缘', icon:'chevron-up', note: STATE.edge === 'top' ? '当前' : '',
-      action:() => { if(setEdge('top')) toast('Dock 已停靠到上边缘'); }},
-    {label:'下边缘', icon:'chevron-up', note: STATE.edge === 'bottom' ? '当前' : '',
-      action:() => { if(setEdge('bottom')) toast('Dock 已停靠到下边缘'); }},
-    {label:'左边缘', icon:'list', note: STATE.edge === 'left' ? '当前' : '',
-      action:() => { if(setEdge('left')) toast('Dock 已停靠到左边缘'); }},
-    {label:'右边缘', icon:'list', note: STATE.edge === 'right' ? '当前' : '',
-      action:() => { if(setEdge('right')) toast('Dock 已停靠到右边缘'); }},
+    {title:'停靠'},
+    {custom:dockEdgePicker},
     {sep:true},
-    {title:'设置'},
-    {label:'打开设置', icon:'gear', action:openSettings},
-    {label:'关于', icon:'info', action:() => openSettings('about')},
+    {label:'设置', icon:'gear', action:openSettings},
     {sep:true},
-    {label:'退出工具', icon:'power', danger:true, action:() => toast('重构阶段实现：退出应用 / Alt+F4')}
+    {label:'退出', icon:'power', danger:true, action:() => toast('重构阶段实现：退出应用 / Alt+F4')}
   ];
 }
 function openIconPicker(it){
@@ -1848,14 +1890,14 @@ function toggleTray(force){
 }
 function renderTray(){
   const spec = [
-    {label: STATE.dockVisible ? '隐藏 Dock' : '显示 Dock', icon: STATE.dockVisible ? 'chevron-up' : 'list',
+    {label: STATE.dockVisible ? '隐藏' : '显示', icon: STATE.dockVisible ? 'chevron-up' : 'list',
       action:() => setDockVisible(!STATE.dockVisible)},
-    {label:'开机启动', icon:'check', note: STATE.autoStart ? '已启用' : '已关闭',
+    {label:'开机启动', icon:'check', note: STATE.autoStart ? '开' : '关',
       action:() => { STATE.autoStart = !STATE.autoStart; renderTray(); applyTokens(); }},
-    {label:'钉住显示', icon:'pin', note: STATE.pinned ? '开' : '关',
+    {label:'钉住', icon:'pin', note: STATE.pinned ? '开' : '关',
       action:() => { setPinned(!STATE.pinned); renderTray(); }},
     {sep:true},
-    {label:'设置…', icon:'gear', action:() => { toggleTray(false); openSettings(); }},
+    {label:'设置', icon:'gear', action:() => { toggleTray(false); openSettings(); }},
     {sep:true},
     {label:'退出', icon:'power', danger:true, action:() => { toggleTray(false); toast('重构阶段实现：退出应用'); }}
   ];
@@ -2004,7 +2046,7 @@ function openImportConfirm(){
 }
 function applyImportedDemoConfig(){
   Object.assign(STATE, {
-    themePref:'dark',style:'glass',label:'icon',tileSize:44,radius:18,alpha:.4,
+    themePref:'dark',wall:'auto',style:'glass',label:'icon',tileSize:44,radius:18,alpha:.4,
     pinned:false,edgeReveal:true,autoHideDelay:700,autoCollapse:true,autoStart:true,checkUpdates:true,
     monitorId:'display-1',dockVisible:true,edit:false,searchOpen:false,query:'',edge:'top',
     focusId:null,searchFocusId:null

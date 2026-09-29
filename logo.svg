@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="QuickApp">
+  <defs>
+    <linearGradient id="qa-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5B82F8"/>
+      <stop offset=".55" stop-color="#3D5CE8"/>
+      <stop offset="1" stop-color="#2F49C9"/>
+    </linearGradient>
+    <radialGradient id="qa-glow" cx=".22" cy=".12" r="1.05">
+      <stop offset="0" stop-color="#ffffff" stop-opacity=".26"/>
+      <stop offset=".5" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="qa-bolt" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFD44E"/>
+      <stop offset="1" stop-color="#FFAB1F"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 圆角方形底板：品牌蓝渐变 -->
+  <rect x="32" y="32" width="448" height="448" rx="112" fill="url(#qa-bg)"/>
+  <rect x="32" y="32" width="448" height="448" rx="112" fill="url(#qa-glow)"/>
+
+  <!-- Q 主体：圆环 -->
+  <circle cx="254" cy="244" r="124" fill="none" stroke="#ffffff" stroke-width="60"/>
+
+  <!-- Q 的尾巴：一道闪电，从环内划出 -->
+  <path d="M315.5 221.9 L283.4 343.3 L329.7 326.4 L347.1 420.2 L384.4 280.3 L333.9 298.6 Z"
+        fill="url(#qa-bolt)" stroke="url(#qa-bolt)" stroke-width="16" stroke-linejoin="round"/>
+</svg>
