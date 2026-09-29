@@ -26,7 +26,7 @@ public static class ItemQuery
             ['示'] = "shi", ['符'] = "fu", ['路'] = "lu", ['径'] = "jing"
         };
 
-    /// <summary>按当前搜索词过滤，顺序保持不变。</summary>
+    /// <summary>按当前搜索词过滤，并优先展示名称相关度更高的结果。</summary>
     public static IReadOnlyList<LauncherItem> Filter(IReadOnlyList<LauncherItem> items, string? query)
     {
         if (items is null || items.Count == 0)
@@ -40,16 +40,89 @@ public static class ItemQuery
             return items;
         }
 
-        var result = new List<LauncherItem>();
-        foreach (LauncherItem item in items)
+        var result = new List<(LauncherItem Item, int Priority, int Index)>();
+        for (int index = 0; index < items.Count; index++)
         {
+            LauncherItem item = items[index];
             if (Matches(item, q))
             {
-                result.Add(item);
+                result.Add((item, MatchPriority(item, q), index));
             }
         }
 
-        return result;
+        result.Sort(static (left, right) =>
+        {
+            int priority = left.Priority.CompareTo(right.Priority);
+            return priority != 0 ? priority : left.Index.CompareTo(right.Index);
+        });
+
+        var ordered = new List<LauncherItem>(result.Count);
+        foreach (var entry in result)
+        {
+            ordered.Add(entry.Item);
+        }
+
+        return ordered;
+    }
+
+    private static int MatchPriority(LauncherItem item, string query)
+    {
+        string name = (item.Name ?? string.Empty).Trim();
+        if (string.Equals(name, query, StringComparison.OrdinalIgnoreCase))
+        {
+            return 0;
+        }
+
+        if (name.StartsWith(query, StringComparison.OrdinalIgnoreCase))
+        {
+            return 1;
+        }
+
+        string[] tokens = query.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+        if (MatchesPinyinTokens(name, tokens))
+        {
+            return 2;
+        }
+
+        if (MatchesNameTokens(name, tokens))
+        {
+            return 3;
+        }
+
+        return 4;
+    }
+
+    private static bool MatchesPinyinTokens(string name, IReadOnlyList<string> tokens)
+    {
+        IReadOnlyList<string> forms = SearchForms(name);
+        if (forms.Count < 3)
+        {
+            return false;
+        }
+
+        foreach (string token in tokens)
+        {
+            bool matchesPinyin = Contains(forms[1], token) || Contains(forms[2], token);
+            if (!matchesPinyin || Contains(forms[0], token))
+            {
+                return false;
+            }
+        }
+
+        return tokens.Count > 0;
+    }
+
+    private static bool MatchesNameTokens(string name, IReadOnlyList<string> tokens)
+    {
+        foreach (string token in tokens)
+        {
+            if (!Contains(name, token))
+            {
+                return false;
+            }
+        }
+
+        return tokens.Count > 0;
     }
 
     public static bool Matches(LauncherItem item, string query)

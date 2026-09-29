@@ -16,6 +16,17 @@ public sealed class ItemQueryTests
         new LauncherItem { Id = "c", Name = "远程桌面", Kind = ItemKind.Command, Target = "mstsc /v:192.168.1.133" }
     };
 
+    private static string[] Ids(IReadOnlyList<LauncherItem> items)
+    {
+        var ids = new string[items.Count];
+        for (int index = 0; index < items.Count; index++)
+        {
+            ids[index] = items[index].Id;
+        }
+
+        return ids;
+    }
+
     [Fact]
     public void Empty_query_returns_everything_in_order()
     {
@@ -67,6 +78,50 @@ public sealed class ItemQueryTests
         };
 
         Assert.Contains(ItemQuery.Filter(items, query), item => item.Name == expectedName);
+    }
+
+    [Fact]
+    public void Query_orders_exact_prefix_pinyin_contains_and_target_matches()
+    {
+        var items = new List<LauncherItem>
+        {
+            new() { Id = "target", Name = "编辑器", Kind = ItemKind.App, Target = @"C:\Tools\jishiben.exe" },
+            new() { Id = "contains", Name = "我的jishiben助手", Kind = ItemKind.App, Target = "assistant.exe" },
+            new() { Id = "direct-contains", Name = "记事本jishiben指南", Kind = ItemKind.App, Target = "guide.exe" },
+            new() { Id = "pinyin", Name = "记事本", Kind = ItemKind.App, Target = "notepad.exe" },
+            new() { Id = "prefix", Name = "jishiben++", Kind = ItemKind.App, Target = "plus.exe" },
+            new() { Id = "exact", Name = "jishiben", Kind = ItemKind.App, Target = "exact.exe" },
+            new() { Id = "target-tie", Name = "启动器", Kind = ItemKind.App, Target = @"C:\Tools\jishiben-helper.exe" }
+        };
+
+        IReadOnlyList<LauncherItem> result = ItemQuery.Filter(items, "jishiben");
+
+        Assert.Equal(new[] { "exact", "prefix", "pinyin", "contains", "direct-contains", "target", "target-tie" }, Ids(result));
+    }
+
+    [Fact]
+    public void Query_ranks_pinyin_initials_and_kind_matches_after_name_matches()
+    {
+        var pinyinItems = new List<LauncherItem>
+        {
+            new() { Id = "pinyin", Name = "记事本", Kind = ItemKind.App, Target = "notepad.exe" },
+            new() { Id = "initials", Name = "记事本", Kind = ItemKind.App, Target = "notepad.exe" }
+        };
+
+        Assert.Equal(new[] { "pinyin", "initials" }, Ids(ItemQuery.Filter(pinyinItems, "jishiben")));
+        Assert.Equal(new[] { "pinyin", "initials" }, Ids(ItemQuery.Filter(pinyinItems, "jsb")));
+
+        var kindItems = new List<LauncherItem>
+        {
+            new() { Id = "kind", Name = "终端", Kind = ItemKind.Command, Target = "cmd.exe" },
+            new() { Id = "contains", Name = "我的命令工具", Kind = ItemKind.App, Target = "tools.exe" },
+            new() { Id = "prefix", Name = "命令管理", Kind = ItemKind.App, Target = "manager.exe" },
+            new() { Id = "exact", Name = "命令", Kind = ItemKind.App, Target = "command.exe" }
+        };
+
+        IReadOnlyList<LauncherItem> result = ItemQuery.Filter(kindItems, "命令");
+
+        Assert.Equal(new[] { "exact", "prefix", "contains", "kind" }, Ids(result));
     }
 
     [Fact]
