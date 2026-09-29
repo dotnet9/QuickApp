@@ -55,7 +55,7 @@ public sealed class ItemViewModel : ViewModelBase
 
     public bool ShowSystemAdd => IsSystemResult;
 
-    public string ResultStatus => IsSystemResult ? "系统已安装 · 未配置" : string.Empty;
+    public string ResultStatus => IsSystemResult ? "开始菜单 · 未配置" : string.Empty;
 
     public string Id => Model.Id;
 
@@ -122,19 +122,9 @@ public sealed class ItemViewModel : ViewModelBase
         }
     }
 
-    public bool HasIcon => _icon is not null && string.IsNullOrEmpty(Model.IconKey);
+    public bool HasIcon => _icon is not null;
 
     public IBrush? TileBackgroundBrush => HasIcon ? Brushes.Transparent : IconBrush;
-
-    /// <summary>用户指定的占位图标键（图标选择器写入 Model.IconKey）；为空时显示真实图标。</summary>
-    public string? IconKey => Model.IconKey;
-
-    /// <summary>「更换图标」选中占位图标后调用：真实位图让位给所选几何图形。</summary>
-    public void ClearIcon()
-    {
-        Icon = null;
-        this.RaisePropertyChanged(nameof(IconKey));
-    }
 
     /// <summary>图标底色（真实图标提取出来之前的占位底），由视图按类型与尺寸算好写入。</summary>
     public IBrush? IconBrush
@@ -303,7 +293,10 @@ public sealed class ItemViewModel : ViewModelBase
 
         try
         {
-            return new Avalonia.Media.Imaging.Bitmap(path);
+            // 用户挑的本地图片可能很大，按图标用途限宽解码，避免整图进内存
+            using var stream = System.IO.File.OpenRead(path);
+            return Avalonia.Media.Imaging.Bitmap.DecodeToWidth(
+                stream, 256, Avalonia.Media.Imaging.BitmapInterpolationMode.MediumQuality);
         }
         catch (Exception ex)
         {

@@ -269,6 +269,32 @@
       <Setter Property="Cursor" Value="SizeAll" />
     </Style>
 
+    <!-- 更新条（原型 .update-bar）：面板内一行，min-width 330，文本截断按钮恒右 -->
+    <Style Selector="Border.update-bar">
+      <Setter Property="Background" Value="{Binding HoverBrush}" />
+      <Setter Property="BorderBrush" Value="{Binding PanelBorderBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="MinWidth" Value="330" />
+      <Setter Property="Padding" Value="10,7" />
+      <Setter Property="Margin" Value="2,4,2,0" />
+    </Style>
+
+    <!-- 竖排更新胶囊（原型 .update-pill）：强调色描边 + 呼吸圆点语义 -->
+    <Style Selector="Button.update-pill">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="{Binding AccentBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="999" />
+      <Setter Property="Padding" Value="9,4" />
+      <Setter Property="Foreground" Value="{Binding AccentBrush}" />
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Button.update-pill:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{Binding HoverBrush}" />
+    </Style>
+
     <!-- 气泡/工具提示：对应原型 .bubble（菜单底色 + 1px 边线 + r10） -->
     <Style Selector="ToolTip">
       <Setter Property="Background" Value="{DynamicResource QAMenuBrush}" />
@@ -306,7 +332,7 @@
             <TextBox Grid.Column="1"
                      Name="SearchBox"
                      Text="{Binding SearchQuery}"
-                     PlaceholderText="搜索应用、网址、命令、拼音或首字母…"
+                     PlaceholderText="搜索应用 / 网址 / 命令 / 拼音…"
                      FontSize="13"
                      Background="Transparent"
                      BorderThickness="0" />
@@ -466,41 +492,59 @@
           </Border>
         </StackPanel>
 
-        <!-- 更新提示 -->
-        <Border IsVisible="{Binding UpdateAvailable}"
-                Background="{Binding HoverBrush}"
-                CornerRadius="8"
-                Padding="8,4"
-                Margin="2,2,2,0">
-          <StackPanel Spacing="4">
-            <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto">
-              <TextBlock Grid.Column="0" Text="{Binding UpdateText}" FontSize="12" VerticalAlignment="Center" />
-              <Button Grid.Column="1" Theme="{StaticResource LinkButton}" Content="下载"
-                      IsVisible="{Binding CanDownloadUpdate}"
-                      Command="{Binding DownloadUpdateCommand}" Margin="8,0" />
-              <Button Grid.Column="2" Theme="{StaticResource LinkButton}" Content="{Binding UpdateInstallButtonText}"
-                      IsVisible="{Binding IsUpdateReady}"
-                      Command="{Binding InstallUpdateCommand}" Margin="8,0" />
-              <Button Grid.Column="3" Theme="{StaticResource LinkButton}" Content="打开发布页"
-                      IsVisible="{Binding NeedsUpdatePage}"
-                      Command="{Binding OpenUpdateCommand}" Margin="8,0" />
-              <Button Grid.Column="4" Theme="{StaticResource LinkButton}" Content="取消"
-                      IsVisible="{Binding IsDownloadingUpdate}"
-                      Command="{Binding CancelUpdateDownloadCommand}" Margin="8,0" />
-              <Button Grid.Column="4" Theme="{StaticResource LinkButton}" Content="忽略"
-                      IsVisible="{Binding !IsDownloadingUpdate}"
-                      Command="{Binding DismissUpdateCommand}" />
-            </Grid>
-            <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsDownloadingUpdate}">
-              <ProgressBar Grid.Column="0" Minimum="0" Maximum="100" Value="{Binding DownloadProgress}"
-                           Height="4" VerticalAlignment="Center" />
-              <TextBlock Grid.Column="1" Text="{Binding DownloadProgressText}" FontSize="11"
-                         Margin="8,0,0,0" VerticalAlignment="Center" />
-            </Grid>
-            <TextBlock IsVisible="{Binding IsUpdateReady}"
-                       Text="{Binding DownloadProgressText}" FontSize="11" />
+        <!-- 更新条（横排，原型 .update-bar）：面板内一行，min-width 330。
+             禁用星号列——窗口按内容测宽时星号列会塌缩为 0，把整窗压扁（v0.2.5 缺陷）；
+             文本区用 DockPanel 填充 + 截断，按钮恒靠右。 -->
+        <Border Classes="update-bar" IsVisible="{Binding ShowUpdateBar}">
+          <StackPanel Spacing="5">
+            <DockPanel>
+              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                <Button Theme="{StaticResource LinkButton}" Classes="primary" Content="下载"
+                        IsVisible="{Binding CanDownloadUpdate}"
+                        Command="{Binding DownloadUpdateCommand}" />
+                <Button Theme="{StaticResource LinkButton}" Classes="primary" Content="打开发布页"
+                        IsVisible="{Binding NeedsUpdatePage}"
+                        Command="{Binding OpenUpdateCommand}" />
+                <Button Theme="{StaticResource LinkButton}" Classes="primary" Content="{Binding UpdateInstallButtonText}"
+                        IsVisible="{Binding IsUpdateReady}"
+                        Command="{Binding InstallUpdateCommand}" />
+                <Button Theme="{StaticResource LinkButton}" Content="取消"
+                        IsVisible="{Binding IsDownloadingUpdate}"
+                        Command="{Binding CancelUpdateDownloadCommand}" />
+                <Button Theme="{StaticResource LinkButton}" Content="忽略"
+                        IsVisible="{Binding !IsDownloadingUpdate}"
+                        Command="{Binding DismissUpdateCommand}" />
+              </StackPanel>
+              <Path DockPanel.Dock="Left" Data="{Binding UpdateIconGlyph}"
+                    Width="15" Height="15" Stretch="Uniform"
+                    Stroke="{Binding UpdateIconBrush}" StrokeThickness="1.8"
+                    StrokeLineCap="Round" StrokeJoin="Round"
+                    VerticalAlignment="Center" Margin="0,0,8,0" />
+              <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <TextBlock Text="{Binding UpdateDisplayText}" FontSize="12" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding UpdateNoteText}" FontSize="11" VerticalAlignment="Center" Opacity="0.72"
+                           IsVisible="{Binding UpdateNoteText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+              </StackPanel>
+            </DockPanel>
+            <ProgressBar Height="4" MinHeight="4" Minimum="0" Maximum="100" Value="{Binding DownloadProgress}"
+                         IsVisible="{Binding IsDownloadingUpdate}" />
           </StackPanel>
         </Border>
+
+        <!-- 竖排更新胶囊（原型 .update-pill）：只占图标宽度，点击弹出更新卡片 -->
+        <Button Name="UpdatePillButton"
+                Classes="update-pill"
+                IsVisible="{Binding ShowUpdatePill}"
+                HorizontalAlignment="Center"
+                Click="OnUpdatePillClick"
+                ToolTip.Tip="发现新版本，点击查看">
+          <StackPanel Orientation="Horizontal" Spacing="5">
+            <Ellipse Width="6" Height="6" VerticalAlignment="Center"
+                     Fill="{Binding AccentBrush}" Opacity="0.9" />
+            <TextBlock Text="新版本" FontSize="11" VerticalAlignment="Center" />
+          </StackPanel>
+        </Button>
 
         <!-- 编辑模式工具条（原型 .dock-editbar：上边线 + 11px 提示 + primary 完成钮；竖向时提示隐藏只留完成钮） -->
         <StackPanel IsVisible="{Binding IsEditMode}" Margin="8,2,8,2">

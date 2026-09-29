@@ -20,6 +20,6 @@ public sealed class LauncherItem
     /// <summary>工作目录，仅 <see cref="ItemKind.App"/> 使用。</summary>
     public string? WorkingDirectory { get; set; }
 
-    /// <summary>自定义图标缓存键；为空时按目标自动提取。</summary>
-    public string? IconKey { get; set; }
+    /// <summary>用户选择的本地图片图标（png/jpg/ico 等）；为空时按目标自动提取真实图标。</summary>
+    public string? CustomIconPath { get; set; }
 }

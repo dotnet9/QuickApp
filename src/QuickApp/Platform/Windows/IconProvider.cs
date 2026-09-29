@@ -86,7 +86,7 @@ public sealed class IconProvider : IIconProvider
     /// <summary>在后台线程做的 GDI 部分：返回 size*size*4 字节的 BGRA 非预乘像素缓冲。</summary>
     private static IntPtr ExtractPixels(LauncherItem item, int size)
     {
-        string iconFile = item.IconKey ?? item.Target;
+        string iconFile = item.CustomIconPath ?? item.Target;
         int iconIndex = 0;
 
         // 1) 问 Shell：这个文件的图标在哪个文件/哪个索引
@@ -279,7 +279,7 @@ public sealed class IconProvider : IIconProvider
 
     private static string CacheKey(LauncherItem item)
     {
-        string raw = string.Join('|', "icon-v2", item.Target, item.IconKey ?? string.Empty, IconSize.ToString());
+        string raw = string.Join('|', "icon-v2", item.Target, item.CustomIconPath ?? string.Empty, IconSize.ToString());
         byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(raw.ToUpperInvariant()));
         return Convert.ToHexString(hash.AsSpan(0, 12)).ToLowerInvariant();
     }

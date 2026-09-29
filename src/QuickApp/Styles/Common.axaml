@@ -88,4 +88,43 @@
   <Style Selector="Button.edge-pick">
     <Setter Property="Theme" Value="{DynamicResource EdgePickButton}" />
   </Style>
+
+  <!-- ============================ 主题内图标颜色 ============================ -->
+  <!-- 这些后代选择器不能放进 ControlTheme（会抛"child or descendent selector"异常，
+       v0.2.5 点「更多操作」崩溃即此因），统一放全局样式按类匹配 -->
+  <Style Selector="MenuItem.menu-item Path.mi-icon">
+    <Setter Property="Stroke" Value="{DynamicResource QATextDimBrush}" />
+  </Style>
+  <Style Selector="MenuItem.menu-item.danger Path.mi-icon">
+    <Setter Property="Stroke" Value="{DynamicResource QADangerBrush}" />
+  </Style>
+  <Style Selector="TabItem.settings-tab Path.tab-icon">
+    <Setter Property="Stroke" Value="{DynamicResource QATextDimBrush}" />
+  </Style>
+  <Style Selector="TabItem.settings-tab:selected Path.tab-icon">
+    <Setter Property="Stroke" Value="{DynamicResource QAAccentInkBrush}" />
+  </Style>
+
+  <!-- ============================ ComboBox（设置页目标显示器等） ============================ -->
+  <!-- 下拉弹层底色由 ThemeDictionaries 的 ComboBoxDropDownBackground/BorderBrush 覆盖 -->
+  <Style Selector="ComboBox">
+    <Setter Property="Foreground" Value="{DynamicResource QATextBrush}" />
+    <Setter Property="Background" Value="{DynamicResource QAHoverBrush}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource QALineBrush}" />
+    <Setter Property="CornerRadius" Value="7" />
+    <Setter Property="MinHeight" Value="28" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Padding" Value="9,4" />
+  </Style>
+  <Style Selector="ComboBoxItem">
+    <Setter Property="Foreground" Value="{DynamicResource QATextBrush}" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="MinHeight" Value="30" />
+    <Setter Property="Padding" Value="10,5" />
+    <Setter Property="CornerRadius" Value="6" />
+  </Style>
+  <Style Selector="ComboBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource QAHoverBrush}" />
+    <Setter Property="Foreground" Value="{DynamicResource QATextBrush}" />
+  </Style>
 </Styles>

@@ -74,6 +74,8 @@ public static class Icons
         RoundedRect(4, 13, 7, 7, 2) + " " + RoundedRect(13, 13, 7, 7, 2));
 
     /// <summary>上传（添加文件）。</summary>
+    public static Geometry Download { get; } = Geometry.Parse("M12,4 L12,15 M8,11.5 L12,15.5 L16,11.5 M5,19 L19,19");
+
     public static Geometry Upload { get; } = Geometry.Parse(
         "M12,15.5 L12,4 M8,8 L12,4 L16,8 " +
         "M5,15 L5,18.5 C5,19.33 5.67,20 6.5,20 L17.5,20 C18.33,20 19,19.33 19,18.5 L19,15");

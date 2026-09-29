@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -12,6 +13,7 @@ using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
+using Avalonia.Styling;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using QuickApp.Core.Models;
@@ -37,6 +39,9 @@ public partial class DockWindow : Window, IDockHost
     private readonly DispatcherTimer _hideTimer;
     private readonly DispatcherTimer _revealTimer;
     private DockViewModel? _vm;
+    /// <summary>更新就绪的成功色（原型 --ok）。</summary>
+    private static readonly IBrush UpdateReadyBrush = new SolidColorBrush(Color.FromRgb(0x3F, 0xB9, 0x6F));
+
     private Window? _revealHandleWindow;
     private Border? _revealHandleBar;
     private Border? _revealHandleHitTarget;
@@ -680,14 +685,6 @@ public partial class DockWindow : Window, IDockHost
         item.IsFocused = ReferenceEquals(item, _focused);
         item.TextBrush = _vm?.TextBrush;
 
-        // 手动挑过的占位图标优先于真实图标（原型「更换图标」的语义）
-        if (item.Model.IconKey is { } key)
-        {
-            IconCatalog.TryResolve(key, out Geometry picked);
-            item.Glyph = picked;
-            return;
-        }
-
         if (item.HasIcon)
         {
             item.Glyph = null;
@@ -1159,7 +1156,7 @@ public partial class DockWindow : Window, IDockHost
                 _vm.BeginRename(captured);
                 FocusRenameBox();
             }));
-            menu.Items.Add(MenuEntry("图标…", Icons.Grid, () => Dispatcher.UIThread.Post(() => OpenIconPicker(captured))));
+            menu.Items.Add(MenuEntry("更换图标…", Icons.Upload, () => Dispatcher.UIThread.Post(() => _ = ChangeIconAsync(captured))));
             menu.Items.Add(MenuEntry("复制路径", Icons.Copy, () => CopyToClipboard(captured.Model.Target)));
             menu.Items.Add(MenuEntry("复制命令", Icons.Terminal, () => CopyToClipboard(ItemQuery.ToCommandText(captured.Model))));
             menu.Items.Add(MenuEntry("打开位置", Icons.Folder, () => RevealInExplorer(captured.Model.Target)));
@@ -1319,59 +1316,173 @@ public partial class DockWindow : Window, IDockHost
         return entry;
     }
 
-    /// <summary>「更换图标」：指针处弹出图标网格，选中即写入 IconKey（原型的 icon-picker）。</summary>
-    private void OpenIconPicker(ItemViewModel item)
+    /// <summary>「更换图标」：选择本地图片（png/jpg/ico 等），不内置图标库。</summary>
+    private async Task ChangeIconAsync(ItemViewModel item)
     {
         if (_vm is null)
         {
             return;
         }
 
-        var grid = new WrapPanel { ItemWidth = 38, ItemHeight = 38 };
-        foreach (string key in IconCatalog.PickerKeys)
+        var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            string captured = key;
-            IconCatalog.TryResolve(captured, out Geometry geometry);
-            var glyph = new Path
-            {
-                Data = geometry,
-                Stroke = _vm.TextBrush,
-                StrokeThickness = 1.7,
-                StrokeLineCap = PenLineCap.Round,
-                StrokeJoin = PenLineJoin.Round,
-                Stretch = Stretch.Uniform,
-                Width = 18,
-                Height = 18
-            };
-            var button = new Button
-            {
-                Content = glyph,
-                Width = 36,
-                Height = 36,
-                Padding = new Thickness(0),
-                Background = Brushes.Transparent,
-                HorizontalContentAlignment = HorizontalAlignment.Center,
-                VerticalContentAlignment = VerticalAlignment.Center
-            };
-            ToolTip.SetTip(button, captured);
-            button.Click += (_, _) => _vm.ChangeIcon(item, captured);
-            grid.Children.Add(button);
+            Title = "选择图标图片",
+            AllowMultiple = false,
+            FileTypeFilter =
+            [
+                new FilePickerFileType("图片")
+                {
+                    Patterns = new[] { "*.png", "*.jpg", "*.jpeg", "*.bmp", "*.webp", "*.ico" }
+                }
+            ]
+        });
+
+        if (files.Count == 0)
+        {
+            return;
         }
 
+        string path = files[0].Path.LocalPath;
+        if (!string.IsNullOrWhiteSpace(path) && System.IO.File.Exists(path))
+        {
+            _vm.ChangeIcon(item, path);
+        }
+    }
+
+    /// <summary>竖排更新胶囊：弹出更新卡片（原型 .update-card），状态与进度变化时原位刷新。</summary>
+    private void OnUpdatePillClick(object? sender, RoutedEventArgs e)
+    {
+        if (_vm is null)
+        {
+            return;
+        }
+
+        var icon = new Path
+        {
+            Width = 17,
+            Height = 17,
+            Stretch = Stretch.Uniform,
+            StrokeThickness = 1.8,
+            StrokeLineCap = PenLineCap.Round,
+            StrokeJoin = PenLineJoin.Round
+        };
+        var title = new TextBlock { FontSize = 13, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center };
+        var tag = new TextBlock { FontSize = 11, Opacity = 0.72, VerticalAlignment = VerticalAlignment.Center };
+        var tagChip = new Border
+        {
+            BorderBrush = _vm.PanelBorderBrush,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(999),
+            Padding = new Thickness(8, 2),
+            Child = tag,
+            VerticalAlignment = VerticalAlignment.Center
+        };
+        var desc = new TextBlock { FontSize = 11.5, Opacity = 0.78, TextWrapping = TextWrapping.Wrap };
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, HorizontalAlignment = HorizontalAlignment.Right };
+        var progress = new ProgressBar { Minimum = 0, Maximum = 100, Height = 4, MinHeight = 4 };
+
+        var head = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
+        head.ColumnSpacing = 8;
+        Grid.SetColumn(icon, 0);
+        Grid.SetColumn(title, 1);
+        Grid.SetColumn(tagChip, 2);
+        head.Children.Add(icon);
+        head.Children.Add(title);
+        head.Children.Add(tagChip);
+
+        var card = new StackPanel { Spacing = 8 };
+        card.Children.Add(head);
+        card.Children.Add(desc);
+        card.Children.Add(actions);
+        card.Children.Add(progress);
+
+        Button LinkButton(string text, bool primary, System.Windows.Input.ICommand? command)
+        {
+            var button = new Button { Content = text, Padding = new Thickness(10, 3) };
+            if (TryGetResource("LinkButton", null, out object? theme) && theme is ControlTheme controlTheme)
+            {
+                button.Theme = controlTheme;
+            }
+
+            if (primary)
+            {
+                button.Classes.Add("primary");
+            }
+
+            button.Command = command;
+            return button;
+        }
+
+        void Refresh()
+        {
+            bool ready = _vm.IsUpdateReady;
+            bool downloading = _vm.IsDownloadingUpdate;
+            icon.Data = ready ? Icons.Check : downloading ? Icons.Download : Icons.Upload;
+            icon.Stroke = ready ? UpdateReadyBrush : _vm.AccentBrush;
+            title.Text = ready ? "更新已就绪" : downloading ? "正在下载更新" : "发现新版本";
+            tag.Text = _vm.UpdateTag;
+            desc.Text = ready
+                ? "安装包已校验存放，点击安装后由系统安装器接管，程序随后退出。"
+                : downloading
+                    ? "下载在后台进行，可随时取消；完成后 Dock 会提示安装。"
+                    : _vm.NeedsUpdatePage
+                        ? "没有匹配当前系统的安装包，可以前往 Release 页面手动选择资产。"
+                        : "已按当前系统与架构选定安装包，下载完成后需再次点击安装，程序不会静默替换。";
+            actions.Children.Clear();
+            if (_vm.CanDownloadUpdate)
+            {
+                actions.Children.Add(LinkButton("下载", true, _vm.DownloadUpdateCommand));
+                actions.Children.Add(LinkButton("忽略", false, _vm.DismissUpdateCommand));
+            }
+            else if (_vm.NeedsUpdatePage)
+            {
+                actions.Children.Add(LinkButton("打开发布页", true, _vm.OpenUpdateCommand));
+                actions.Children.Add(LinkButton("忽略", false, _vm.DismissUpdateCommand));
+            }
+            else if (downloading)
+            {
+                actions.Children.Add(LinkButton("取消", false, _vm.CancelUpdateDownloadCommand));
+            }
+            else if (ready)
+            {
+                actions.Children.Add(LinkButton(_vm.UpdateInstallButtonText, true, _vm.InstallUpdateCommand));
+                actions.Children.Add(LinkButton("忽略", false, _vm.DismissUpdateCommand));
+            }
+
+            progress.IsVisible = downloading;
+            progress.Value = _vm.DownloadProgress;
+        }
+
+        Refresh();
+        void OnVmChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
+        {
+            if (args.PropertyName is nameof(DockViewModel.DownloadProgress)
+                or nameof(DockViewModel.IsDownloadingUpdate)
+                or nameof(DockViewModel.IsUpdateReady)
+                or nameof(DockViewModel.CanDownloadUpdate)
+                or nameof(DockViewModel.NeedsUpdatePage))
+            {
+                Refresh();
+            }
+        }
+
+        _vm.PropertyChanged += OnVmChanged;
         var flyout = new Flyout
         {
-            Placement = PlacementMode.Pointer,
+            Placement = _vm.Settings.Edge == DockEdge.Right ? PlacementMode.Left : PlacementMode.Right,
             Content = new Border
             {
                 Background = _vm.MenuBrush,
                 BorderBrush = _vm.PanelBorderBrush,
                 BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(10),
-                Padding = new Thickness(8),
-                Child = grid
+                CornerRadius = new CornerRadius(12),
+                Padding = new Thickness(12),
+                Width = 290,
+                Child = card
             }
         };
-        flyout.ShowAt(ItemsHost);
+        flyout.Closed += (_, _) => _vm.PropertyChanged -= OnVmChanged;
+        flyout.ShowAt(UpdatePillButton);
     }
 
     private void CopyToClipboard(string text)

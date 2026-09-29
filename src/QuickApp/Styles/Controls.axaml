@@ -36,6 +36,9 @@
       <SolidColorBrush x:Key="MenuItemBackgroundPressed" Color="#1FFFFFFF" />
       <SolidColorBrush x:Key="MenuItemForeground" Color="#EEF1F6" />
       <SolidColorBrush x:Key="MenuItemForegroundPointerOver" Color="#EEF1F6" />
+      <!-- ComboBox 下拉弹层跟随主题（原生默认浅底浅字不可读） -->
+      <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#FA181B21" />
+      <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#1FFFFFFF" />
     </ResourceDictionary>
     <ResourceDictionary x:Key="Light">
       <SolidColorBrush x:Key="QATextBrush" Color="#111826" />
@@ -57,6 +60,8 @@
       <SolidColorBrush x:Key="MenuItemBackgroundPressed" Color="#1F111826" />
       <SolidColorBrush x:Key="MenuItemForeground" Color="#111826" />
       <SolidColorBrush x:Key="MenuItemForegroundPointerOver" Color="#111826" />
+      <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#FDFFFFFF" />
+      <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#1F111826" />
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
 
@@ -345,12 +350,6 @@
       <Setter Property="Foreground" Value="{DynamicResource QAAccentInkBrush}" />
       <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
-    <Style Selector="^ Path.tab-icon">
-      <Setter Property="Stroke" Value="{DynamicResource QATextDimBrush}" />
-    </Style>
-    <Style Selector="^:selected Path.tab-icon">
-      <Setter Property="Stroke" Value="{DynamicResource QAAccentInkBrush}" />
-    </Style>
   </ControlTheme>
 
   <!-- 菜单项：原型 .menu-item 30px 高 r7，图标 16 淡色，danger 红色，右侧 mi-note 徽章 -->
@@ -395,12 +394,6 @@
     </Style>
     <Style Selector="^.danger">
       <Setter Property="Foreground" Value="{DynamicResource QADangerBrush}" />
-    </Style>
-    <Style Selector="^ Path.mi-icon">
-      <Setter Property="Stroke" Value="{DynamicResource QATextDimBrush}" />
-    </Style>
-    <Style Selector="^.danger Path.mi-icon">
-      <Setter Property="Stroke" Value="{DynamicResource QADangerBrush}" />
     </Style>
   </ControlTheme>
 

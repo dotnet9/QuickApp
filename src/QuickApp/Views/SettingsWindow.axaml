@@ -179,35 +179,6 @@
                       <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding RevealOnEdgeTouch}" />
                     </Grid>
                     <Grid Classes="row" ColumnDefinitions="*,Auto">
-                      <TextBlock Classes="row" Text="钉住" />
-                      <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding Pinned}" />
-                    </Grid>
-                    <Grid Classes="row" ColumnDefinitions="*,Auto">
-                      <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
-                        <TextBlock Classes="row" Text="停靠边缘" />
-                        <TextBlock Classes="hint" Text="也可从「更多操作」里选择" VerticalAlignment="Center" />
-                      </StackPanel>
-                      <Border Grid.Column="1"
-                              Background="{DynamicResource QAHoverBrush}"
-                              CornerRadius="9"
-                              Padding="2">
-                        <StackPanel Orientation="Horizontal" Spacing="2">
-                          <Button Theme="{StaticResource Segment}" Content="上"
-                                  Classes.active="{Binding IsEdgeTop}"
-                                  Command="{Binding SetEdgeCommand}" CommandParameter="top" />
-                          <Button Theme="{StaticResource Segment}" Content="下"
-                                  Classes.active="{Binding IsEdgeBottom}"
-                                  Command="{Binding SetEdgeCommand}" CommandParameter="bottom" />
-                          <Button Theme="{StaticResource Segment}" Content="左"
-                                  Classes.active="{Binding IsEdgeLeft}"
-                                  Command="{Binding SetEdgeCommand}" CommandParameter="left" />
-                          <Button Theme="{StaticResource Segment}" Content="右"
-                                  Classes.active="{Binding IsEdgeRight}"
-                                  Command="{Binding SetEdgeCommand}" CommandParameter="right" />
-                        </StackPanel>
-                      </Border>
-                    </Grid>
-                    <Grid Classes="row" ColumnDefinitions="*,Auto">
                       <TextBlock Classes="row" Text="目标显示器" />
                       <ComboBox Grid.Column="1"
                                 ItemsSource="{Binding MonitorOptions}"
@@ -219,6 +190,8 @@
                         </ComboBox.ItemTemplate>
                       </ComboBox>
                     </Grid>
+                    <TextBlock Classes="hint" Margin="0,2,0,0"
+                               Text="Dock 只存在于所选显示器：停靠、收起、唤出把手都在它上面，切换后整体迁移；显示器被拔掉时回落主显示器" />
                     <Grid Classes="row" ColumnDefinitions="*,Auto,Auto">
                       <TextBlock Classes="row" Text="自动隐藏延时" />
                       <Slider Grid.Column="1" Margin="0,0,12,0"

@@ -54,6 +54,9 @@ public sealed class DockViewModel : ViewModelBase
     private readonly Dictionary<string, ItemViewModel> _installedViewModels = new(StringComparer.OrdinalIgnoreCase);
     private List<(LauncherItem Item, int Index)>? _lastRemovedItems;
 
+    /// <summary>更新就绪的成功色（原型 --ok），不随主题切换。</summary>
+    private static readonly IBrush UpdateSuccessBrush = new SolidColorBrush(Color.FromRgb(0x3F, 0xB9, 0x6F));
+
     private IDockHost? _host;
     private string _searchQuery = string.Empty;
     private bool _isSearchOpen;
@@ -196,7 +199,7 @@ public sealed class DockViewModel : ViewModelBase
 
             this.RaisePropertyChanged();
             Save();
-            Toast(value ? "已钉住，Dock 常驻显示" : "已取消钉住，鼠标离开后自动隐藏");
+            Toast(value ? "已钉住" : "已取消钉住");
         }
     }
 
@@ -256,6 +259,9 @@ public sealed class DockViewModel : ViewModelBase
         _ => "translateY(5px) scale(1.44)"
     };
 
+    /// <summary>编辑模式下的恒等变换：图标不放大（原型「编辑态不悬浮放大」规范）。</summary>
+    private const string ScaleIdentity = "scale(1)";
+
     /// <summary>按下回缩（原型 tile:active 的 scale .94），偏移方向同悬停。</summary>
     public string TilePressedTransform => Settings.Edge switch
     {
@@ -265,8 +271,10 @@ public sealed class DockViewModel : ViewModelBase
         _ => "translateY(5px) scale(0.94)"
     };
 
-    /// <summary>为悬浮放大和两端 peek 留出缓冲，滚动视口只包住应用图标。</summary>
-    public Thickness ListPadding => new(10);
+    /// <summary>为悬浮放大和两端 peek 留出缓冲（原型定稿 18px），滚动视口只包住应用图标。</summary>
+    public Thickness ListPadding => IsVertical
+        ? new Thickness(18, 14, 18, 14)
+        : new Thickness(14, 18, 14, 18);
 
     // ---------------- 更新状态 ----------------
 
@@ -304,6 +312,50 @@ public sealed class DockViewModel : ViewModelBase
     private bool IsWindowsInstallerAsset =>
         OperatingSystem.IsWindows() &&
         (_pendingUpdate?.AssetName?.EndsWith("-setup.exe", StringComparison.OrdinalIgnoreCase) ?? false);
+
+    /// <summary>更新条主文案：发现新版本 / 正在下载 · 百分比 / 下载完成（原型 S1–S3）。</summary>
+    public string UpdateDisplayText
+    {
+        get
+        {
+            if (_pendingUpdate is null)
+            {
+                return string.Empty;
+            }
+
+            if (_isDownloadingUpdate)
+            {
+                return _downloadProgress > 0
+                    ? $"正在下载 {_pendingUpdate.Tag} · {_downloadProgress:0}%"
+                    : $"正在下载 {_pendingUpdate.Tag}";
+            }
+
+            if (IsUpdateReady)
+            {
+                return $"{_pendingUpdate.Tag} 下载完成";
+            }
+
+            return UpdateText;
+        }
+    }
+
+    /// <summary>次要说明：仅「无匹配资产」时给出降级原因，空串隐藏。</summary>
+    public string UpdateNoteText => NeedsUpdatePage ? "没有匹配当前系统的安装包" : string.Empty;
+
+    /// <summary>版本号（更新卡片右上角徽标）。</summary>
+    public string UpdateTag => _pendingUpdate?.Tag ?? string.Empty;
+
+    /// <summary>更新条左侧图形：就绪转成功对勾，下载中为下箭头，其余为发布箭头。</summary>
+    public Geometry UpdateIconGlyph => IsUpdateReady ? Icons.Check : _isDownloadingUpdate ? Icons.Download : Icons.Upload;
+
+    /// <summary>更新条图标颜色：就绪转成功色，其余用强调色。</summary>
+    public IBrush UpdateIconBrush => IsUpdateReady ? UpdateSuccessBrush : AccentBrush;
+
+    /// <summary>横排（上/下边缘）：更新条是面板内的一行（原型 .update-bar）。</summary>
+    public bool ShowUpdateBar => UpdateAvailable && !IsVertical;
+
+    /// <summary>竖排（左/右边缘）：Dock 上只出现紧凑「新版本」胶囊，点击弹出卡片（原型 .update-pill）。</summary>
+    public bool ShowUpdatePill => UpdateAvailable && IsVertical;
 
     // ---------------- 面板状态 ----------------
 
@@ -479,7 +531,7 @@ public sealed class DockViewModel : ViewModelBase
 
     public string EmptyStateText => IsSearchGrouped
         ? "没有匹配「" + SearchQuery.Trim() + "」的项目"
-        : "空空如也";
+        : "右键空白处添加应用";
 
     /// <summary>Dock 一个项都没有（与「搜索无结果」区分开，给出添加引导）。</summary>
     public bool IsDockEmpty => Items.Count == 0 && !IsSearchGrouped;
@@ -695,8 +747,8 @@ public sealed class DockViewModel : ViewModelBase
         item.ShowRemove = IsEditMode && !item.IsSystemResult;
         item.TileSize = Settings.TileSize;
         item.ItemOrientation = IsVertical ? Orientation.Horizontal : Orientation.Vertical;
-        item.HoverTransform = TileHoverTransform;
-        item.PressedTransform = TilePressedTransform;
+        item.HoverTransform = item.ShowRemove ? ScaleIdentity : TileHoverTransform;
+        item.PressedTransform = item.ShowRemove ? ScaleIdentity : TilePressedTransform;
         ItemVisualRequested?.Invoke(item);
     }
 
@@ -704,6 +756,14 @@ public sealed class DockViewModel : ViewModelBase
     {
         try
         {
+            // 用户选择的本地图片优先：直接加载，不走 Shell 提取
+            string? custom = vm.Model.CustomIconPath;
+            if (!string.IsNullOrWhiteSpace(custom) && File.Exists(custom))
+            {
+                vm.IconFile = custom;
+                return;
+            }
+
             string? path = await _icons.GetIconFileAsync(vm.Model).ConfigureAwait(true);
             if (!string.IsNullOrWhiteSpace(path))
             {
@@ -725,7 +785,7 @@ public sealed class DockViewModel : ViewModelBase
 
         if (IsEditMode)
         {
-            Toast("编辑模式下不启动项目，点「完成」退出编辑");
+            Toast("编辑模式下不运行 · 点「完成」退出");
             return;
         }
 
@@ -768,7 +828,7 @@ public sealed class DockViewModel : ViewModelBase
             Target = vm.Model.Target,
             Arguments = vm.Model.Arguments,
             WorkingDirectory = vm.Model.WorkingDirectory,
-            IconKey = vm.Model.IconKey
+            CustomIconPath = vm.Model.CustomIconPath
         };
 
         _config.Items.Add(model);
@@ -916,11 +976,12 @@ public sealed class DockViewModel : ViewModelBase
         Toast("已添加命令行：" + model.Name);
     }
 
-    /// <summary>图标选择器选定后：写入 IconKey 并刷新该图标的显示。</summary>
-    public void ChangeIcon(ItemViewModel item, string iconKey)
+    /// <summary>「更换图标」：写入本地图片路径并刷新显示。</summary>
+    /// <summary>「更换图标」选定本地图片后：记录路径、直接加载显示并持久化。</summary>
+    public void ChangeIcon(ItemViewModel item, string imagePath)
     {
-        item.Model.IconKey = iconKey;
-        item.ClearIcon();
+        item.Model.CustomIconPath = imagePath;
+        item.IconFile = imagePath;
         ItemVisualRequested?.Invoke(item);
         Save();
         Toast("已更换 " + item.Name + " 的图标");
@@ -979,8 +1040,10 @@ public sealed class DockViewModel : ViewModelBase
         this.RaisePropertyChanged(nameof(IsVertical));
         this.RaisePropertyChanged(nameof(EdgeLabel));
         this.RaisePropertyChanged(nameof(CollapseGlyph));
+        this.RaisePropertyChanged(nameof(ShowUpdateBar));
+        this.RaisePropertyChanged(nameof(ShowUpdatePill));
         _host?.ApplyEdge(edge);
-        Toast("Dock 已停靠到" + EdgeLabel);
+        Toast("已停靠到" + EdgeLabel);
     }
 
     public void SelectMonitorIndex(int index)
@@ -993,7 +1056,7 @@ public sealed class DockViewModel : ViewModelBase
         Settings.MonitorIndex = index;
         Save();
         _host?.MonitorSelectionChanged();
-        Toast("Dock 已移动到显示器 " + (index + 1));
+        Toast("已移动到显示器 " + (index + 1));
     }
 
     public void AutoHideDelayChanged() => _host?.AutoHideDelayChanged();
@@ -1177,6 +1240,11 @@ public sealed class DockViewModel : ViewModelBase
                 _pendingUpdate = null;
                 this.RaisePropertyChanged(nameof(UpdateAvailable));
                 this.RaisePropertyChanged(nameof(UpdateText));
+                this.RaisePropertyChanged(nameof(UpdateDisplayText));
+                this.RaisePropertyChanged(nameof(UpdateNoteText));
+                this.RaisePropertyChanged(nameof(UpdateIconBrush));
+                this.RaisePropertyChanged(nameof(ShowUpdateBar));
+                this.RaisePropertyChanged(nameof(ShowUpdatePill));
                 RaiseDownloadStateChanged();
                 _updateResultText = "已是最新版本 " + VersionText;
                 this.RaisePropertyChanged(nameof(UpdateResultText));
@@ -1188,6 +1256,11 @@ public sealed class DockViewModel : ViewModelBase
             _pendingUpdate = info;
             this.RaisePropertyChanged(nameof(UpdateAvailable));
             this.RaisePropertyChanged(nameof(UpdateText));
+            this.RaisePropertyChanged(nameof(UpdateDisplayText));
+            this.RaisePropertyChanged(nameof(UpdateNoteText));
+            this.RaisePropertyChanged(nameof(UpdateIconBrush));
+            this.RaisePropertyChanged(nameof(ShowUpdateBar));
+            this.RaisePropertyChanged(nameof(ShowUpdatePill));
             RaiseDownloadStateChanged();
             _updateResultText = UpdateText;
             this.RaisePropertyChanged(nameof(UpdateResultText));
@@ -1312,6 +1385,12 @@ public sealed class DockViewModel : ViewModelBase
         this.RaisePropertyChanged(nameof(DownloadProgress));
         this.RaisePropertyChanged(nameof(DownloadProgressText));
         this.RaisePropertyChanged(nameof(UpdateInstallButtonText));
+        this.RaisePropertyChanged(nameof(UpdateDisplayText));
+        this.RaisePropertyChanged(nameof(UpdateNoteText));
+        this.RaisePropertyChanged(nameof(UpdateIconBrush));
+        this.RaisePropertyChanged(nameof(UpdateIconGlyph));
+        this.RaisePropertyChanged(nameof(ShowUpdateBar));
+        this.RaisePropertyChanged(nameof(ShowUpdatePill));
     }
 
     private void OpenUpdatePage()
