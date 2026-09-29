@@ -22,8 +22,10 @@ set "VERSION=%~2"
 set "FORCE="
 if /I "%~3"=="--force" set "FORCE=-Force"
 
-call "%SCRIPT_ROOT%publish.bat" "%PLATFORMS%" "%VERSION%"
-if errorlevel 1 echo [WARN] Some platforms failed to publish; packaging the rest.
+for %%P in (%PLATFORMS%) do (
+    powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%SCRIPT_ROOT%publish_quickapp.ps1" -RuntimeIdentifier %%P -Version "%VERSION%"
+    if errorlevel 1 echo [WARN] %%P failed to publish; packaging the rest.
+)
 
 echo.
 echo ========================================

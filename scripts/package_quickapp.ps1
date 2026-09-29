@@ -31,7 +31,7 @@ if ([string]::IsNullOrWhiteSpace($ReleaseRoot)) {
 if ([string]::IsNullOrWhiteSpace($SourceDirectory)) {
     $ridRoot = Join-Path $PublishRoot $RuntimeIdentifier
     if (-not (Test-Path -LiteralPath $ridRoot -PathType Container)) {
-        throw "Publish folder not found: $ridRoot. Run publish.bat first."
+        throw "Publish folder not found: $ridRoot. Run publish-all.bat first."
     }
 
     $candidates = @()

@@ -50,7 +50,7 @@ dotnet run --project src/QuickApp/QuickApp.csproj
 Windows x64 的自包含 NativeAOT 发布：
 
 ```powershell
-cmd /c scripts/publish.bat win-x64 0.1.0
+scripts\publish-win-x64.bat 0.1.0
 pwsh scripts/build_installer.ps1 -Version 0.1.0 -Force
 ```
 
@@ -74,7 +74,7 @@ pwsh scripts/publish_quickapp.ps1 -RuntimeIdentifier osx-arm64 -Version 0.2.2
 pwsh scripts/package_macos_dmg.ps1 -RuntimeIdentifier osx-arm64 -Version 0.2.2 -Force
 ```
 
-可用 RID：`win-x64`、`win-x86`、`linux-x64`、`linux-arm64`、`osx-x64`、`osx-arm64`。`scripts/publish.bat` 支持一次发布多个 RID；Windows x64 使用 NativeAOT，其余 RID 使用自包含单文件。
+可用 RID：`win-x64`、`win-x86`、`linux-x64`、`linux-arm64`、`osx-x64`、`osx-arm64`。`scripts/publish-all.bat` 一次发布全部 RID、`scripts/publish-win-x64.bat` 只发 win-x64；Windows x64 使用 NativeAOT，其余 RID 使用自包含单文件。
 
 GitHub Actions 会在推送 `v*` 标签时分别构建 Windows、Linux 和 macOS 安装包，并创建包含 Windows 安装包、Linux `.deb`、macOS `.pkg/.dmg` 与 SHA-256 校验文件的 Release。常规推送和 Pull Request 会执行构建与测试工作流。
 

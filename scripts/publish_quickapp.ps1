@@ -30,27 +30,12 @@ if (Test-Path -LiteralPath $outputPath) {
     Remove-Item -LiteralPath $outputPath -Recurse -Force
 }
 
-$restoreArguments = @(
-    "restore", $projectPath,
-    "--runtime", $RuntimeIdentifier,
-    "-p:RuntimeIdentifier=$RuntimeIdentifier",
-    "-p:Configuration=Release",
-    "-p:PublishAot=$($isWindowsAot.ToString().ToLowerInvariant())",
-    "-p:PublishTrimmed=$($isWindowsAot.ToString().ToLowerInvariant())"
-)
-Write-Host "Restoring $targetFramework for $RuntimeIdentifier..."
-& dotnet @restoreArguments
-if ($LASTEXITCODE -ne 0) {
-    throw "QuickApp restore failed with exit code $LASTEXITCODE."
-}
-
 $publishArguments = @(
     "publish", $projectPath,
     "-c", "Release",
     "-f", $targetFramework,
     "-r", $RuntimeIdentifier,
     "--self-contained", "true",
-    "--no-restore",
     "-o", $outputPath,
     "-p:Version=$Version",
     "-p:DebugType=None",
@@ -71,11 +56,13 @@ if ($isWindowsAot) {
 
 Write-Host "Publishing QuickApp for $RuntimeIdentifier with $targetFramework..."
 & dotnet @publishArguments
-if ($LASTEXITCODE -ne 0) {
-    throw "QuickApp publish failed for $RuntimeIdentifier with exit code $LASTEXITCODE."
+$code = $LASTEXITCODE
+if ($code -ne 0) {
+    throw "QuickApp publish failed for $RuntimeIdentifier with exit code $code."
 }
 
-Get-ChildItem -LiteralPath $outputPath -Recurse -File -Include "*.pdb", "*.dbg" -ErrorAction SilentlyContinue |
+Get-ChildItem -LiteralPath $outputPath -Recurse -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.Extension -in ".pdb", ".dbg" } |
     Remove-Item -Force
 
 $executableName = if ($RuntimeIdentifier.StartsWith("win-", [StringComparison]::OrdinalIgnoreCase)) {
