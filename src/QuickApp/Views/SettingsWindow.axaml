@@ -112,7 +112,7 @@
         <StackPanel DockPanel.Dock="Top">
           <Border Name="HeaderBar"
                   Background="Transparent"
-                  Padding="16,14,12,10"
+                  Padding="16,14"
                   Cursor="SizeAll">
             <Grid ColumnDefinitions="*,Auto">
               <TextBlock Grid.Column="0"
@@ -124,15 +124,15 @@
               <Button Grid.Column="1"
                       Theme="{StaticResource IconButton}"
                       Name="CloseButton"
-                      Width="30"
-                      Height="30"
+                      Width="32"
+                      Height="32"
                       ToolTip.Tip="关闭">
                 <Path Data="{x:Static icons:Icons.Close}"
                       Stroke="{Binding TextDimBrush}"
-                      StrokeThickness="1.8"
+                      StrokeThickness="1.75"
                       StrokeLineCap="Round"
-                      Width="12"
-                      Height="12"
+                      Width="20"
+                      Height="20"
                       Stretch="Uniform" />
               </Button>
             </Grid>
@@ -157,7 +157,7 @@
                 <StackPanel Orientation="Horizontal" Spacing="9">
                   <Path Classes="tab-icon"
                         Data="{x:Static icons:Icons.Gear}"
-                        StrokeThickness="1.5"
+                        StrokeThickness="1.75"
                         Width="16"
                         Height="16"
                         Stretch="Uniform" />
@@ -226,7 +226,7 @@
                 <StackPanel Orientation="Horizontal" Spacing="9">
                   <Path Classes="tab-icon"
                         Data="{x:Static icons:Icons.Application}"
-                        StrokeThickness="1.5"
+                        StrokeThickness="1.75"
                         Width="16"
                         Height="16"
                         Stretch="Uniform" />
@@ -292,7 +292,7 @@
                 <StackPanel Orientation="Horizontal" Spacing="9">
                   <Path Classes="tab-icon"
                         Data="{x:Static icons:Icons.Database}"
-                        StrokeThickness="1.5"
+                        StrokeThickness="1.75"
                         Width="16"
                         Height="16"
                         Stretch="Uniform" />
@@ -318,7 +318,7 @@
                     </Grid>
                     <TextBlock Name="StorageModeResultText" Classes="hint" Margin="0,3,0,0" IsVisible="False" />
                     <TextBlock Classes="hint" Margin="0,3,0,0" Text="导入配置会替换当前的快捷项与设置" />
-                    <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,10,0,0">
+                    <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,10,0,0">
                       <Button Theme="{StaticResource LinkButton}" Name="ImportButton" Content="导入配置" />
                       <Button Theme="{StaticResource LinkButton}" Name="ExportButton" Content="导出配置" />
                       <Button Theme="{StaticResource LinkButton}" Name="OpenConfigFolderButton" Content="打开配置文件夹" />
@@ -333,7 +333,7 @@
                 <StackPanel Orientation="Horizontal" Spacing="9">
                   <Path Classes="tab-icon"
                         Data="{x:Static icons:Icons.Info}"
-                        StrokeThickness="1.5"
+                        StrokeThickness="1.75"
                         Width="16"
                         Height="16"
                         Stretch="Uniform" />
@@ -343,11 +343,13 @@
               <Border Classes="tab-content">
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled">
                   <StackPanel>
-                    <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,16,0,14">
-                      <Image Width="48" Height="48" Source="avares://QuickApp/Assets/logo.png" />
+                    <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,20,0,14">
+                      <Border Width="48" Height="48" CornerRadius="14" ClipToBounds="True" BoxShadow="0 4 12 0 #38000000">
+                        <Image Width="48" Height="48" Source="avares://QuickApp/Assets/logo.png" Stretch="UniformToFill" />
+                      </Border>
                       <StackPanel VerticalAlignment="Center" Spacing="3">
                         <TextBlock Text="QuickApp" FontSize="16" FontWeight="SemiBold" Foreground="{Binding TextBrush}" />
-                        <TextBlock Classes="hint" Text="快捷应用启动器" />
+                        <TextBlock Classes="hint" FontSize="12" Text="快捷应用启动器" />
                       </StackPanel>
                     </StackPanel>
                     <Border Classes="groupsep" />

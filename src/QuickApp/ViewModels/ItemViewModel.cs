@@ -55,7 +55,12 @@ public sealed class ItemViewModel : ViewModelBase
 
     public bool ShowSystemAdd => IsSystemResult;
 
-    public string ResultStatus => IsSystemResult ? "开始菜单 · 未配置" : string.Empty;
+    /// <summary>系统应用行副标题（原型 .search-installed-copy span：「开始菜单 · 应用/网页/命令」）。</summary>
+    public string ResultStatus => IsSystemResult ? "开始菜单 · " + KindLabel : string.Empty;
+
+    /// <summary>「未配置」徽章可见性（原型 .search-installed-status 胶囊）。</summary>
+    public bool ShowUnconfiguredBadge => IsSystemResult;
+
 
     public string Id => Model.Id;
 
@@ -242,6 +247,9 @@ public sealed class ItemViewModel : ViewModelBase
         set => Set(ref _isDropTarget, value);
     }
 
+    /// <summary>图标与名称的间距（横 6 / 竖 8，原型 .dock-item gap），由 Dock 布局推送。</summary>
+    public double ItemLabelSpacing { get; set; } = 6;
+
     public double TileSize
     {
         get => _tileSize;
@@ -265,7 +273,8 @@ public sealed class ItemViewModel : ViewModelBase
 
     public double IconSize => Math.Round(TileSize, 1);
 
-    public double GlyphSize => Math.Round(TileSize * 0.5, 1);
+    /// <summary>占位图形尺寸：应用类 0.9×tile、网页/命令 0.5×tile（原型 tileNode 的类型分支）。</summary>
+    public double GlyphSize => Math.Round(TileSize * (Model.Kind == QuickApp.Core.Models.ItemKind.App ? 0.9 : 0.5), 1);
 
     /// <summary>改名框宽度：瓦片宽 + 70（原型 startRename 的 width 规则，最小 120）。</summary>
     public double RenameWidth => Math.Max(120, Math.Round(TileSize + 70));

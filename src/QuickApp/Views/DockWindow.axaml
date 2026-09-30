@@ -17,7 +17,7 @@
   <Window.Resources>
     <!-- 一个图标：图标 + 名称（名称按设置显隐），左/右边缘时自动变成横向排列 -->
     <DataTemplate x:Key="TileTemplate" x:DataType="vm:ItemViewModel">
-      <StackPanel Orientation="{Binding ItemOrientation}" Spacing="5" Margin="0" ClipToBounds="False">
+      <StackPanel Orientation="{Binding ItemOrientation}" Spacing="{Binding ItemLabelSpacing}" Margin="0" ClipToBounds="False">
 
         <Border Name="TileRoot"
                 Classes="tile"
@@ -43,10 +43,10 @@
                    IsVisible="{Binding HasIcon}"
                    Stretch="Uniform" />
 
-            <!-- 没有真实图标时的占位：类型相关的线性图标 + 底色 -->
+            <!-- 没有真实图标时的占位：类型相关的线性图标（应用类透明底 + 正文色，原型 .tile.app-icon） -->
             <Path Data="{Binding Glyph}"
                   IsVisible="{Binding !HasIcon}"
-                  Stroke="White"
+                  Stroke="{Binding TextBrush}"
                   StrokeThickness="1.7"
                   StrokeLineCap="Round"
                   StrokeJoin="Round"
@@ -57,7 +57,7 @@
             <!-- 执行中的反馈 -->
             <Path Data="M5,12.5 L9.5,17 L19,7"
                   IsVisible="{Binding IsRunning}"
-                  Stroke="White"
+                  Stroke="{Binding TextBrush}"
                   StrokeThickness="2.2"
                   StrokeLineCap="Round"
                   StrokeJoin="Round"
@@ -82,11 +82,11 @@
                     Command="{Binding RemoveCommand}"
                     ToolTip.Tip="移除">
               <Path Data="M6,6 L18,18 M18,6 L6,18"
-                    Stroke="White"
-                    StrokeThickness="2.4"
+                    Stroke="{Binding TextBrush}"
+                    StrokeThickness="2.6"
                     StrokeLineCap="Round"
-                    Width="9"
-                    Height="9"
+                    Width="12"
+                    Height="12"
                     Stretch="Uniform" />
             </Button>
           </Panel>
@@ -118,23 +118,22 @@
       </StackPanel>
     </DataTemplate>
 
-    <!-- 搜索到但尚未加入 Dock 的系统应用：保留结果分组，并提供明确的添加动作。 -->
+    <!-- 系统应用行（原型 .search-installed-item）：surface 30% 底、padding 5,7、无固定宽；
+         副标题 11px 淡色 + 「未配置」胶囊（10px 强调色 + 50% 描边）；＋ 按钮 30 r9 常态 hover 底。 -->
     <DataTemplate x:Key="InstalledTemplate" x:DataType="vm:ItemViewModel">
-      <Border Background="{DynamicResource QAHoverBrush}"
+      <Border Background="{DynamicResource QAResultRowBrush}"
               BorderBrush="{DynamicResource QALineBrush}"
               BorderThickness="1"
               CornerRadius="10"
-              Padding="6"
-              Margin="1"
-              Width="220"
+              Padding="5,7"
               Cursor="Hand"
               Focusable="True"
               PointerPressed="OnInstalledResultPointerPressed">
-        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="7">
+        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="9">
           <Border Width="36"
                   Height="36"
-                  CornerRadius="{Binding TileCornerRadius}"
-                  Background="{Binding TileBackgroundBrush}"
+                  CornerRadius="10"
+                  Background="Transparent"
                   ClipToBounds="True"
                   VerticalAlignment="Center">
             <Panel>
@@ -145,35 +144,52 @@
                      Stretch="Uniform" />
               <Path Data="{Binding Glyph}"
                     IsVisible="{Binding !HasIcon}"
-                    Stroke="White"
-                    StrokeThickness="1.6"
+                    Stroke="{DynamicResource QATextBrush}"
+                    StrokeThickness="1.75"
                     Stretch="Uniform"
-                    Width="18"
-                    Height="18"
+                    Width="32"
+                    Height="32"
                     HorizontalAlignment="Center"
                     VerticalAlignment="Center" />
             </Panel>
           </Border>
-          <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="1">
+          <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
             <TextBlock Text="{Binding Name}"
                        FontSize="12"
+                       FontWeight="SemiBold"
                        TextTrimming="CharacterEllipsis" />
             <TextBlock Text="{Binding ResultStatus}"
-                       FontSize="10"
-                       Foreground="{Binding TextBrush}"
-                       Opacity="0.72"
+                       FontSize="11"
+                       Foreground="{DynamicResource QATextDimBrush}"
                        TextTrimming="CharacterEllipsis" />
           </StackPanel>
-          <Button Grid.Column="2"
-                  Theme="{StaticResource LinkButton}"
-                  Classes="primary"
-                  Width="30"
-                  Height="28"
-                  Padding="0"
-                  Command="{Binding AddToDockCommand}"
-                  ToolTip.Tip="添加到 Dock">
-            <TextBlock Text="＋" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center" />
-          </Button>
+          <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
+            <Border IsVisible="{Binding ShowUnconfiguredBadge}"
+                    BorderBrush="{DynamicResource QAAccentSoftBorderBrush}"
+                    BorderThickness="1"
+                    CornerRadius="999"
+                    Padding="6,2"
+                    HorizontalAlignment="Right">
+              <TextBlock Text="未配置" FontSize="10" Foreground="{DynamicResource QAAccentBrush}" />
+            </Border>
+            <Button Theme="{StaticResource LinkButton}"
+                    Classes="add-btn"
+                    Width="30"
+                    Height="30"
+                    Padding="0"
+                    Command="{Binding AddToDockCommand}"
+                    ToolTip.Tip="添加到 Dock">
+              <Path Data="M12,5 L12,19 M5,12 L19,12"
+                    Stroke="{DynamicResource QAAccentBrush}"
+                    StrokeThickness="2.2"
+                    StrokeLineCap="Round"
+                    Width="16"
+                    Height="16"
+                    Stretch="Uniform"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center" />
+            </Button>
+          </StackPanel>
         </Grid>
       </Border>
     </DataTemplate>
@@ -194,8 +210,8 @@
       <Setter Property="BorderBrush" Value="{Binding PanelBorderBrush}" />
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="CornerRadius" Value="{Binding PanelCornerRadius}" />
-      <Setter Property="Padding" Value="10,4,10,6" />
-      <Setter Property="BoxShadow" Value="0 8 20 0 #66000000, 0 2 8 0 #44000000, inset 0 1 0 0 #1AFFFFFF" />
+      <Setter Property="Padding" Value="8,6" />
+      <Setter Property="BoxShadow" Value="0 18 40 0 #73000000, 0 2 8 0 #59000000, inset 0 1 0 0 #1AFFFFFF" />
     </Style>
 
     <Style Selector="Border.action-panel">
@@ -276,13 +292,13 @@
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="CornerRadius" Value="10" />
       <Setter Property="MinWidth" Value="330" />
-      <Setter Property="Padding" Value="10,7" />
+      <Setter Property="Padding" Value="10,7,8,7" />
       <Setter Property="Margin" Value="2,4,2,0" />
     </Style>
 
     <!-- 竖排更新胶囊（原型 .update-pill）：强调色描边 + 呼吸圆点语义 -->
     <Style Selector="Button.update-pill">
-      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Background" Value="{Binding PillBrush}" />
       <Setter Property="BorderBrush" Value="{Binding AccentBrush}" />
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="CornerRadius" Value="999" />
@@ -291,8 +307,8 @@
       <Setter Property="FontSize" Value="11" />
       <Setter Property="Cursor" Value="Hand" />
     </Style>
-    <Style Selector="Button.update-pill:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{Binding HoverBrush}" />
+    <Style Selector="Button.update-pill:pointerover">
+      <Setter Property="Background" Value="{Binding PillHoverBrush}" />
     </Style>
 
     <!-- 气泡/工具提示：对应原型 .bubble（菜单底色 + 1px 边线 + r10） -->
@@ -304,7 +320,24 @@
       <Setter Property="FontSize" Value="13" />
       <Setter Property="Padding" Value="11,7" />
     </Style>
-  </Window.Styles>
+  
+  <!-- 胶囊呼吸点（原型 @keyframes pillBlink：1.6s 透明度 1↔0.35） -->
+  <Style Selector="Ellipse.pill-dot">
+    <Style.Animations>
+      <Animation Duration="0:0:1.6" IterationCount="INFINITE">
+        <KeyFrame Cue="0%">
+          <Setter Property="Opacity" Value="1" />
+        </KeyFrame>
+        <KeyFrame Cue="50%">
+          <Setter Property="Opacity" Value="0.35" />
+        </KeyFrame>
+        <KeyFrame Cue="100%">
+          <Setter Property="Opacity" Value="1" />
+        </KeyFrame>
+      </Animation>
+    </Style.Animations>
+  </Style>
+</Window.Styles>
 
   <!-- 外留白：投影空间（逐像素透明窗下阴影与桌面正确混合） -->
   <Grid Margin="12">
@@ -318,14 +351,14 @@
         <!-- 搜索行 -->
         <StackPanel IsVisible="{Binding IsSearchOpen}">
           <Grid ColumnDefinitions="Auto,*,Auto,Auto"
-                Margin="4,2,4,4">
+                Margin="6,4,6,2">
             <Path Grid.Column="0"
                   Data="M10,3 C13.87,3 17,6.13 17,10 C17,13.87 13.87,17 10,17 C6.13,17 3,13.87 3,10 C3,6.13 6.13,3 10,3 Z M15.2,15.2 L21,21"
                   Stroke="{Binding TextDimBrush}"
                   StrokeThickness="1.8"
                   StrokeLineCap="Round"
-                  Width="15"
-                  Height="15"
+                  Width="20"
+                  Height="20"
                   Stretch="Uniform"
                   VerticalAlignment="Center"
                   Margin="2,0,6,0" />
@@ -333,6 +366,8 @@
                      Name="SearchBox"
                      Text="{Binding SearchQuery}"
                      PlaceholderText="搜索应用 / 网址 / 命令 / 拼音…"
+                     MinWidth="{Binding SearchMinWidth}"
+                     Padding="2,6"
                      FontSize="13"
                      Background="Transparent"
                      BorderThickness="0" />
@@ -344,21 +379,21 @@
                        Foreground="{Binding TextDimBrush}" />
             <Button Grid.Column="3"
                     Theme="{StaticResource IconButton}"
-                    Width="26"
-                    Height="26"
+                    Width="28"
+                    Height="28"
                     Command="{Binding ToggleSearchCommand}"
                     ToolTip.Tip="关闭搜索">
               <Path Data="M6,6 L18,18 M18,6 L6,18"
                     Stroke="{Binding TextDimBrush}"
-                    StrokeThickness="2"
+                    StrokeThickness="1.75"
                     StrokeLineCap="Round"
-                    Width="10"
-                    Height="10"
+                    Width="20"
+                    Height="20"
                     Stretch="Uniform" />
             </Button>
           </Grid>
           <!-- 搜索行下边线（原型 .dock-search 的 border-bottom） -->
-          <Border Height="1" Margin="2,0,2,2" Background="{Binding PanelBorderBrush}" />
+          <Border Height="1" Margin="0,0,0,2" Background="{Binding PanelBorderBrush}" />
         </StackPanel>
 
         <!-- 主体：图标条 | 分隔线 | 操作区（左/右边缘时整列改成竖向） -->
@@ -380,11 +415,10 @@
                           Spacing="5"
                           HorizontalAlignment="Left"
                           VerticalAlignment="Top">
-                <TextBlock Text="{Binding ConfiguredGroupTitle}"
-                           IsVisible="{Binding HasConfiguredResults}"
-                           FontSize="10"
-                           Foreground="{Binding TextDimBrush}"
-                           Margin="4,2,4,0" />
+                <StackPanel Orientation="Horizontal" Spacing="7" IsVisible="{Binding HasConfiguredResults}" Margin="2,2,2,6">
+                  <TextBlock Text="{Binding ConfiguredGroupTitle}" FontSize="11" FontWeight="SemiBold" Foreground="{Binding TextBrush}" />
+                  <TextBlock Text="{Binding ConfiguredGroupCount}" FontSize="11" Foreground="{Binding TextDimBrush}" Opacity="0.75" />
+                </StackPanel>
                 <ItemsControl Name="ItemsHost"
                               ItemsSource="{Binding Items}"
                               ItemTemplate="{StaticResource TileTemplate}"
@@ -396,11 +430,10 @@
                   </ItemsControl.ItemsPanel>
                 </ItemsControl>
 
-                <TextBlock Text="{Binding InstalledGroupTitle}"
-                           IsVisible="{Binding HasInstalledResults}"
-                           FontSize="10"
-                           Foreground="{Binding TextDimBrush}"
-                           Margin="4,4,4,0" />
+                <StackPanel Orientation="Horizontal" Spacing="7" IsVisible="{Binding HasInstalledResults}" Margin="2,4,2,6">
+                  <TextBlock Text="{Binding InstalledGroupTitle}" FontSize="11" FontWeight="SemiBold" Foreground="{Binding TextBrush}" />
+                  <TextBlock Text="{Binding InstalledGroupCount}" FontSize="11" Foreground="{Binding TextDimBrush}" Opacity="0.75" />
+                </StackPanel>
                 <ItemsControl Name="InstalledItemsHost"
                               ItemsSource="{Binding InstalledItems}"
                               ItemTemplate="{StaticResource InstalledTemplate}"
@@ -470,7 +503,7 @@
                   Classes.expanded="{Binding IsPanelExpanded}"
                   HorizontalAlignment="Center"
                   VerticalAlignment="Center">
-            <StackPanel Orientation="{Binding BodyOrientation}" Spacing="3">
+            <StackPanel Orientation="{Binding BodyOrientation}" Spacing="{Binding ToolsSpacing}">
               <Border Width="{Binding DividerWidth}"
                       Height="{Binding DividerHeight}"
                       HorizontalAlignment="Center"
@@ -505,34 +538,36 @@
              禁用星号列——窗口按内容测宽时星号列会塌缩为 0，把整窗压扁（v0.2.5 缺陷）；
              文本区用 DockPanel 填充 + 截断，按钮恒靠右。 -->
         <Border Classes="update-bar" IsVisible="{Binding ShowUpdateBar}">
-          <StackPanel Spacing="5">
+          <StackPanel Spacing="10">
             <DockPanel>
               <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-                <Button Theme="{StaticResource LinkButton}" Classes="primary" Content="下载"
+                <Button Theme="{StaticResource LinkButton}" Classes="primary update-chip" Content="下载"
                         IsVisible="{Binding CanDownloadUpdate}"
                         Command="{Binding DownloadUpdateCommand}" />
-                <Button Theme="{StaticResource LinkButton}" Classes="primary" Content="打开发布页"
+                <Button Theme="{StaticResource LinkButton}" Classes="primary update-chip" Content="打开发布页"
                         IsVisible="{Binding NeedsUpdatePage}"
                         Command="{Binding OpenUpdateCommand}" />
-                <Button Theme="{StaticResource LinkButton}" Classes="primary" Content="{Binding UpdateInstallButtonText}"
+                <Button Theme="{StaticResource LinkButton}" Classes="primary update-chip" Content="{Binding UpdateInstallButtonText}"
                         IsVisible="{Binding IsUpdateReady}"
                         Command="{Binding InstallUpdateCommand}" />
-                <Button Theme="{StaticResource LinkButton}" Content="取消"
+                <Button Theme="{StaticResource LinkButton}" Classes="update-chip" Content="取消"
                         IsVisible="{Binding IsDownloadingUpdate}"
                         Command="{Binding CancelUpdateDownloadCommand}" />
-                <Button Theme="{StaticResource LinkButton}" Content="忽略"
+                <Button Theme="{StaticResource LinkButton}" Classes="update-chip" Content="忽略"
                         IsVisible="{Binding !IsDownloadingUpdate}"
                         Command="{Binding DismissUpdateCommand}" />
               </StackPanel>
               <Path DockPanel.Dock="Left" Data="{Binding UpdateIconGlyph}"
-                    Width="15" Height="15" Stretch="Uniform"
+                    Width="16" Height="16" Stretch="Uniform"
                     Stroke="{Binding UpdateIconBrush}" StrokeThickness="1.8"
                     StrokeLineCap="Round" StrokeJoin="Round"
                     VerticalAlignment="Center" Margin="0,0,8,0" />
               <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                 <TextBlock Text="{Binding UpdateDisplayText}" FontSize="12" VerticalAlignment="Center"
                            TextTrimming="CharacterEllipsis" />
-                <TextBlock Text="{Binding UpdateNoteText}" FontSize="11" VerticalAlignment="Center" Opacity="0.72"
+                <TextBlock Text=" · " FontSize="12" VerticalAlignment="Center"
+                           IsVisible="{Binding UpdateNoteText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                <TextBlock Text="{Binding UpdateNoteText}" FontSize="11" VerticalAlignment="Center" Foreground="{Binding TextDimBrush}"
                            IsVisible="{Binding UpdateNoteText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
               </StackPanel>
             </DockPanel>
@@ -542,31 +577,33 @@
         </Border>
 
         <!-- 竖排更新胶囊（原型 .update-pill）：只占图标宽度，点击弹出更新卡片 -->
-        <Button Name="UpdatePillButton"
+        <Button Name="UpdatePillButton" Margin="0,2,0,0"
                 Classes="update-pill"
                 IsVisible="{Binding ShowUpdatePill}"
                 HorizontalAlignment="Center"
                 Click="OnUpdatePillClick"
                 ToolTip.Tip="发现新版本，点击查看">
           <StackPanel Orientation="Horizontal" Spacing="5">
-            <Ellipse Width="6" Height="6" VerticalAlignment="Center"
-                     Fill="{Binding AccentBrush}" Opacity="0.9" />
+            <Ellipse Classes="pill-dot" Width="6" Height="6" VerticalAlignment="Center"
+                     Fill="{Binding AccentBrush}" />
             <TextBlock Text="新版本" FontSize="11" VerticalAlignment="Center" />
           </StackPanel>
         </Button>
 
-        <!-- 编辑模式工具条（原型 .dock-editbar：上边线 + 11px 提示 + primary 完成钮；竖向时提示隐藏只留完成钮） -->
-        <StackPanel IsVisible="{Binding IsEditMode}" Margin="8,2,8,2">
-          <Border Height="1" Margin="2,0,2,6" Background="{Binding PanelBorderBrush}" />
-          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+        <!-- 编辑模式工具条（原型 .dock-editbar：border-top 通宽、提示居左、chip 靠右、padding 4,8,0） -->
+        <StackPanel IsVisible="{Binding IsEditMode}" Margin="0,2,0,0">
+          <Border Height="1" Background="{Binding PanelBorderBrush}" />
+          <DockPanel Margin="8,4,8,0">
+            <Button DockPanel.Dock="Right"
+                    Theme="{StaticResource LinkButton}" Classes="primary" Content="完成"
+                    Command="{Binding ToggleEditCommand}" VerticalAlignment="Center" />
             <TextBlock Name="EditHint"
                        IsVisible="{Binding !IsVertical}"
                        Text="拖动排序 · 双击改名 · × 移除"
                        FontSize="11"
                        VerticalAlignment="Center"
                        Foreground="{Binding TextDimBrush}" />
-            <Button Theme="{StaticResource LinkButton}" Classes="primary" Content="完成" Command="{Binding ToggleEditCommand}" />
-          </StackPanel>
+          </DockPanel>
         </StackPanel>
       </StackPanel>
     </Border>

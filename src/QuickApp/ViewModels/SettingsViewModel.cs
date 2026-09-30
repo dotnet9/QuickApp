@@ -310,7 +310,7 @@ public sealed class SettingsViewModel : ViewModelBase
 
     public string VersionText => _dock.VersionText;
 
-    public string HotkeyText => Settings.Hotkey;
+    public string HotkeyText => Settings.Hotkey.Replace("+", " + ");
 
     public string CheckResult => _dock.UpdateResultText;
 

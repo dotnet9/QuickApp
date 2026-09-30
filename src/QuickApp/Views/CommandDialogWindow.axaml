@@ -17,7 +17,15 @@
   <Window.Styles>
     <Style Selector="TextBlock.row">
       <Setter Property="FontSize" Value="12" />
-      <Setter Property="Margin" Value="0,0,0,4" />
+    </Style>
+    <Style Selector="TextBox">
+      <Setter Property="MinHeight" Value="34" />
+      <Setter Property="Padding" Value="10,0" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Background" Value="{DynamicResource QAHoverBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource QALineBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource QATextBrush}" />
     </Style>
   </Window.Styles>
 
@@ -28,52 +36,55 @@
             BorderBrush="{Binding PanelBorderBrush}"
             BorderThickness="1"
             CornerRadius="{Binding PanelCornerRadius}">
-      <StackPanel Margin="18,0,18,16">
+      <StackPanel Margin="16,0,16,16">
 
-        <Grid ColumnDefinitions="*,Auto" Margin="-18,0,-18,0" Name="HeaderBar" Cursor="SizeAll">
+        <Grid ColumnDefinitions="*,Auto" Margin="-16,0,-16,0" Name="HeaderBar" Cursor="SizeAll">
           <TextBlock Grid.Column="0"
                      Text="添加命令行"
                      FontSize="14"
                      FontWeight="SemiBold"
-                     Margin="18,12,0,10"
+                     Margin="16,14,0,14"
                      VerticalAlignment="Center"
                      Foreground="{Binding TextBrush}" />
           <Button Grid.Column="1"
                   Theme="{StaticResource IconButton}"
                   Name="CloseButton"
-                  Width="28"
-                  Height="28"
-                  Margin="0,8,10,0"
+                  Width="32"
+                  Height="32"
+                  Margin="0,4,4,0"
                   ToolTip.Tip="关闭">
             <Path Data="M6,6 L18,18 M18,6 L6,18"
                   Stroke="{Binding TextDimBrush}"
-                  StrokeThickness="1.8"
+                  StrokeThickness="1.75"
                   StrokeLineCap="Round"
-                  Width="11"
-                  Height="11"
+                  Width="20"
+                  Height="20"
                   Stretch="Uniform" />
           </Button>
         </Grid>
+        <Border Height="1" Background="{Binding PanelBorderBrush}" />
 
-        <StackPanel Spacing="4">
+        <StackPanel Spacing="6" Margin="0,4,0,8">
           <TextBlock Classes="row" Text="名称" Foreground="{Binding TextDimBrush}" />
           <TextBox Name="NameBox" PlaceholderText="例如：192.168.1.133" />
-          <TextBlock Classes="row" Text="命令" Margin="0,8,0,4" Foreground="{Binding TextDimBrush}" />
+          <TextBlock Classes="row" Text="命令" Foreground="{Binding TextDimBrush}" />
           <TextBox Name="CommandBox" PlaceholderText="例如：mstsc /v:192.168.1.133" />
         </StackPanel>
 
         <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" Margin="0,14,0,0">
           <Button Theme="{StaticResource LinkButton}" Name="CancelButton" Content="取消" />
-          <Button Theme="{StaticResource LinkButton}" Name="SubmitButton" Content="添加">
-            <Path Data="M5,12.5 L9.5,17 L19,7"
+          <Button Theme="{StaticResource LinkButton}" Name="SubmitButton" Classes="primary">
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <Path Data="M5,12.5 L9.5,17 L19,7"
                   Stroke="{Binding $parent[Button].Foreground}"
                   StrokeThickness="2"
                   StrokeLineCap="Round"
                   StrokeJoin="Round"
-                  Width="13"
-                  Height="13"
-                  Stretch="Uniform"
-                  Margin="0,0,5,0" />
+                  Width="15"
+                  Height="15"
+                  Stretch="Uniform" />
+              <TextBlock Text="添加" />
+            </StackPanel>
           </Button>
         </StackPanel>
       </StackPanel>

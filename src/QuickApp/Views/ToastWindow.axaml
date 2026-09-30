@@ -16,9 +16,20 @@
       <Setter Property="FontSize" Value="12.5" />
       <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
+    <!-- 进度条（原型 .toast-progress）：高 2、左右 14、底部 5，轨道 active、填充 accent -->
+    <Style Selector="ProgressBar.toast-progress">
+      <Setter Property="Height" Value="2" />
+      <Setter Property="MinHeight" Value="2" />
+      <Setter Property="CornerRadius" Value="1" />
+      <Setter Property="Background" Value="{DynamicResource QAActiveBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource QAAccentBrush}" />
+      <Setter Property="Margin" Value="0,5,0,0" />
+    </Style>
   </Window.Styles>
 
-  <!-- 对应原型 .toast：菜单底色卡片，左侧文案 + 右侧强调色动作按钮；外层留白给投影 -->
+  <!-- 对应原型 .toast：菜单底色卡片，左侧文案 + 右侧纯文字动作按钮（.toast-action）；
+       下载态底部 2px 进度条（.toast-progress）+ 下撑 13px（.toast-downloading padding-bottom）；
+       外层留白给投影，入场淡入上浮 8px（toastIn 180ms）、退场淡出下沉（160ms） -->
   <Grid Margin="12">
     <Border Name="ToastCard"
             Background="{DynamicResource QAMenuBrush}"
@@ -27,15 +38,20 @@
             CornerRadius="10"
             Padding="14,9"
             BoxShadow="0 8 20 0 #66000000, 0 2 8 0 #44000000">
-      <StackPanel Name="ContentRow" Orientation="Horizontal" Spacing="12">
-        <TextBlock Name="MessageText"
-                   Classes="toast-text"
-                   Foreground="{DynamicResource QATextBrush}" />
-        <Button Name="ActionButton"
-                Theme="{StaticResource LinkButton}"
-                Classes="primary"
-                IsVisible="False"
-                Height="22" />
+
+      <StackPanel>
+        <StackPanel Name="ContentRow" Orientation="Horizontal" Spacing="12">
+          <TextBlock Name="MessageText"
+                     Classes="toast-text"
+                     Foreground="{DynamicResource QATextBrush}" />
+          <Button Name="ActionButton"
+                  Theme="{StaticResource ToastActionButton}"
+                  IsVisible="False" />
+        </StackPanel>
+        <ProgressBar Name="ProgressBar"
+                     Classes="toast-progress"
+                     Minimum="0" Maximum="100"
+                     IsVisible="False" />
       </StackPanel>
     </Border>
   </Grid>

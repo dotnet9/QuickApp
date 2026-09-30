@@ -21,7 +21,8 @@ public sealed record Palette(
     Color Bubble,
     Color Menu,
     Color MenuHover,
-    Color Danger)
+    Color Danger,
+    Color MenuOpaque)
 {
     public static Palette Dark { get; } = new(
         Panel: Color.Parse("#1A1D24"),
@@ -35,7 +36,8 @@ public sealed record Palette(
         Bubble: Color.Parse("#F7181B21"),
         Menu: Color.Parse("#FA181B21"),
         MenuHover: Color.Parse("#14FFFFFF"),
-        Danger: Color.Parse("#FF6B6B"));
+        Danger: Color.Parse("#FF6B6B"),
+        MenuOpaque: Color.Parse("#F8181B21"));
 
     public static Palette Light { get; } = new(
         Panel: Color.Parse("#FFFFFF"),
@@ -49,7 +51,8 @@ public sealed record Palette(
         Bubble: Color.Parse("#FBFFFFFF"),
         Menu: Color.Parse("#FDFFFFFF"),
         MenuHover: Color.Parse("#0F111826"),
-        Danger: Color.Parse("#D92D20"));
+        Danger: Color.Parse("#D92D20"),
+        MenuOpaque: Color.Parse("#FDFFFFFF"));
 
     /// <summary>配色随主题与不透明度重算，扁平风格直接把面板做成不透明。</summary>
     public Palette WithOpacity(double opacity, bool flat)
@@ -77,6 +80,12 @@ public static class PaletteBrushes
     /// </summary>
     public static IBrush TileBrush(string name, ItemKind kind, double tileSize)
     {
+        // 原型 .tile.app-icon：应用类占位块透明底（图形用正文色）；仅网页/命令才上渐变底
+        if (kind == ItemKind.App)
+        {
+            return Brushes.Transparent;
+        }
+
         double hue = kind switch
         {
             ItemKind.Command => 210,

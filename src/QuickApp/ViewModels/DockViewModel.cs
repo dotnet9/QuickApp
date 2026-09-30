@@ -184,6 +184,8 @@ public sealed class DockViewModel : ViewModelBase
     public IBrush MenuHoverBrush { get; private set; } = Brushes.Transparent;
 
     public IBrush DangerBrush { get; private set; } = Brushes.Red;
+    public IBrush PillBrush { get; private set; } = Brushes.Transparent;
+    public IBrush PillHoverBrush { get; private set; } = Brushes.Red;
 
     public double TileSize => Settings.TileSize;
 
@@ -237,15 +239,15 @@ public sealed class DockViewModel : ViewModelBase
 
     public double DividerWidth => IsVertical ? 28 : 1;
 
-    public double DividerHeight => IsVertical ? 1 : Math.Round(Settings.TileSize * 1.2, 1);
+    public double DividerHeight => IsVertical ? 1 : Math.Max(54, Math.Round(Settings.TileSize * 1.1, 1));
 
     /// <summary>图标区上限：默认完整容纳 10 项和悬浮安全留白，超出后沿停靠方向滚动。</summary>
     public double ListMaxWidth => IsVertical
         ? double.PositiveInfinity
-        : Math.Round(Settings.TileSize * 10 + 122);
+        : Math.Round(Settings.TileSize * 10 + 90);
 
     public double ListMaxHeight => IsVertical
-        ? Math.Round(Settings.TileSize * 10 + 104)
+        ? Math.Round(Settings.TileSize * 10 + 110)
         : double.PositiveInfinity;
 
     /// <summary>
@@ -260,6 +262,14 @@ public sealed class DockViewModel : ViewModelBase
         ? Math.Round(Settings.TileSize + 40)
         : 0;
 
+    /// <summary>工具区分隔线到按钮组的间距（原型 .dock-tools gap：横排 4 / 竖排 2）。</summary>
+    public double ToolsSpacing => IsVertical ? 2 : 4;
+
+    /// <summary>图标与名称的间距（原型 .dock-item gap：横排 6 / 竖排 8）。</summary>
+    public double ItemLabelSpacing => IsVertical ? 8 : 6;
+
+    /// <summary>搜索输入框最小宽度（原型 min-width：横排 190 / 竖排 170）。</summary>
+    public double SearchMinWidth => IsVertical ? 170 : 190;
     /// <summary>四个常驻操作按钮始终按两列排列。</summary>
     public double ActionMaxWidth => 60;
 
@@ -443,6 +453,15 @@ public sealed class DockViewModel : ViewModelBase
         this.RaisePropertyChanged(nameof(ConfigFilePath));
     }
 
+    /// <summary>Toast 下载进度（0–100），null 表示当前 Toast 无进度条（原型 .toast-downloading）。</summary>
+    public double? ToastProgress
+    {
+        get => _toastProgress;
+        private set => Set(ref _toastProgress, value);
+    }
+
+    private double? _toastProgress;
+
     public string? StatusMessage
     {
         get => _statusMessage;
@@ -472,12 +491,14 @@ public sealed class DockViewModel : ViewModelBase
     }
 
     public void Toast(string message, string? actionLabel, ICommand? actionCommand, int durationMs = 5000)
-    {
-        ShowToast(message, actionLabel, actionCommand, durationMs);
-    }
+        => ShowToast(message, actionLabel, actionCommand, durationMs);
 
-    private void ShowToast(string message, string? actionLabel, ICommand? actionCommand, int durationMs)
+    public void Toast(string message, string? actionLabel, ICommand? actionCommand, int durationMs, double? progress)
+        => ShowToast(message, actionLabel, actionCommand, durationMs, progress);
+
+    private void ShowToast(string message, string? actionLabel, ICommand? actionCommand, int durationMs, double? progress = null)
     {
+        ToastProgress = progress;
         StatusMessage = message;
         ToastActionLabel = actionLabel;
         ToastActionCommand = actionCommand;
@@ -539,11 +560,15 @@ public sealed class DockViewModel : ViewModelBase
 
     public bool IsSearchGrouped => IsSearchOpen && SearchQuery.Trim().Length > 0;
 
-    public string ConfiguredGroupTitle => "已配置 · " + Items.Count;
+    public string ConfiguredGroupTitle => "已配置";
+
+    public int ConfiguredGroupCount => Items.Count;
 
     public bool HasConfiguredResults => IsSearchOpen && Items.Count > 0;
 
-    public string InstalledGroupTitle => "系统已安装 · " + InstalledItems.Count;
+    public string InstalledGroupTitle => "系统应用";
+
+    public int InstalledGroupCount => InstalledItems.Count;
 
     public bool HasInstalledResults => IsSearchGrouped && InstalledItems.Count > 0;
 
@@ -684,6 +709,7 @@ public sealed class DockViewModel : ViewModelBase
             item.ShowLabel = Settings.ShowLabels;
             item.ShowRemove = IsEditMode;
             item.TileSize = Settings.TileSize;
+            item.ItemLabelSpacing = ItemLabelSpacing;
             item.ItemOrientation = orientation;
             item.HoverTransform = hover;
             item.PressedTransform = pressed;
@@ -759,8 +785,10 @@ public sealed class DockViewModel : ViewModelBase
         this.RaisePropertyChanged(nameof(EmptyStateText));
         this.RaisePropertyChanged(nameof(IsSearchGrouped));
         this.RaisePropertyChanged(nameof(ConfiguredGroupTitle));
+        this.RaisePropertyChanged(nameof(ConfiguredGroupCount));
         this.RaisePropertyChanged(nameof(HasConfiguredResults));
         this.RaisePropertyChanged(nameof(InstalledGroupTitle));
+        this.RaisePropertyChanged(nameof(InstalledGroupCount));
         this.RaisePropertyChanged(nameof(HasInstalledResults));
     }
 
@@ -1149,6 +1177,8 @@ public sealed class DockViewModel : ViewModelBase
         }
     }
 
+    private static Color WithAlpha(Color c, double alpha) => Color.FromArgb((byte)Math.Round(alpha * 255), c.R, c.G, c.B);
+
     private void RefreshPalette()
     {
         bool dark = Settings.Theme switch
@@ -1169,7 +1199,7 @@ public sealed class DockViewModel : ViewModelBase
 
         Color opaque = Color.FromArgb(255, palette.Panel.R, palette.Panel.G, palette.Panel.B);
         PanelBrush = PaletteBrushes.Panel(palette);
-        SettingsBackgroundBrush = PaletteBrushes.Brush(opaque);
+        SettingsBackgroundBrush = PaletteBrushes.Brush(palette.MenuOpaque);
         PanelBorderBrush = PaletteBrushes.Brush(palette.PanelBorder);
         TextBrush = PaletteBrushes.Text(palette);
         TextDimBrush = PaletteBrushes.TextDim(palette);
@@ -1179,12 +1209,14 @@ public sealed class DockViewModel : ViewModelBase
         MenuBrush = PaletteBrushes.Brush(palette.Menu);
         MenuHoverBrush = PaletteBrushes.Brush(palette.MenuHover);
         DangerBrush = PaletteBrushes.Brush(palette.Danger);
+        PillBrush = PaletteBrushes.Brush(WithAlpha(palette.Accent, 0.14));
+        PillHoverBrush = PaletteBrushes.Brush(WithAlpha(palette.Accent, 0.24));
 
         foreach (string name in new[]
         {
             nameof(PanelBrush), nameof(SettingsBackgroundBrush), nameof(PanelBorderBrush),
             nameof(TextBrush), nameof(TextDimBrush), nameof(HoverBrush), nameof(AccentBrush),
-            nameof(AccentInkBrush), nameof(MenuBrush), nameof(MenuHoverBrush), nameof(DangerBrush)
+            nameof(AccentInkBrush), nameof(MenuBrush), nameof(MenuHoverBrush), nameof(DangerBrush), nameof(PillBrush), nameof(PillHoverBrush)
         })
         {
             this.RaisePropertyChanged(name);
@@ -1334,6 +1366,7 @@ public sealed class DockViewModel : ViewModelBase
             {
                 _downloadProgress = value.Percentage ?? _downloadProgress;
                 RaiseDownloadStateChanged();
+                Toast("正在下载更新 · " + _downloadProgress.ToString("0") + "%", "取消", CancelUpdateDownloadCommand, 5000, _downloadProgress);
             });
             UpdateDownloadResult result = await _updateDownloader.DownloadAsync(
                 _pendingUpdate,

@@ -51,6 +51,8 @@ public partial class DockWindow : Window, IDockHost
     private bool _isContextMenuOpen;
     private ContextMenu? _contextMenu;
     private Grid? _edgePicker;
+    private Border? _dropLine;
+    private readonly List<(DockEdge Edge, Button Button, Border Bar)> _edgeEntries = new();
     private double _progress;
 
     private ItemViewModel? _focused;
@@ -187,6 +189,10 @@ public partial class DockWindow : Window, IDockHost
                 ScheduleReposition();
                 break;
 
+            case nameof(DockViewModel.ToastProgress):
+                _toast?.SetProgress(_vm?.ToastProgress);
+                break;
+
             case nameof(DockViewModel.IsSearchOpen):
             case nameof(DockViewModel.IsEditMode):
             case nameof(DockViewModel.IsSearchEmpty):
@@ -287,10 +293,11 @@ public partial class DockWindow : Window, IDockHost
 
         if (vertical)
         {
+            bool dockedLeft = _vm?.Settings.Edge == DockEdge.Left;
             ScrollIndicator.Width = 2;
-            ScrollIndicator.HorizontalAlignment = HorizontalAlignment.Right;
+            ScrollIndicator.HorizontalAlignment = dockedLeft ? HorizontalAlignment.Right : HorizontalAlignment.Left;
             ScrollIndicator.VerticalAlignment = VerticalAlignment.Stretch;
-            ScrollIndicator.Margin = new Thickness(0, 24, 5, 24);
+            ScrollIndicator.Margin = dockedLeft ? new Thickness(0, 18, 5, 18) : new Thickness(5, 18, 0, 18);
             ScrollThumb.Width = double.NaN;
             ScrollThumb.HorizontalAlignment = HorizontalAlignment.Stretch;
             ScrollThumb.Height = thumb;
@@ -302,7 +309,7 @@ public partial class DockWindow : Window, IDockHost
             ScrollIndicator.Height = 2;
             ScrollIndicator.HorizontalAlignment = HorizontalAlignment.Stretch;
             ScrollIndicator.VerticalAlignment = VerticalAlignment.Bottom;
-            ScrollIndicator.Margin = new Thickness(24, 0, 24, 4);
+            ScrollIndicator.Margin = new Thickness(18, 0, 18, 4);
             ScrollThumb.Height = double.NaN;
             ScrollThumb.VerticalAlignment = VerticalAlignment.Stretch;
             ScrollThumb.Width = thumb;
@@ -352,7 +359,7 @@ public partial class DockWindow : Window, IDockHost
         }
 
         Color c = surface.Color;
-        Color from = Color.FromArgb(96, c.R, c.G, c.B);
+        Color from = Color.FromArgb(117, c.R, c.G, c.B);
         Color to = Color.FromArgb(0, c.R, c.G, c.B);
 
         bool vertical = _vm.IsVertical;
@@ -377,6 +384,7 @@ public partial class DockWindow : Window, IDockHost
     private void UpdateToast()
     {
         string? message = _vm?.StatusMessage;
+        _toast?.SetProgress(_vm?.ToastProgress);
         if (string.IsNullOrEmpty(message))
         {
             _toast?.HideToast();
@@ -384,10 +392,24 @@ public partial class DockWindow : Window, IDockHost
         }
 
         _toast ??= new ToastWindow();
-        _toast.ShowToast(message, _vm?.ToastActionLabel, _vm?.ToastActionCommand);
+        _toast.ShowToast(message, _vm?.ToastActionLabel, _vm?.ToastActionCommand, _vm?.ToastProgress);
     }
 
     /// <summary>钉住时给图钉按钮一个强调色激活态（对应原型 icon-btn.active）。</summary>
+    /// <summary>横向药丸按边区实际宽度取 58%（原型 .edge::before width:58%）——Avalonia 无百分比 margin，设宽后同步计算。</summary>
+    private void SyncHorizontalPillRatio(double pickerWidth)
+    {
+        double buttonWidth = pickerWidth - 40; // 左右内缩 20
+        double margin = Math.Round(buttonWidth * 0.21, 1);
+        foreach (var (_, _, bar) in _edgeEntries)
+        {
+            if (bar.Height == 6 && double.IsNaN(bar.Width))
+            {
+                bar.Margin = new Thickness(margin, 7, margin, 7);
+            }
+        }
+    }
+
     private void UpdatePinState()
     {
         bool pinned = _vm?.IsPinned ?? false;
@@ -400,6 +422,14 @@ public partial class DockWindow : Window, IDockHost
             PinButton.Classes.Remove("active");
         }
 
+
+        if (PinButton.Content is Path pinPath)
+        {
+            var rotate = pinPath.RenderTransform as RotateTransform ?? new RotateTransform(42);
+            rotate.Angle = pinned ? 0 : 42;
+            pinPath.RenderTransform = rotate;
+            pinPath.RenderTransformOrigin = new RelativePoint(0.5, 0.5, RelativeUnit.Relative);
+        }
 
         ToolTip.SetTip(PinButton, pinned ? "取消钉住 Dock" : "钉住 Dock");
     }
@@ -441,15 +471,15 @@ public partial class DockWindow : Window, IDockHost
     {
         // 原型 .icon-btn：四键统一淡灰（text-dim），悬停变亮，激活（钉住/搜索打开）转强调色。
         // 图标描边绑定按钮前景色，状态色由 IconButton 主题统一管理，不再各自写死。
-        SetIcon(SearchButton, Icons.Search, 15, null);
-        SetIcon(MoreButton, Icons.More, 16, null);
+        SetIcon(SearchButton, Icons.Search, 20, null);
+        SetIcon(MoreButton, Icons.More, 20, null);
         if (MoreButton.Content is Path morePath)
         {
             morePath.Bind(Path.FillProperty, MoreButton.GetObservable(Button.ForegroundProperty));
             morePath.StrokeThickness = 0;
         }
-        SetIcon(PinButton, Icons.Pin, 15, null);
-        SetIcon(CollapseButton, Icons.ChevronUp, 14, null);
+        SetIcon(PinButton, Icons.Pin, 20, null);
+        SetIcon(CollapseButton, Icons.ChevronUp, 20, null);
 
         UpdateCollapseIcon();
     }
@@ -460,7 +490,8 @@ public partial class DockWindow : Window, IDockHost
         {
             Width = 54,
             Height = 5,
-            CornerRadius = new CornerRadius(3),
+            CornerRadius = new CornerRadius(2.5),
+            Opacity = 0.68,
             Background = _vm?.TextDimBrush ?? Brushes.Gray,
             HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
             VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top,
@@ -870,17 +901,96 @@ public partial class DockWindow : Window, IDockHost
             }
 
             _dropTarget = target;
-            if (_dropTarget is not null)
-            {
-                _dropTarget.IsDropTarget = true;
-                // 落点用强调色描边提示（对应原型拖拽插入线）
-                _dropTarget.RingBrush = _vm.AccentBrush;
-            }
         }
+
+        UpdateDropLine(dropPosition, horizontal);
 
         e.Handled = true;
     }
 
+    /// <summary>拖动插入线（原型 .drop-line）：3px 圆角强调色，画在指针所在图标间隙；首项前/末项后外扩 4px。</summary>
+    private void UpdateDropLine(Point dropPosition, bool horizontal)
+    {
+        _dropLine ??= new Border
+        {
+            Width = 3,
+            CornerRadius = new CornerRadius(2),
+            Background = _vm?.AccentBrush ?? Brushes.DodgerBlue,
+            IsHitTestVisible = false,
+            IsVisible = false,
+            ZIndex = 6
+        };
+        if (_dropLine.Parent != ScrollArea)
+        {
+            ScrollArea.Children.Add(_dropLine);
+        }
+
+        Panel? panel = ItemsHost.ItemsPanelRoot;
+        if (panel is null || panel.Children.Count == 0)
+        {
+            _dropLine.IsVisible = false;
+            return;
+        }
+
+        var items = panel.Children.OfType<Control>().ToList();
+        double pointer = horizontal ? dropPosition.X : dropPosition.Y;
+        int index = items.Count;
+        for (int i = 0; i < items.Count; i++)
+        {
+            var bounds = items[i].Bounds;
+            double middle = (horizontal ? bounds.X : bounds.Y) + (horizontal ? bounds.Width : bounds.Height) / 2;
+            if (pointer < middle)
+            {
+                index = i;
+                break;
+            }
+        }
+
+        double linePos;
+        if (index <= 0)
+        {
+            linePos = horizontal ? items[0].Bounds.Left - 4 : items[0].Bounds.Top - 4;
+        }
+        else if (index >= items.Count)
+        {
+            var last = items[^1].Bounds;
+            linePos = horizontal ? last.Right + 4 : last.Bottom + 4;
+        }
+        else
+        {
+            var prev = items[index - 1].Bounds;
+            var next = items[index].Bounds;
+            linePos = horizontal ? (prev.Right + next.Left) / 2 : (prev.Bottom + next.Top) / 2;
+        }
+
+        double listPad = _vm is null ? 10 : _vm.ListPadding.Left;
+        double topPad = _vm is null ? 10 : _vm.ListPadding.Top;
+        if (horizontal)
+        {
+            _dropLine.Height = Math.Max(24, ScrollArea.Bounds.Height - 32);
+            _dropLine.Width = 3;
+            _dropLine.HorizontalAlignment = HorizontalAlignment.Left;
+            _dropLine.VerticalAlignment = VerticalAlignment.Top;
+            _dropLine.Margin = new Thickness(linePos + listPad - 1.5, topPad + 4, 0, 0);
+        }
+        else
+        {
+            _dropLine.Width = Math.Max(24, ScrollArea.Bounds.Width - 32);
+            _dropLine.Height = 3;
+            _dropLine.HorizontalAlignment = HorizontalAlignment.Left;
+            _dropLine.VerticalAlignment = VerticalAlignment.Top;
+            _dropLine.Margin = new Thickness(listPad + 4, linePos + topPad - 1.5, 0, 0);
+        }
+        _dropLine.IsVisible = true;
+    }
+
+    private void HideDropLine()
+    {
+        if (_dropLine is not null)
+        {
+            _dropLine.IsVisible = false;
+        }
+    }
     private void OnItemsPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
         ClearPressedTile();
@@ -896,6 +1006,7 @@ public partial class DockWindow : Window, IDockHost
         _dragItem = null;
         _dropTarget = null;
         _dragStarted = false;
+        HideDropLine();
         dragged.IsDragged = false;
         e.Pointer.Capture(null);
 
@@ -1185,7 +1296,9 @@ public partial class DockWindow : Window, IDockHost
         {
             if (_edgePicker is not null && menu.Bounds.Width > 40)
             {
-                _edgePicker.Width = menu.Bounds.Width - 28;
+                double pickerWidth = menu.Bounds.Width - 28;
+                _edgePicker.Width = pickerWidth;
+                SyncHorizontalPillRatio(pickerWidth);
             }
         });
     }
@@ -1234,7 +1347,8 @@ public partial class DockWindow : Window, IDockHost
             return this.TryFindResource("QAAccentInkBrush", Avalonia.Styling.ThemeVariant.Default, out var ink) && ink is IBrush inkBrush ? inkBrush : Brushes.White;
         }
 
-        var entries = new List<(DockEdge Edge, Button Button, Border Bar)>();
+        var entries = _edgeEntries;
+        entries.Clear();
         void SelectEdge(DockEdge selected)
         {
             foreach (var entry in entries)
@@ -1267,8 +1381,8 @@ public partial class DockWindow : Window, IDockHost
 
             // 内部小 Dock 药丸占按钮 58%（原型 .edge::before）
             var bar = horizontal
-                ? new Border { Height = 6, Margin = new Thickness(12, 7, 12, 7), HorizontalAlignment = HorizontalAlignment.Stretch, CornerRadius = new CornerRadius(3) }
-                : new Border { Width = 6, Margin = new Thickness(0, 12, 0, 12), VerticalAlignment = VerticalAlignment.Stretch, CornerRadius = new CornerRadius(3) };
+                ? new Border { Height = 6, Margin = new Thickness(21, 7, 21, 7), HorizontalAlignment = HorizontalAlignment.Stretch, CornerRadius = new CornerRadius(3) }
+                : new Border { Width = 6, Margin = new Thickness(0, 7.5, 0, 7.5), VerticalAlignment = VerticalAlignment.Stretch, CornerRadius = new CornerRadius(3) };
             button.Content = bar;
 
             if (_vm?.Settings.Edge == edge)
@@ -1293,8 +1407,8 @@ public partial class DockWindow : Window, IDockHost
 
         AddEdge(DockEdge.Top, new Thickness(20, 5, 20, 5), true, HorizontalAlignment.Stretch, VerticalAlignment.Top);
         AddEdge(DockEdge.Bottom, new Thickness(20, 5, 20, 5), true, HorizontalAlignment.Stretch, VerticalAlignment.Bottom);
-        AddEdge(DockEdge.Left, new Thickness(5, 20, 5, 20), false, HorizontalAlignment.Left, VerticalAlignment.Stretch);
-        AddEdge(DockEdge.Right, new Thickness(5, 20, 5, 20), false, HorizontalAlignment.Right, VerticalAlignment.Stretch);
+        AddEdge(DockEdge.Left, new Thickness(5, 30, 5, 30), false, HorizontalAlignment.Left, VerticalAlignment.Stretch);
+        AddEdge(DockEdge.Right, new Thickness(5, 30, 5, 30), false, HorizontalAlignment.Right, VerticalAlignment.Stretch);
         _edgePicker = grid;
         return grid;
     }
@@ -1403,7 +1517,7 @@ public partial class DockWindow : Window, IDockHost
             StrokeJoin = PenLineJoin.Round
         };
         var title = new TextBlock { FontSize = 13, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center };
-        var tag = new TextBlock { FontSize = 11, Opacity = 0.72, VerticalAlignment = VerticalAlignment.Center };
+        var tag = new TextBlock { FontSize = 11, Foreground = _vm?.TextDimBrush ?? Brushes.Gray, VerticalAlignment = VerticalAlignment.Center };
         var tagChip = new Border
         {
             BorderBrush = _vm.PanelBorderBrush,
@@ -1413,8 +1527,8 @@ public partial class DockWindow : Window, IDockHost
             Child = tag,
             VerticalAlignment = VerticalAlignment.Center
         };
-        var desc = new TextBlock { FontSize = 11.5, Opacity = 0.78, TextWrapping = TextWrapping.Wrap };
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, HorizontalAlignment = HorizontalAlignment.Right };
+        var desc = new TextBlock { FontSize = 11.5, Foreground = _vm?.TextDimBrush ?? Brushes.Gray, TextWrapping = TextWrapping.Wrap };
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, HorizontalAlignment = HorizontalAlignment.Right };
         var progress = new ProgressBar { Minimum = 0, Maximum = 100, Height = 4, MinHeight = 4 };
 
         var head = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
@@ -1512,7 +1626,7 @@ public partial class DockWindow : Window, IDockHost
                 BorderBrush = _vm.PanelBorderBrush,
                 BorderThickness = new Thickness(1),
                 CornerRadius = new CornerRadius(12),
-                Padding = new Thickness(12),
+                Padding = new Thickness(12, 12, 12, 10),
                 Width = 290,
                 Child = card
             }
@@ -2261,7 +2375,9 @@ public partial class DockWindow : Window, IDockHost
         {
             if (_edgePicker is not null && flyout.Popup?.Child is { } presenter)
             {
-                _edgePicker.Width = presenter.Bounds.Width - 28;
+                double pickerWidth2 = presenter.Bounds.Width - 28;
+                _edgePicker.Width = pickerWidth2;
+                SyncHorizontalPillRatio(pickerWidth2);
             }
         });
     }

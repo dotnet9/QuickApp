@@ -11,7 +11,7 @@
 
   <Style Selector="TextBlock.hint">
     <Setter Property="FontSize" Value="11" />
-    <Setter Property="Opacity" Value="0.7" />
+    <Setter Property="Foreground" Value="{DynamicResource QATextDimBrush}" />
     <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
 
@@ -19,7 +19,7 @@
     <Setter Property="FontSize" Value="12" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Margin" Value="0,12,0,4" />
-    <Setter Property="Opacity" Value="0.75" />
+    <Setter Property="Foreground" Value="{DynamicResource QATextDimBrush}" />
   </Style>
 
   <Style Selector="TextBlock.row">
@@ -55,7 +55,7 @@
 
   <!-- 菜单图标：16px 描边，颜色随主题（danger 由菜单项级联覆盖） -->
   <Style Selector="Path.mi-icon">
-    <Setter Property="StrokeThickness" Value="1.6" />
+    <Setter Property="StrokeThickness" Value="1.75" />
     <Setter Property="StrokeLineCap" Value="Round" />
     <Setter Property="StrokeJoin" Value="Round" />
   </Style>
@@ -126,5 +126,23 @@
   <Style Selector="ComboBoxItem:pointerover /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource QAHoverBrush}" />
     <Setter Property="Foreground" Value="{DynamicResource QATextBrush}" />
+  </Style>
+
+  <!-- 更新条按钮（原型 .update-actions .chip）：高 24 / padding 0,9 / 字号 11.5 -->
+  <Style Selector="Button.update-chip">
+    <Setter Property="Height" Value="24" />
+    <Setter Property="Padding" Value="9,0" />
+    <Setter Property="FontSize" Value="11.5" />
+  </Style>
+
+  <!-- 搜索结果＋按钮（原型 .search-result-add）：30 r9；悬停 accent 填充、图形转墨色 -->
+  <Style Selector="Button.add-btn">
+    <Setter Property="CornerRadius" Value="9" />
+  </Style>
+  <Style Selector="Button.add-btn:pointerover /template/ Border#PART_Bg">
+    <Setter Property="Background" Value="{DynamicResource QAAccentBrush}" />
+  </Style>
+  <Style Selector="Button.add-btn:pointerover /template/ ContentPresenter Path">
+    <Setter Property="Stroke" Value="{DynamicResource QAAccentInkBrush}" />
   </Style>
 </Styles>
