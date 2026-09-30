@@ -1213,7 +1213,28 @@ public partial class DockWindow : Window, IDockHost
         }
         grid.Children.Add(frame);
 
-        var buttons = new Dictionary<DockEdge, Button>();
+        IBrush DimBrush()
+        {
+            return this.TryFindResource("QATextDimBrush", Avalonia.Styling.ThemeVariant.Default, out var dim) && dim is IBrush dimBrush ? dimBrush : Brushes.Gray;
+        }
+
+        IBrush InkBrush()
+        {
+            return this.TryFindResource("QAAccentInkBrush", Avalonia.Styling.ThemeVariant.Default, out var ink) && ink is IBrush inkBrush ? inkBrush : Brushes.White;
+        }
+
+        var entries = new List<(DockEdge Edge, Button Button, Border Bar)>();
+        void SelectEdge(DockEdge selected)
+        {
+            foreach (var entry in entries)
+            {
+                bool active = entry.Edge == selected;
+                entry.Button.Classes.Set("active", active);
+                // 选中边区：强调色底 + 墨色药丸（原型 .edge.active 的 currentColor 语义）
+                entry.Bar.Background = active ? InkBrush() : DimBrush();
+            }
+        }
+
         void AddEdge(DockEdge edge, Thickness margin, bool horizontal,
             HorizontalAlignment hAlign, VerticalAlignment vAlign)
         {
@@ -1233,26 +1254,27 @@ public partial class DockWindow : Window, IDockHost
                 button.Width = 20;
             }
 
-            // 内部小 Dock 药丸占按钮 58%（原型 .edge::before），随按钮前景色变化
+            // 内部小 Dock 药丸占按钮 58%（原型 .edge::before）
             var bar = horizontal
                 ? new Border { Height = 6, Margin = new Thickness(21, 7, 21, 7), HorizontalAlignment = HorizontalAlignment.Stretch, CornerRadius = new CornerRadius(3) }
                 : new Border { Width = 6, Margin = new Thickness(7, 7, 7, 7), VerticalAlignment = VerticalAlignment.Stretch, CornerRadius = new CornerRadius(3) };
-            bar.Bind(Border.BackgroundProperty, button.GetObservable(Button.ForegroundProperty));
             button.Content = bar;
 
             if (_vm?.Settings.Edge == edge)
             {
                 button.Classes.Add("active");
+                bar.Background = InkBrush();
             }
-            buttons[edge] = button;
+            else
+            {
+                bar.Background = DimBrush();
+            }
+            entries.Add((edge, button, bar));
 
             button.Click += (_, _) =>
             {
                 _vm!.SetEdgeCommand.Execute(edge);
-                foreach (var (key, b) in buttons)
-                {
-                    b.Classes.Set("active", key == edge);
-                }
+                SelectEdge(edge);
                 closeMenu();
             };
             grid.Children.Add(button);
