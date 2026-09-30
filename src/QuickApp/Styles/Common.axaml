@@ -36,12 +36,12 @@
 
   <!-- 菜单容器：原型 .menu min-width 196 / padding 6 / r11 -->
   <Style Selector="ContextMenu">
-    <Setter Property="MinWidth" Value="196" />
+    <Setter Property="MinWidth" Value="87" />
     <Setter Property="Padding" Value="6" />
     <Setter Property="CornerRadius" Value="11" />
   </Style>
   <Style Selector="MenuFlyoutPresenter">
-    <Setter Property="MinWidth" Value="196" />
+    <Setter Property="MinWidth" Value="87" />
     <Setter Property="Padding" Value="6" />
     <Setter Property="CornerRadius" Value="11" />
   </Style>

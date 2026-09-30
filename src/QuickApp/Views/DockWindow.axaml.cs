@@ -1201,7 +1201,7 @@ public partial class DockWindow : Window, IDockHost
     /// <summary>停靠位置四向选择器：桌面示意框，点哪条边停靠哪条边；当前边强调色高亮（原型 .dock-pos）。</summary>
     private Control BuildEdgePicker(Action closeMenu)
     {
-        var grid = new Grid { Width = 168, Height = 96, Margin = new Thickness(2, 2, 2, 6) };
+        var grid = new Grid { Height = 96, Margin = new Thickness(2, 2, 2, 6), HorizontalAlignment = HorizontalAlignment.Stretch };
         var frame = new Border { BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(9) };
         if (this.TryFindResource("QAHoverBrush", Avalonia.Styling.ThemeVariant.Default, out var hover) && hover is IBrush hoverBrush)
         {
@@ -1280,10 +1280,10 @@ public partial class DockWindow : Window, IDockHost
             grid.Children.Add(button);
         }
 
-        AddEdge(DockEdge.Top, new Thickness(30, 5, 30, 5), true, HorizontalAlignment.Stretch, VerticalAlignment.Top);
-        AddEdge(DockEdge.Bottom, new Thickness(30, 5, 30, 5), true, HorizontalAlignment.Stretch, VerticalAlignment.Bottom);
-        AddEdge(DockEdge.Left, new Thickness(5, 30, 5, 30), false, HorizontalAlignment.Left, VerticalAlignment.Stretch);
-        AddEdge(DockEdge.Right, new Thickness(5, 30, 5, 30), false, HorizontalAlignment.Right, VerticalAlignment.Stretch);
+        AddEdge(DockEdge.Top, new Thickness(20, 5, 20, 5), true, HorizontalAlignment.Stretch, VerticalAlignment.Top);
+        AddEdge(DockEdge.Bottom, new Thickness(20, 5, 20, 5), true, HorizontalAlignment.Stretch, VerticalAlignment.Bottom);
+        AddEdge(DockEdge.Left, new Thickness(5, 20, 5, 20), false, HorizontalAlignment.Left, VerticalAlignment.Stretch);
+        AddEdge(DockEdge.Right, new Thickness(5, 20, 5, 20), false, HorizontalAlignment.Right, VerticalAlignment.Stretch);
         return grid;
     }
 
