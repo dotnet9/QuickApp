@@ -318,6 +318,9 @@ public sealed class SettingsViewModel : ViewModelBase
 
     public string ConfigFilePath => _dock.ConfigFilePath;
 
+    /// <summary>当前快捷项数量（导入确认摘要用）。</summary>
+    public int ItemCount => _dock.Items.Count;
+
     public string StorageModeText => _dock.StorageModeText;
 
     public string StorageModeSwitchText => _dock.StorageModeSwitchText;
