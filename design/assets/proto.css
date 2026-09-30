@@ -362,7 +362,7 @@ html[data-edit="true"] .dock-tools{
 
 /* ============================ 6. 菜单 / 托盘 ============================ */
 .menu{
-  position:fixed;min-width:196px;max-height:min(70vh,520px);overflow:auto;padding:6px;border-radius:11px;z-index:320;
+  position:fixed;min-width:87px;max-height:min(70vh,520px);overflow:auto;padding:6px;border-radius:11px;z-index:320;
   background:var(--menu-bg);border:1px solid var(--line);box-shadow:var(--shadow);
   backdrop-filter:var(--panel-blur);-webkit-backdrop-filter:var(--panel-blur);
   animation:popIn 110ms var(--ease-out);
@@ -380,13 +380,13 @@ html[data-edit="true"] .dock-tools{
 .menu-title{padding:7px 10px 5px;font-size:11px;color:var(--text-dim)}
 .menu-item .mi-note{margin-left:auto;font-size:11px;color:var(--text-dim)}
 /* 停靠位置四向选择：桌面示意框，点哪条边停靠哪条边（WinForms 锚定编辑器的直觉） */
-.dock-pos{position:relative;width:120px;height:96px;margin:2px auto 6px;border:1px solid var(--line);border-radius:9px;background:var(--hover)}
+.dock-pos{position:relative;height:96px;margin:2px 8px 6px;border:1px solid var(--line);border-radius:9px;background:var(--hover)}
 .dock-pos .edge{position:absolute;display:grid;place-items:center;background:none;border:0;cursor:pointer;color:var(--text-dim);border-radius:7px;padding:0}
 .dock-pos .edge:hover{background:var(--menu-hover);color:var(--text)}
 .dock-pos .edge::before{content:"";width:58%;height:6px;border-radius:3px;background:currentColor}
 .dock-pos .e-left::before,.dock-pos .e-right::before{width:6px;height:58%}
-.dock-pos .e-top{left:24px;right:24px;top:5px;height:20px}
-.dock-pos .e-bottom{left:24px;right:24px;bottom:5px;height:20px}
+.dock-pos .e-top{left:20px;right:20px;top:5px;height:20px}
+.dock-pos .e-bottom{left:20px;right:20px;bottom:5px;height:20px}
 .dock-pos .e-left{top:30px;bottom:30px;left:5px;width:20px}
 .dock-pos .e-right{top:30px;bottom:30px;right:5px;width:20px}
 .dock-pos .edge.active{background:var(--accent);color:var(--accent-ink)}
