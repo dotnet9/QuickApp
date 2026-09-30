@@ -50,6 +50,7 @@ public partial class DockWindow : Window, IDockHost
     private bool _isMoreMenuOpen;
     private bool _isContextMenuOpen;
     private ContextMenu? _contextMenu;
+    private Grid? _edgePicker;
     private double _progress;
 
     private ItemViewModel? _focused;
@@ -1177,6 +1178,16 @@ public partial class DockWindow : Window, IDockHost
         menu.PlacementTarget = ItemsHost;
         menu.Placement = PlacementMode.Pointer;
         menu.Open(ItemsHost);
+
+        // 弹层测量时序下 Grid 的 Stretch 宽不可靠（实测被压回 desired 64）——
+        // 布局完成后按菜单实际宽度显式定宽：菜单 padding 12 + 自身 margin 16，与分隔线严格同宽。
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_edgePicker is not null && menu.Bounds.Width > 40)
+            {
+                _edgePicker.Width = menu.Bounds.Width - 28;
+            }
+        });
     }
 
     /// <summary>原型 dockMenuSpec 的实现：「更多」菜单与空白处右键菜单共用。</summary>
@@ -1284,6 +1295,7 @@ public partial class DockWindow : Window, IDockHost
         AddEdge(DockEdge.Bottom, new Thickness(20, 5, 20, 5), true, HorizontalAlignment.Stretch, VerticalAlignment.Bottom);
         AddEdge(DockEdge.Left, new Thickness(5, 20, 5, 20), false, HorizontalAlignment.Left, VerticalAlignment.Stretch);
         AddEdge(DockEdge.Right, new Thickness(5, 20, 5, 20), false, HorizontalAlignment.Right, VerticalAlignment.Stretch);
+        _edgePicker = grid;
         return grid;
     }
 
@@ -2244,6 +2256,14 @@ public partial class DockWindow : Window, IDockHost
             ScheduleAutoHide();
         };
         flyout.ShowAt(MoreButton);
+
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_edgePicker is not null && flyout.Popup?.Child is { } presenter)
+            {
+                _edgePicker.Width = presenter.Bounds.Width - 28;
+            }
+        });
     }
 
     // ---------------- IDockHost ----------------
