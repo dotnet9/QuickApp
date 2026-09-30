@@ -10,7 +10,7 @@
   --font:"Microsoft YaHei UI","Microsoft YaHei",system-ui,-apple-system,"Segoe UI",sans-serif;
   --tile-size:44px;
   --dock-radius:18px;
-  --dock-alpha:.4;
+  --dock-alpha:1;
   --items-window:530px;
 
   --dur-dock:240ms;

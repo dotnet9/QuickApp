@@ -99,9 +99,6 @@
             <div class="row"><span class="row-label">面板圆角</span><span class="spacer"></span>
               <input type="range" id="rgRadius" min="8" max="32" step="1" value="18" aria-label="面板圆角">
               <output id="outRadius">18</output></div>
-            <div class="row"><span class="row-label">不透明度</span><span class="spacer"></span>
-              <input type="range" id="rgAlpha" min="40" max="100" step="1" value="40" aria-label="面板不透明度">
-              <output id="outAlpha">40%</output></div>
             <div class="row"><span class="row-note">毛玻璃在部分系统上可能退化为纯色</span></div>
           </div>
         </section>
@@ -158,7 +155,7 @@
   'use strict';
   const st = {
     themePref:'dark', wall:'auto', style:'glass', label:'icon',
-    tileSize:44, radius:18, alpha:.4,
+    tileSize:44, radius:18, alpha:1,
     edge:'top', pinned:false, autoStart:true, edgeReveal:true, autoCollapse:true, checkUpdates:true
   };
 
@@ -170,8 +167,7 @@
     QA.applyTokens(st);
     QA.$('#outTile').textContent = st.tileSize;
     QA.$('#outRadius').textContent = st.radius;
-    QA.$('#outAlpha').textContent = Math.round(st.alpha * 100) + '%';
-  }
+    }
 
   /* 页签切换（带方向键循环） */
   const tabs = QA.$$('[data-tab]');
@@ -204,7 +200,6 @@
   /* 滑块 */
   QA.$('#rgTile').addEventListener('input', e => { st.tileSize = Number(e.target.value); applyLook(); });
   QA.$('#rgRadius').addEventListener('input', e => { st.radius = Number(e.target.value); applyLook(); });
-  QA.$('#rgAlpha').addEventListener('input', e => { st.alpha = Number(e.target.value) / 100; applyLook(); });
   QA.$('#rgAutoHide').addEventListener('input', e => {
     const v = Number(e.target.value);
     QA.$('#outAutoHide').textContent = v === 0 ? '不自动隐藏' : v + ' ms';
