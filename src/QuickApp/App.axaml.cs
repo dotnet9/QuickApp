@@ -9,6 +9,7 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Microsoft.Extensions.DependencyInjection;
+using ReactiveUI;
 using QuickApp.Core.Services;
 using QuickApp.Platform;
 using QuickApp.ViewModels;
@@ -24,6 +25,7 @@ public partial class App : Application
     private DockWindow? _dock;
     private SettingsWindow? _settings;
     private TrayIcon? _tray;
+    private TrayViewModel? _trayViewModel;
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
@@ -133,67 +135,60 @@ public partial class App : Application
         viewModel.IsDockVisible = !(viewModel.IsDockVisible && !viewModel.IsPinned);
     }
 
+    /// <summary>
+    /// 托盘视图：菜单状态与命令都在 <see cref="TrayViewModel"/>，
+    /// 这里只创建 NativeMenu 并把 Header / Command 绑定到视图模型（原型 08 · 托盘菜单）。
+    /// </summary>
     private void CreateTrayIcon(DockViewModel viewModel)
     {
         try
         {
-            var menu = new NativeMenu();
+            _trayViewModel = new TrayViewModel(viewModel, () => ShowSettings(), RequestShutdown);
+            var appIcon = CreateAppIcon();
 
-            var toggle = new NativeMenuItem(viewModel.IsDockVisible ? "隐藏" : "显示");
-            toggle.Click += (_, _) =>
+            var toggle = new NativeMenuItem { Header = _trayViewModel.ToggleDockText, Command = _trayViewModel.ToggleDockCommand };
+            var autoStart = new NativeMenuItem { Header = _trayViewModel.AutoStartText, Command = _trayViewModel.ToggleAutoStartCommand };
+            var pin = new NativeMenuItem { Header = _trayViewModel.PinText, Command = _trayViewModel.TogglePinCommand };
+            var settings = new NativeMenuItem { Header = "设置", Command = _trayViewModel.ShowSettingsCommand };
+            var exit = new NativeMenuItem { Header = "退出", Command = _trayViewModel.ExitCommand };
+
+            // 文案随视图模型属性刷新（Dock 显隐/钉住/开机启动也可能在托盘之外变化）
+            _trayViewModel.ObservableForProperty(t => t.ToggleDockText).Subscribe(x => toggle.Header = x.Value);
+            _trayViewModel.ObservableForProperty(t => t.AutoStartText).Subscribe(x => autoStart.Header = x.Value);
+            _trayViewModel.ObservableForProperty(t => t.PinText).Subscribe(x => pin.Header = x.Value);
+
+            var menu = new NativeMenu
             {
-                viewModel.IsDockVisible = !viewModel.IsDockVisible;
-                toggle.Header = viewModel.IsDockVisible ? "隐藏" : "显示";
+                Items =
+                {
+                    toggle,
+                    autoStart,
+                    pin,
+                    new NativeMenuItemSeparator(),
+                    settings,
+                    new NativeMenuItemSeparator(),
+                    exit
+                }
             };
-            menu.Items.Add(toggle);
-
-            var pin = new NativeMenuItem("钉住（" + (viewModel.IsPinned ? "开" : "关") + "）");
-            pin.Click += (_, _) =>
-            {
-                viewModel.TogglePinCommand.Execute(null);
-                pin.Header = "钉住（" + (viewModel.IsPinned ? "开" : "关") + "）";
-            };
-            menu.Items.Add(pin);
-
-            var autoStart = new NativeMenuItem("开机启动（" + (viewModel.Settings.AutoStart ? "开" : "关") + "）");
-            autoStart.Click += (_, _) =>
-            {
-                viewModel.ToggleAutoStartCommand.Execute(null);
-                autoStart.Header = "开机启动（" + (viewModel.Settings.AutoStart ? "开" : "关") + "）";
-            };
-            menu.Items.Add(autoStart);
-
-            menu.Items.Add(new NativeMenuItemSeparator());
-
-            var settings = new NativeMenuItem("设置");
-            settings.Click += (_, _) => ShowSettings();
-            menu.Items.Add(settings);
-
-            menu.Items.Add(new NativeMenuItemSeparator());
-
-            var exit = new NativeMenuItem("退出");
-            exit.Click += (_, _) => RequestShutdown();
-            menu.Items.Add(exit);
 
             _tray = new TrayIcon
             {
-                Icon = CreateAppIcon(),
+                Icon = appIcon,
                 ToolTipText = "QuickApp 快捷应用",
                 Menu = menu,
                 IsVisible = true
             };
 
-            _tray.Clicked += (_, _) => viewModel.IsDockVisible = !viewModel.IsDockVisible;
+            _tray.Clicked += (_, _) => _trayViewModel.ToggleDockCommand.Execute(null);
 
             var trayIcons = new TrayIcons { _tray };
             TrayIcon.SetIcons(this, trayIcons);
         }
         catch (Exception ex)
         {
-            AppLog.Error("创建托盘图标失败", ex);
+            AppLog.Error("创建托盘菜单失败", ex);
         }
     }
-
     /// <summary>
     /// 应用图标来自仓库根目录 logo.ico：csproj 里以 ApplicationIcon 嵌入 exe，
     /// 同时作为 AvaloniaResource 内嵌，供窗口、托盘加载同一份图标。
