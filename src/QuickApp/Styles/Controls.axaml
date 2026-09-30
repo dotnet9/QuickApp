@@ -409,9 +409,11 @@
     <Setter Property="Template">
       <ControlTemplate>
         <Border Name="PART_Bg" Background="{TemplateBinding Background}" CornerRadius="7">
+          <!-- Stretch：边区药丸要沿按钮长边拉伸（原型 .edge::before 的 58%），
+               Center 会让无显式尺寸的药丸塌缩为 0 -->
           <ContentPresenter Content="{TemplateBinding Content}"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center" />
+                            HorizontalAlignment="Stretch"
+                            VerticalAlignment="Stretch" />
         </Border>
       </ControlTemplate>
     </Setter>
