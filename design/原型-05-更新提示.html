@@ -177,7 +177,7 @@
 
   /* ---- 交互演示 ---- */
   const live = {
-    edge:'top', phase:'found', progress:0, timer:null
+    edge:'top', phase:'found', progress:0, timer:null, themePref:'system'
   };
   const stage = QA.$('#liveStage'), dock = QA.$('#liveDock'), itemsEl = QA.$('#liveItems');
   const items = QA.SEED.slice(0, 10).map((it, i) => ({...it, id:'i' + i}));
@@ -242,6 +242,18 @@
       QA.h('strong', {text:'原型控制台'}), QA.h('span', {text:'不属于产品界面'}),
       QA.h('button', {class:'icon-btn', 'data-icon':'x', title:'隐藏控制台'})));
   const body = QA.h('div', {class:'proto-body'});
+  const themeSeg = QA.h('div', {class:'seg sm', id:'themeSeg'});
+  function syncThemeSeg(){
+    QA.$('#themeSeg button').forEach(b => b.classList.toggle('active', b.dataset.theme === live.themePref));
+  }
+  [['system','跟随'],['dark','深'],['light','浅']].forEach(([v, t]) => {
+    themeSeg.append(QA.h('button', {'data-theme':v, onclick:() => {
+      live.themePref = v;
+      QA.applyTokens({themePref:v, label:'icon', tileSize:44});
+      syncThemeSeg();
+    }}, QA.h('span', {text:t})));
+  });
+  body.append(QA.h('div', {class:'proto-row'}, QA.h('span', {text:'主题'}), themeSeg));
   body.append(QA.h('div', {class:'proto-row'}, QA.h('span', {text:'状态'}),
     (() => {
       const seg = QA.h('div', {class:'seg sm', id:'phaseSeg'});
@@ -277,6 +289,8 @@
   observer.observe(stage, {attributes:true});
   new MutationObserver(syncSegs).observe(dock, {childList:true});
   syncSegs();
+  QA.applyTokens({themePref: live.themePref, label:'icon', tileSize:44});
+  syncThemeSeg();
   renderLive();
 })();
 </script>

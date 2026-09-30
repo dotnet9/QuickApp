@@ -125,5 +125,29 @@
   });
 })();
 </script>
+<script>
+(function(){
+  'use strict';
+  const st = { themePref:'system', style:'glass', label:'icon' };
+  const seg = QA.h('div', {class:'seg sm', id:'themeSeg'});
+  function sync(){ QA.$('#themeSeg button').forEach(b => b.classList.toggle('active', b.dataset.value === st.themePref)); }
+  [['system','跟随'],['dark','深'],['light','浅']].forEach(([v, t]) => {
+    seg.append(QA.h('button', {'data-value':v, onclick:() => {
+      st.themePref = v;
+      QA.applyTokens(st);
+      sync();
+    }}, QA.h('span', {text:t})));
+  });
+  const panel = QA.h('div', {class:'proto-panel', id:'protoPanel'},
+    QA.h('div', {class:'proto-head'},
+      QA.h('strong', {text:'原型控制台'}),
+      QA.h('span', {text:'不属于产品界面'})),
+    QA.h('div', {class:'proto-body'},
+      QA.h('div', {class:'proto-row'}, QA.h('span', {text:'主题'}), seg)));
+  document.body.append(panel);
+  QA.applyTokens(st);
+  sync();
+})();
+</script>
 </body>
 </html>

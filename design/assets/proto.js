@@ -155,6 +155,12 @@ window.QA = (function(){
 
   /* ---------------- 4. 外观 token 应用 ---------------- */
   /* st: {themePref,wall,style,label,tileSize,radius,alpha,edge,searchOpen,edit,pinned} */
+  let lastSt = null;
+  const mqDark = window.matchMedia('(prefers-color-scheme: dark)');
+  mqDark.addEventListener('change', () => {
+    if(lastSt && lastSt.themePref === 'system') applyTokens(lastSt);
+  });
+
   function applyTokens(st){
     const root = document.documentElement;
     root.dataset.theme = st.themePref === 'system'
@@ -170,6 +176,7 @@ window.QA = (function(){
     if(st.tileSize) root.style.setProperty('--items-window', (st.tileSize * 10 + 90) + 'px');
     if(st.radius) root.style.setProperty('--dock-radius', st.radius + 'px');
     if(st.alpha !== undefined) root.style.setProperty('--dock-alpha', String(st.alpha));
+    lastSt = st;
   }
 
   /* ---------------- 5. Dock 图标渲染 ---------------- */
@@ -530,6 +537,7 @@ window.QA = (function(){
       h('div', {class:'proto-body'},
         h('div', {class:'proto-row'}, h('span', {text:'主题'}),
           h('div', {class:'seg sm', 'data-control':'themePref'},
+            h('button', {'data-value':'system'}, h('span', {text:'跟随'})),
             h('button', {'data-value':'dark'}, h('span', {text:'深'})),
             h('button', {'data-value':'light'}, h('span', {text:'浅'}))
           )),
