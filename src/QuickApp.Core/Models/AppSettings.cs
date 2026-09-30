@@ -7,7 +7,7 @@ public sealed class AppSettings
     public DockEdge Edge { get; set; } = DockEdge.Top;
 
     /// <summary>dark | light | system。</summary>
-    public string Theme { get; set; } = "dark";
+    public string Theme { get; set; } = "system";
 
     /// <summary>glass | flat。</summary>
     public string Style { get; set; } = "glass";

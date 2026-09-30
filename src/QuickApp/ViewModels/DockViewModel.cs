@@ -120,6 +120,30 @@ public sealed class DockViewModel : ViewModelBase
         LoadItems();
         LoadInstalledApps();
         RefreshPalette();
+
+        // 主题=跟随系统时，操作系统深浅切换实时生效（原型 matchMedia 监听的等价实现）。
+        // RefreshPalette 会写 RequestedThemeVariant，可能在系统变体与显式变体间来回；
+        // 用上次应用结果去重，避免刷新环。
+        Avalonia.Application.Current!.ActualThemeVariantChanged += OnSystemThemeVariantChanged;
+    }
+
+    private string? _appliedFollowTheme;
+
+    private void OnSystemThemeVariantChanged(object? sender, EventArgs e)
+    {
+        if (Settings.Theme != "system")
+        {
+            return;
+        }
+
+        string key = IsSystemDark() ? "dark" : "light";
+        if (_appliedFollowTheme == key)
+        {
+            return;
+        }
+
+        _appliedFollowTheme = key;
+        RefreshPalette();
     }
 
     public string AppName { get; }
@@ -1136,7 +1160,9 @@ public sealed class DockViewModel : ViewModelBase
 
         // Fluent 控件的浅/深由「应用主题变体」决定，必须跟着我们的设置走：
         // 否则系统是浅色主题时，勾选框/滑块/下拉会被渲染成浅色控件压在深色面板上（设置窗口看着就是两套风格）。
-        ApplyThemeVariant(dark);
+        // 跟随系统时设回 Default——若钉死成具体深/浅，ActualThemeVariant 会被覆盖，
+        // 之后操作系统深浅切换将不再触发 ActualThemeVariantChanged（跟随就失效了）。
+        ApplyThemeVariant(Settings.Theme == "system" ? null : dark);
 
         Palette palette = (dark ? Palette.Dark : Palette.Light)
             .WithOpacity(GlassAlpha, flat: Settings.Style == "flat");
@@ -1166,15 +1192,19 @@ public sealed class DockViewModel : ViewModelBase
     }
 
     /// <summary>把 Avalonia 的主题变体同步成我们选定的深浅，保证 Fluent 控件与自绘面板同一套配色。</summary>
-    private static void ApplyThemeVariant(bool dark)
+    private static void ApplyThemeVariant(bool? dark)
     {
         try
         {
             if (Avalonia.Application.Current is { } app)
             {
-                app.RequestedThemeVariant = dark
-                    ? Avalonia.Styling.ThemeVariant.Dark
-                    : Avalonia.Styling.ThemeVariant.Light;
+                // null = 跟随系统：RequestedThemeVariant 设回 Default，ActualThemeVariant 透传系统值
+                app.RequestedThemeVariant = dark switch
+                {
+                    null => Avalonia.Styling.ThemeVariant.Default,
+                    true => Avalonia.Styling.ThemeVariant.Dark,
+                    false => Avalonia.Styling.ThemeVariant.Light
+                };
             }
         }
         catch (Exception ex)
