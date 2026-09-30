@@ -517,7 +517,7 @@ public sealed class DockViewModel : ViewModelBase
 
     public string ConfiguredGroupTitle => "已配置 · " + Items.Count;
 
-    public bool HasConfiguredResults => IsSearchGrouped && Items.Count > 0;
+    public bool HasConfiguredResults => IsSearchOpen && Items.Count > 0;
 
     public string InstalledGroupTitle => "系统已安装 · " + InstalledItems.Count;
 
@@ -531,7 +531,7 @@ public sealed class DockViewModel : ViewModelBase
 
     public string EmptyStateText => IsSearchGrouped
         ? "没有匹配「" + SearchQuery.Trim() + "」的项目"
-        : "右键空白处添加应用";
+        : IsEditMode ? "右键空白处添加应用" : "空空如也";
 
     /// <summary>Dock 一个项都没有（与「搜索无结果」区分开，给出添加引导）。</summary>
     public bool IsDockEmpty => Items.Count == 0 && !IsSearchGrouped;
@@ -554,6 +554,8 @@ public sealed class DockViewModel : ViewModelBase
             {
                 IsDockVisible = true;
             }
+
+            this.RaisePropertyChanged(nameof(EmptyStateText));
 
             // ShowRemove 跟随编辑模式，重新推给每个图标
             ApplyItemLayout();
@@ -1193,7 +1195,8 @@ public sealed class DockViewModel : ViewModelBase
         RefreshPalette();
     }
 
-    private double GlassAlpha => _glassDegraded ? Math.Max(Settings.PanelOpacity, 0.92) : Settings.PanelOpacity;
+    /// <summary>面板不透明度已固定 100%（原型定稿：面板颜色不再随配置变化）。</summary>
+    private const double GlassAlpha = 1.0;
 
     private static bool IsSystemDark()
     {

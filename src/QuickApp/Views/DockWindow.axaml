@@ -483,8 +483,17 @@
                          MaxWidth="{Binding ActionMaxWidth}"
                          MaxHeight="{Binding ActionMaxHeight}"
                          VerticalAlignment="Center">
-                <Button Theme="{StaticResource IconButton}" Name="SearchButton" Width="28" Height="28" Command="{Binding ToggleSearchCommand}" ToolTip.Tip="搜索（S）" />
-                <Button Theme="{StaticResource IconButton}" Name="PinButton" Width="28" Height="28" Command="{Binding TogglePinCommand}" ToolTip.Tip="钉住 Dock" />
+                <Button Theme="{StaticResource IconButton}" Name="SearchButton" Width="28" Height="28" Classes.active="{Binding IsSearchOpen}" Command="{Binding ToggleSearchCommand}" ToolTip.Tip="搜索（S）" />
+                <Button Theme="{StaticResource IconButton}" Name="PinButton" Width="28" Height="28" Classes.active="{Binding IsPinned}" Command="{Binding TogglePinCommand}" ToolTip.Tip="钉住 Dock">
+                  <Path Data="M9.5,3 L14.5,3 L13.7,8.2 L17,11.5 L7,11.5 L10.3,8.2 Z M12,11.5 L12,21"
+                        Stroke="{Binding $parent[Button].Foreground}"
+                        StrokeThickness="1.7"
+                        StrokeLineCap="Round"
+                        StrokeJoin="Round"
+                        Width="16"
+                        Height="16"
+                        Stretch="Uniform" />
+                </Button>
                 <Button Theme="{StaticResource IconButton}" Name="MoreButton" Width="28" Height="28" ToolTip.Tip="更多操作" />
                 <Button Theme="{StaticResource IconButton}" Classes="low-priority" Name="CollapseButton" Width="28" Height="28" Command="{Binding HideCommand}" ToolTip.Tip="收起" />
               </WrapPanel>

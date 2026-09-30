@@ -280,12 +280,6 @@
                               Minimum="8" Maximum="32" TickFrequency="1" Value="{Binding CornerRadius}" />
                       <TextBlock Grid.Column="2" Classes="output" Text="{Binding CornerRadius}" />
                     </Grid>
-                    <Grid Classes="row" ColumnDefinitions="*,Auto,Auto">
-                      <TextBlock Classes="row" Text="不透明度" />
-                      <Slider Grid.Column="1" Margin="0,0,12,0"
-                              Minimum="40" Maximum="100" TickFrequency="1" Value="{Binding OpacityPercent}" />
-                      <TextBlock Grid.Column="2" Classes="output" Text="{Binding OpacityPercent, StringFormat={}{0}%}" />
-                    </Grid>
                     <TextBlock Classes="hint" Margin="0,3,0,0" Text="毛玻璃在部分系统上可能退化为纯色" />
                   </StackPanel>
                 </ScrollViewer>
@@ -379,10 +373,15 @@
                       <Button Grid.Column="1" Classes="about-url" Name="RepoButton" Content="https://github.com/dotnet9/QuickApp" />
                     </Grid>
                     <Border Classes="groupsep" />
+                    <Grid Classes="row" ColumnDefinitions="*,Auto">
+                      <TextBlock Classes="row" Text="检查更新" />
+                      <Button Grid.Column="1" Theme="{StaticResource LinkButton}" Content="立即检查" Command="{Binding CheckUpdateCommand}" />
+                    </Grid>
+                    <TextBlock Classes="hint" Margin="0,3,0,0"
+                               Text="{Binding CheckResult}"
+                               IsVisible="{Binding CheckResult, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                     <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,14,0,0">
-                      <Button Theme="{StaticResource LinkButton}" Content="检查更新" Command="{Binding CheckUpdateCommand}" />
                       <Button Theme="{StaticResource LinkButton}" Name="LicenseButton" Content="许可证" />
-                      <TextBlock Classes="hint" Text="{Binding CheckResult}" VerticalAlignment="Center" />
                     </StackPanel>
                   </StackPanel>
                 </ScrollViewer>

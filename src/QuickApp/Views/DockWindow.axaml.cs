@@ -399,12 +399,6 @@ public partial class DockWindow : Window, IDockHost
             PinButton.Classes.Remove("active");
         }
 
-        if (PinButton.Content is Path path)
-        {
-            path.Stroke = pinned
-                ? _vm?.AccentBrush ?? Brushes.DodgerBlue
-                : _vm?.TextDimBrush ?? Brushes.Gray;
-        }
 
         ToolTip.SetTip(PinButton, pinned ? "取消钉住 Dock" : "钉住 Dock");
     }
@@ -444,17 +438,17 @@ public partial class DockWindow : Window, IDockHost
 
     private void BuildActionIcons()
     {
-        // 原型中的紧凑工具区使用高对比度图标，采用正文色（深色主题下接近白色），避免过暗。
-        IBrush color = _vm?.TextBrush ?? Brushes.White;
-        SetIcon(SearchButton, Icons.Search, 15, color);
-        SetIcon(MoreButton, Icons.More, 16, color);
+        // 原型 .icon-btn：四键统一淡灰（text-dim），悬停变亮，激活（钉住/搜索打开）转强调色。
+        // 图标描边绑定按钮前景色，状态色由 IconButton 主题统一管理，不再各自写死。
+        SetIcon(SearchButton, Icons.Search, 15, null);
+        SetIcon(MoreButton, Icons.More, 16, null);
         if (MoreButton.Content is Path morePath)
         {
-            morePath.Fill = color;
+            morePath.Bind(Path.FillProperty, MoreButton.GetObservable(Button.ForegroundProperty));
             morePath.StrokeThickness = 0;
         }
-        SetIcon(PinButton, Icons.Pin, 15, color);
-        SetIcon(CollapseButton, Icons.ChevronUp, 14, color);
+        SetIcon(PinButton, Icons.Pin, 15, null);
+        SetIcon(CollapseButton, Icons.ChevronUp, 14, null);
 
         UpdateCollapseIcon();
     }
@@ -648,10 +642,9 @@ public partial class DockWindow : Window, IDockHost
 
     private static void SetIcon(Button button, Geometry geometry, double size, IBrush stroke)
     {
-        button.Content = new Path
+        var path = new Path
         {
             Data = geometry,
-            Stroke = stroke,
             StrokeThickness = 1.7,
             StrokeLineCap = PenLineCap.Round,
             StrokeJoin = PenLineJoin.Round,
@@ -659,6 +652,13 @@ public partial class DockWindow : Window, IDockHost
             Width = size,
             Height = size
         };
+        // 描边跟随按钮前景色：常态淡灰、悬停变亮、激活（钉住/搜索打开）转强调色（原型 .icon-btn 色彩规则）
+        path.Bind(Path.StrokeProperty, button.GetObservable(Button.ForegroundProperty));
+        if (stroke is not null)
+        {
+            path.Stroke = stroke;
+        }
+        button.Content = path;
     }
 
     private void UpdateCollapseIcon()
@@ -1214,7 +1214,7 @@ public partial class DockWindow : Window, IDockHost
         grid.Children.Add(frame);
 
         var buttons = new Dictionary<DockEdge, Button>();
-        void AddEdge(DockEdge edge, Thickness margin, double barWidth, double barHeight,
+        void AddEdge(DockEdge edge, Thickness margin, bool horizontal,
             HorizontalAlignment hAlign, VerticalAlignment vAlign)
         {
             var button = new Button
@@ -1224,17 +1224,19 @@ public partial class DockWindow : Window, IDockHost
                 HorizontalAlignment = hAlign,
                 VerticalAlignment = vAlign
             };
-            if (!double.IsNaN(barWidth))
-            {
-                button.Width = 20;
-            }
-            if (!double.IsNaN(barHeight))
+            if (horizontal)
             {
                 button.Height = 20;
             }
+            else
+            {
+                button.Width = 20;
+            }
 
-            // 内部小 Dock 药丸随按钮前景色变化（选中时变强调色上的墨色）
-            var bar = new Border { Width = barWidth, Height = barHeight, CornerRadius = new CornerRadius(3) };
+            // 内部小 Dock 药丸占按钮 58%（原型 .edge::before），随按钮前景色变化
+            var bar = horizontal
+                ? new Border { Height = 6, Margin = new Thickness(21, 7, 21, 7), HorizontalAlignment = HorizontalAlignment.Stretch, CornerRadius = new CornerRadius(3) }
+                : new Border { Width = 6, Margin = new Thickness(7, 7, 7, 7), VerticalAlignment = VerticalAlignment.Stretch, CornerRadius = new CornerRadius(3) };
             bar.Bind(Border.BackgroundProperty, button.GetObservable(Button.ForegroundProperty));
             button.Content = bar;
 
@@ -1256,10 +1258,10 @@ public partial class DockWindow : Window, IDockHost
             grid.Children.Add(button);
         }
 
-        AddEdge(DockEdge.Top, new Thickness(30, 5, 30, 5), 40, 6, HorizontalAlignment.Stretch, VerticalAlignment.Top);
-        AddEdge(DockEdge.Bottom, new Thickness(30, 5, 30, 5), 40, 6, HorizontalAlignment.Stretch, VerticalAlignment.Bottom);
-        AddEdge(DockEdge.Left, new Thickness(5, 30, 5, 30), 6, 40, HorizontalAlignment.Left, VerticalAlignment.Stretch);
-        AddEdge(DockEdge.Right, new Thickness(5, 30, 5, 30), 6, 40, HorizontalAlignment.Right, VerticalAlignment.Stretch);
+        AddEdge(DockEdge.Top, new Thickness(30, 5, 30, 5), true, HorizontalAlignment.Stretch, VerticalAlignment.Top);
+        AddEdge(DockEdge.Bottom, new Thickness(30, 5, 30, 5), true, HorizontalAlignment.Stretch, VerticalAlignment.Bottom);
+        AddEdge(DockEdge.Left, new Thickness(5, 30, 5, 30), false, HorizontalAlignment.Left, VerticalAlignment.Stretch);
+        AddEdge(DockEdge.Right, new Thickness(5, 30, 5, 30), false, HorizontalAlignment.Right, VerticalAlignment.Stretch);
         return grid;
     }
 

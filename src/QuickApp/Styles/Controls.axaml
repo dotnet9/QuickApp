@@ -164,6 +164,10 @@
     <Style Selector="^.active /template/ Border#PART_Bg">
       <Setter Property="Background" Value="{DynamicResource QAHoverBrush}" />
     </Style>
+    <!-- 激活态（钉住/搜索打开）：图标用强调色，对应原型 .icon-btn.active 的 accent 前景 -->
+    <Style Selector="^.active">
+      <Setter Property="Foreground" Value="{DynamicResource QAAccentBrush}" />
+    </Style>
     <Style Selector="^.low-priority">
       <Setter Property="Opacity" Value="0.68" />
     </Style>

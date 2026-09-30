@@ -198,16 +198,6 @@ public sealed class SettingsViewModel : ViewModelBase
         }
     }
 
-    public double OpacityPercent
-    {
-        get => Math.Round(Settings.PanelOpacity * 100);
-        set
-        {
-            Settings.PanelOpacity = Math.Clamp(value / 100, 0.2, 1);
-            ApplyChange(palette: true, size: false);
-            this.RaisePropertyChanged();
-        }
-    }
 
     // ---------------- 停靠 ----------------
 
@@ -380,7 +370,6 @@ public sealed class SettingsViewModel : ViewModelBase
         this.RaisePropertyChanged(nameof(ShowLabels));
         this.RaisePropertyChanged(nameof(TileSize));
         this.RaisePropertyChanged(nameof(CornerRadius));
-        this.RaisePropertyChanged(nameof(OpacityPercent));
         this.RaisePropertyChanged(nameof(RevealOnEdgeTouch));
         this.RaisePropertyChanged(nameof(Pinned));
         this.RaisePropertyChanged(nameof(AutoHideDelayMs));
