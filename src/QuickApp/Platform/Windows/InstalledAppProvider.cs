@@ -122,7 +122,19 @@ public sealed class InstalledAppProvider : IInstalledAppProvider
             }
         }
 
+        // MSIX/商店应用（ChatGPT 这类打包应用没有 .lnk，开始菜单目录扫描天然扫不到）
+        try
+        {
+            result.AddRange(MsixAppScanner.Scan(_log));
+        }
+        catch (Exception ex)
+        {
+            _log?.Invoke("枚举商店应用失败：" + ex.Message);
+        }
+
         return result
+            .GroupBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
             .OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
     }

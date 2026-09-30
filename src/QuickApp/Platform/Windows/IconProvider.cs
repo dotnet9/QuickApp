@@ -121,9 +121,20 @@ public sealed class IconProvider : IIconProvider
         int hr = NativeMethods.SHDefExtractIcon(iconFile, iconIndex, 0, out IntPtr hIcon, IntPtr.Zero, iconSize);
         if (hr != 0 || hIcon == IntPtr.Zero)
         {
-            // 退化：快捷方式从解析出的目标程序取图标，避免 Shell 合成快捷方式箭头。
-            if (isShortcut && Path.GetExtension(iconFile).Equals(".lnk", StringComparison.OrdinalIgnoreCase))
+            // 退化 1：快捷方式（含未声明 IconLocation 的）从解析出的目标程序取图标，
+            // 避免 Shell 合成的快捷方式箭头小图——Codex 这类 lnk 的 IconLocation 为空即属此类。
+            if (isShortcut
+                && Path.GetExtension(iconFile).Equals(".lnk", StringComparison.OrdinalIgnoreCase)
+                && ShellLinkIconResolver.TryGetIconResource(item.Target, out string fallbackFile, out int fallbackIndex))
             {
+                iconFile = fallbackFile;
+                iconIndex = fallbackIndex;
+                hr = NativeMethods.SHDefExtractIcon(iconFile, iconIndex, 0, out hIcon, IntPtr.Zero, iconSize);
+                if (hr == 0 && hIcon != IntPtr.Zero)
+                {
+                    goto ExtractBitmap;
+                }
+
                 return IntPtr.Zero;
             }
 
@@ -140,6 +151,7 @@ public sealed class IconProvider : IIconProvider
             hIcon = fallback.hIcon;
         }
 
+        ExtractBitmap:
         IntPtr hdc = IntPtr.Zero;
         IntPtr hBitmap = IntPtr.Zero;
         try
