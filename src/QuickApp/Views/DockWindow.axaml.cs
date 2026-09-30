@@ -1201,7 +1201,7 @@ public partial class DockWindow : Window, IDockHost
     /// <summary>停靠位置四向选择器：桌面示意框，点哪条边停靠哪条边；当前边强调色高亮（原型 .dock-pos）。</summary>
     private Control BuildEdgePicker(Action closeMenu)
     {
-        var grid = new Grid { Height = 96, Margin = new Thickness(2, 2, 2, 6), HorizontalAlignment = HorizontalAlignment.Stretch };
+        var grid = new Grid { Height = 96, Margin = new Thickness(8, 2, 8, 6), HorizontalAlignment = HorizontalAlignment.Stretch };
         var frame = new Border { BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(9) };
         if (this.TryFindResource("QAHoverBrush", Avalonia.Styling.ThemeVariant.Default, out var hover) && hover is IBrush hoverBrush)
         {
@@ -1256,8 +1256,8 @@ public partial class DockWindow : Window, IDockHost
 
             // 内部小 Dock 药丸占按钮 58%（原型 .edge::before）
             var bar = horizontal
-                ? new Border { Height = 6, Margin = new Thickness(21, 7, 21, 7), HorizontalAlignment = HorizontalAlignment.Stretch, CornerRadius = new CornerRadius(3) }
-                : new Border { Width = 6, Margin = new Thickness(7, 7, 7, 7), VerticalAlignment = VerticalAlignment.Stretch, CornerRadius = new CornerRadius(3) };
+                ? new Border { Height = 6, Margin = new Thickness(12, 7, 12, 7), HorizontalAlignment = HorizontalAlignment.Stretch, CornerRadius = new CornerRadius(3) }
+                : new Border { Width = 6, Margin = new Thickness(0, 12, 0, 12), VerticalAlignment = VerticalAlignment.Stretch, CornerRadius = new CornerRadius(3) };
             button.Content = bar;
 
             if (_vm?.Settings.Edge == edge)

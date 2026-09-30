@@ -317,6 +317,8 @@
   <!-- 设置窗口左侧导航的标签：原型 .settings-tab 38px 高，选中强调色 + 左缘 3px 白色缺口条 -->
   <ControlTheme x:Key="QATabItem" TargetType="TabItem">
     <Setter Property="Height" Value="38" />
+    <!-- 原型 .settings-nav 136px（border-box）：135 给标签 + 1px 右缘分隔线，选中块不压线 -->
+    <Setter Property="MinWidth" Value="135" />
     <Setter Property="Margin" Value="0,1" />
     <Setter Property="FontSize" Value="13" />
     <Setter Property="Foreground" Value="{DynamicResource QATextDimBrush}" />

@@ -101,12 +101,13 @@
     </Style>
   </Window.Styles>
 
-  <Grid Margin="16">
+  <!-- 透明边距 10px（浅色桌面减少透出）——原型阴影 18/40 超出该投影区，按比例衰减为 12/28，色值同 0.45/0.35 -->
+  <Grid Margin="10">
     <Border Background="{Binding BackgroundBrush}"
             BorderBrush="{Binding PanelBorderBrush}"
             BorderThickness="1"
             CornerRadius="14"
-            BoxShadow="0 18 40 0 #73000000, 0 2 8 0 #59000000">
+            BoxShadow="0 12 28 0 #66000000, 0 2 6 0 #44000000">
       <DockPanel>
         <StackPanel DockPanel.Dock="Top">
           <Border Name="HeaderBar"
