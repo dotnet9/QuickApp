@@ -185,7 +185,7 @@ public partial class SettingsWindow : Window
         var completion = new TaskCompletionSource<bool>();
         var dialog = new Window
         {
-            Title = "确认导入",
+            Title = "替换快捷配置？",
             Width = 390,
             SizeToContent = SizeToContent.Height,
             CanResize = false,
@@ -198,7 +198,7 @@ public partial class SettingsWindow : Window
         };
 
         var cancel = new Button { Content = "取消", MinWidth = 76, Padding = new Avalonia.Thickness(12, 6) };
-        var confirm = new Button { Content = "确认导入", MinWidth = 88, Padding = new Avalonia.Thickness(12, 6) };
+        var confirm = new Button { Content = "替换当前配置", MinWidth = 110, Padding = new Avalonia.Thickness(12, 6) };
         cancel.Click += (_, _) =>
         {
             completion.TrySetResult(false);
@@ -223,8 +223,8 @@ public partial class SettingsWindow : Window
             Spacing = 8,
             Children =
             {
-                new TextBlock { Text = "导入配置将替换当前快捷项和全部设置。", FontSize = 14, FontWeight = FontWeight.SemiBold, Foreground = _vm.TextBrush },
-                new TextBlock { Text = "此操作会立即生效，是否继续？", FontSize = 12, Foreground = _vm.TextDimBrush, TextWrapping = Avalonia.Media.TextWrapping.Wrap },
+                new TextBlock { Text = "导入将替换当前 " + _vm.ItemCount + " 个快捷项及设置。", FontSize = 14, FontWeight = FontWeight.SemiBold, Foreground = _vm.TextBrush },
+
                 actions
             }
         };

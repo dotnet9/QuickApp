@@ -4,7 +4,7 @@
         x:Class="QuickApp.Views.CommandDialogWindow"
         x:DataType="vm:DockViewModel"
         Title="添加命令行"
-        Width="420"
+        Width="432"
         SizeToContent="Height"
         CanResize="False"
         ShowInTaskbar="False"
@@ -57,14 +57,24 @@
 
         <StackPanel Spacing="4">
           <TextBlock Classes="row" Text="名称" Foreground="{Binding TextDimBrush}" />
-          <TextBox Name="NameBox" PlaceholderText="例如：远程桌面" />
+          <TextBox Name="NameBox" PlaceholderText="例如：192.168.1.133" />
           <TextBlock Classes="row" Text="命令" Margin="0,8,0,4" Foreground="{Binding TextDimBrush}" />
           <TextBox Name="CommandBox" PlaceholderText="例如：mstsc /v:192.168.1.133" />
         </StackPanel>
 
         <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" Margin="0,14,0,0">
           <Button Theme="{StaticResource LinkButton}" Name="CancelButton" Content="取消" />
-          <Button Theme="{StaticResource LinkButton}" Name="SubmitButton" Content="添加" />
+          <Button Theme="{StaticResource LinkButton}" Name="SubmitButton" Content="添加">
+            <Path Data="M5,12.5 L9.5,17 L19,7"
+                  Stroke="{Binding $parent[Button].Foreground}"
+                  StrokeThickness="2"
+                  StrokeLineCap="Round"
+                  StrokeJoin="Round"
+                  Width="13"
+                  Height="13"
+                  Stretch="Uniform"
+                  Margin="0,0,5,0" />
+          </Button>
         </StackPanel>
       </StackPanel>
     </Border>
