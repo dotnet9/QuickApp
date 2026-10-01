@@ -13,32 +13,39 @@ namespace QuickApp.Platform.Windows;
 /// 从 Windows 开始菜单的快捷方式目录建立轻量应用索引。
 /// 不依赖 COM：快捷方式本身就是可由 Shell 启动的目标，后续启动和图标提取仍由现有管线处理。
 /// </summary>
-public sealed class InstalledAppProvider : IInstalledAppProvider
+public sealed class InstalledAppProvider : IInstalledAppProvider, IDisposable
 {
     private static readonly string[] Extensions = { ".lnk", ".url", ".exe" };
 
     private readonly Action<string>? _log;
+    private readonly List<FileSystemWatcher> _watchers = new();
 
     public InstalledAppProvider(Action<string>? log = null)
     {
         _log = log;
+        StartWatching();
+    }
+
+    /// <summary>开始菜单内容变化时触发（后台线程）。只作失效通知，重扫时机由调用方决定。</summary>
+    public event Action? Changed;
+
+    public void Dispose()
+    {
+        foreach (FileSystemWatcher watcher in _watchers)
+        {
+            watcher.Dispose();
+        }
+
+        _watchers.Clear();
     }
 
     public IReadOnlyList<LauncherItem> GetInstalledApps()
     {
-        var roots = new[]
-        {
-            Environment.GetFolderPath(Environment.SpecialFolder.CommonStartMenu),
-            Environment.GetFolderPath(Environment.SpecialFolder.StartMenu),
-            Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms),
-            Environment.GetFolderPath(Environment.SpecialFolder.Programs)
-        };
-
         var result = new List<LauncherItem>();
         var seenTargets = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var seenNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (string root in roots.Distinct(StringComparer.OrdinalIgnoreCase))
+        foreach (string root in GetScanRoots().Distinct(StringComparer.OrdinalIgnoreCase))
         {
             if (string.IsNullOrWhiteSpace(root) || !Directory.Exists(root))
             {
@@ -157,6 +164,60 @@ public sealed class InstalledAppProvider : IInstalledAppProvider
         }
 
         return null;
+    }
+
+    private static string[] GetScanRoots()
+    {
+        return new[]
+        {
+            Environment.GetFolderPath(Environment.SpecialFolder.CommonStartMenu),
+            Environment.GetFolderPath(Environment.SpecialFolder.StartMenu),
+            Environment.GetFolderPath(Environment.SpecialFolder.CommonPrograms),
+            Environment.GetFolderPath(Environment.SpecialFolder.Programs)
+        };
+    }
+
+    /// <summary>
+    /// 挂 FileSystemWatcher 监听开始菜单目录（事件驱动，平时零开销）：
+    /// 事件只用来标脏，真正的重扫发生在调用方认为需要的时候。
+    /// </summary>
+    private void StartWatching()
+    {
+        string[] existing = GetScanRoots()
+            .Where(root => !string.IsNullOrWhiteSpace(root) && Directory.Exists(root))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        // CommonPrograms / Programs 嵌套在对应 Start Menu 根下，子目录监听已覆盖，避免重复挂
+        string[] roots = existing
+            .Where(root => !existing.Any(other =>
+                !string.Equals(root, other, StringComparison.OrdinalIgnoreCase)
+                && root.StartsWith(other.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)))
+            .ToArray();
+
+        foreach (string root in roots)
+        {
+            try
+            {
+                var watcher = new FileSystemWatcher(root)
+                {
+                    IncludeSubdirectories = true,
+                    // 默认缓冲区太小，安装程序批量写快捷方式时容易溢出；溢出走 Error 同样触发标脏，这里只是少打几次日志
+                    InternalBufferSize = 16 * 1024
+                };
+                watcher.Created += (_, _) => Changed?.Invoke();
+                watcher.Deleted += (_, _) => Changed?.Invoke();
+                watcher.Changed += (_, _) => Changed?.Invoke();
+                watcher.Renamed += (_, _) => Changed?.Invoke();
+                watcher.Error += (_, _) => Changed?.Invoke();
+                watcher.EnableRaisingEvents = true;
+                _watchers.Add(watcher);
+            }
+            catch (Exception ex)
+            {
+                _log?.Invoke("监听开始菜单变化失败：" + ex.Message);
+            }
+        }
     }
 
     private static string StableId(string target)

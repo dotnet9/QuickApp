@@ -56,6 +56,12 @@ public interface IInstalledAppProvider
 {
     /// <summary>返回一份稳定排序的系统应用快照；无法访问系统目录时返回空集合。</summary>
     IReadOnlyList<LauncherItem> GetInstalledApps();
+
+    /// <summary>
+    /// 系统应用来源发生变化时触发（可能在后台线程）。实现只负责「有变化」这一通知，
+    /// 何时重扫由调用方决定，避免每次变化都付出全量扫描的代价。
+    /// </summary>
+    event Action? Changed;
 }
 
 /// <summary>检查 GitHub Releases 更新。</summary>

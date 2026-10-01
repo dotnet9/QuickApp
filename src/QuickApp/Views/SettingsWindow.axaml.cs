@@ -69,10 +69,10 @@ public partial class SettingsWindow : Window
             {
                 Title = "导出 QuickApp 配置",
                 SuggestedFileName = "quickapp-config",
-                DefaultExtension = "json",
+                DefaultExtension = "qa",
                 FileTypeChoices = new[]
                 {
-                    new FilePickerFileType("QuickApp 配置") { Patterns = new[] { "*.json" } }
+                    new FilePickerFileType("QuickApp 配置") { Patterns = new[] { "*.qa" } }
                 }
             });
 
@@ -108,7 +108,7 @@ public partial class SettingsWindow : Window
                 AllowMultiple = false,
                 FileTypeFilter = new[]
                 {
-                    new FilePickerFileType("QuickApp 配置") { Patterns = new[] { "*.json" } },
+                    new FilePickerFileType("QuickApp 配置") { Patterns = new[] { "*.qa" } },
                     FilePickerFileTypes.All
                 }
             });

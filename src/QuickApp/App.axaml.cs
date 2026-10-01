@@ -305,6 +305,9 @@ public partial class App : Application
             _hotkey?.Dispose();
             _hotkey = null;
 
+            // 停掉开始菜单目录的 FileSystemWatcher
+            (_services?.GetService<IInstalledAppProvider>() as IDisposable)?.Dispose();
+
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
                 desktop.Shutdown();

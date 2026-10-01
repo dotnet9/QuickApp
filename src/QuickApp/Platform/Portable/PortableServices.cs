@@ -231,6 +231,13 @@ internal sealed class PortableInstalledAppProvider : IInstalledAppProvider
 
     public PortableInstalledAppProvider(Action<string>? log = null) => _log = log;
 
+    /// <summary>不扫描就没有来源变化，显式空访问器避免“从未触发”告警。</summary>
+    public event Action? Changed
+    {
+        add { }
+        remove { }
+    }
+
     public IReadOnlyList<LauncherItem> GetInstalledApps()
     {
         _log?.Invoke("当前平台暂不支持扫描已安装应用。");

@@ -52,6 +52,9 @@ public sealed class DockViewModel : ViewModelBase
     private readonly List<ItemViewModel> _allItems = new();
     private readonly List<LauncherItem> _installedCatalog = new();
     private readonly Dictionary<string, ItemViewModel> _installedViewModels = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>系统应用来源已变化、等待下次打开搜索时重扫。Changed 事件在后台线程触发，故用 volatile。</summary>
+    private volatile bool _installedAppsDirty;
     private List<(LauncherItem Item, int Index)>? _lastRemovedItems;
 
     /// <summary>更新就绪的成功色（原型 --ok），不随主题切换。</summary>
@@ -118,7 +121,10 @@ public sealed class DockViewModel : ViewModelBase
         DismissUpdateCommand = ReactiveCommand.Create(DismissUpdate);
 
         LoadItems();
+        // 图标库残留的孤儿（上次会话删除/导入覆盖）此时清掉；会话内不删，保证「移除可撤销」
+        _store.CleanupOrphanedIcons(_config.Items);
         LoadInstalledApps();
+        _installedAppProvider.Changed += OnInstalledAppsChanged;
         RefreshPalette();
 
         // 主题=跟随系统时，操作系统深浅切换实时生效（原型 matchMedia 监听的等价实现）。
@@ -445,7 +451,7 @@ public sealed class DockViewModel : ViewModelBase
 
     public void ToggleStorageMode()
     {
-        string? error = _store.SwitchStorageMode(!AppPaths.IsPortable(AppContext.BaseDirectory), AppContext.BaseDirectory);
+        string? error = _store.SwitchStorageMode(!AppPaths.IsPortable(AppContext.BaseDirectory), AppContext.BaseDirectory, _config);
         StorageModeResult = error is null ? "已切换并迁移配置，立即生效" : "切换失败：" + error;
         Toast(StorageModeResult);
         this.RaisePropertyChanged(nameof(StorageModeText));
@@ -539,6 +545,8 @@ public sealed class DockViewModel : ViewModelBase
 
             if (value)
             {
+                // 新装应用多半发生在面板关闭期间，打开时先补扫再出结果
+                RefreshInstalledCatalogIfDirty();
                 IsDockVisible = true;
             }
 
@@ -675,6 +683,21 @@ public sealed class DockViewModel : ViewModelBase
         }
 
         RefreshFilter();
+    }
+
+    /// <summary>来源变化只记脏标记（后台线程触发，这里不做任何扫描），把重扫推迟到真正需要结果的时候。</summary>
+    private void OnInstalledAppsChanged() => _installedAppsDirty = true;
+
+    /// <summary>打开搜索面板才重扫：平时新装/卸载应用不产生任何扫描开销，打开瞬间至多补扫一次。</summary>
+    private void RefreshInstalledCatalogIfDirty()
+    {
+        if (!_installedAppsDirty)
+        {
+            return;
+        }
+
+        _installedAppsDirty = false;
+        LoadInstalledApps();
     }
 
     /// <summary>用 _config.Items 重建视图列表（首次载入与导入配置共用）。</summary>
@@ -1030,15 +1053,26 @@ public sealed class DockViewModel : ViewModelBase
         Toast("已添加命令行：" + model.Name);
     }
 
-    /// <summary>「更换图标」：写入本地图片路径并刷新显示。</summary>
-    /// <summary>「更换图标」选定本地图片后：记录路径、直接加载显示并持久化。</summary>
+    /// <summary>「更换图标」选定本地图片后：复制进图标库（配置目录内，按条目 Id 命名）、加载显示并持久化。</summary>
     public void ChangeIcon(ItemViewModel item, string imagePath)
     {
-        item.Model.CustomIconPath = imagePath;
-        item.IconFile = imagePath;
+        string? stored = _store.ImportCustomIcon(imagePath, item.Model.Id, out string? copyError);
+        if (stored is null)
+        {
+            // 复制失败（磁盘/权限问题）退回引用原图，至少当下能用
+            item.Model.CustomIconPath = imagePath;
+        }
+        else
+        {
+            item.Model.CustomIconPath = stored;
+        }
+
+        item.IconFile = item.Model.CustomIconPath;
         ItemVisualRequested?.Invoke(item);
         Save();
-        Toast("已更换 " + item.Name + " 的图标");
+        Toast(stored is null
+            ? "已更换 " + item.Name + " 的图标（复制失败，仍引用原图：" + copyError + "）"
+            : "已更换 " + item.Name + " 的图标");
     }
 
     // ---------------- 导入 / 导出 ----------------
@@ -1076,6 +1110,8 @@ public sealed class DockViewModel : ViewModelBase
         _host?.AutoHideDelayChanged();
 
         Save();
+        // 带进来的图标刚解包到本地图标库，此时清掉被整个替换掉的旧配置残留
+        _store.CleanupOrphanedIcons(_config.Items);
         Toast("已导入 " + _config.Items.Count + " 项");
         return true;
     }

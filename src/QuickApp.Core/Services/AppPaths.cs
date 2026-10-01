@@ -36,6 +36,17 @@ public static class AppPaths
     public static string IconCacheDirectory()
         => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "QuickApp", "icons");
 
+    /// <summary>
+    /// 自定义图标库目录：配置文件旁的 icons 子目录。用户选的图标复制进来（按条目 Id 命名），
+    /// 原图挪走/删除不影响图标，导入导出与便携模式也天然带上它。
+    /// </summary>
+    public static string IconLibraryDirectory(string baseDirectory)
+    {
+        string configFile = ConfigFile(baseDirectory);
+        string dir = Path.GetDirectoryName(configFile) ?? ".";
+        return Path.Combine(dir, "icons");
+    }
+
     public static bool IsPortable(string baseDirectory)
         => File.Exists(Path.Combine(baseDirectory, PortableMarker));
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using QuickApp.Core.Json;
 using QuickApp.Core.Models;
 
@@ -101,10 +102,11 @@ public sealed class ConfigStore
     }
 
     /// <summary>
-    /// 切换安装版/便携版：写入或移除 portable.txt，把当前配置（含滚动备份）复制到新模式的位置，
-    /// 存储器随即指向新路径。成功返回 null，失败返回错误信息（标记与配置路径回滚到切换前）。
+    /// 切换安装版/便携版：写入或移除 portable.txt，把当前配置（含滚动备份与图标库）复制到新模式的位置，
+    /// 并把条目里指向旧图标库的路径映射到新位置。
+    /// 成功返回 null，失败返回错误信息（标记与配置路径回滚到切换前）。
     /// </summary>
-    public string? SwitchStorageMode(bool toPortable, string baseDirectory)
+    public string? SwitchStorageMode(bool toPortable, string baseDirectory, AppConfig? config = null)
     {
         string oldFile = _configFile;
         string marker = Path.Combine(baseDirectory, AppPaths.PortableMarker);
@@ -147,6 +149,9 @@ public sealed class ConfigStore
                 }
             }
 
+            CopyIconLibrary(oldFile, _configFile);
+            RemapIconLibraryPaths(config, oldFile, _configFile);
+
             _log?.Invoke("存储模式已切换：" + _configFile);
             return null;
         }
@@ -179,13 +184,144 @@ public sealed class ConfigStore
         }
     }
 
-    /// <summary>导出配置到指定文件（同样的 JSON 格式），用于设置窗口的「导出」。</summary>
+    /// <summary>自定义图标库目录（配置文件旁的 icons 子目录）。</summary>
+    public string IconLibraryDirectory
+        => AppPaths.IconLibraryDirectory(Path.GetDirectoryName(_configFile) ?? ".");
+
+    /// <summary>
+    /// 把用户选的图片复制进图标库（按条目 Id 命名，重复更换自动覆盖）。
+    /// 返回入库后的路径；来源已在库内时原样返回；失败返回 null 并把原因写入 error。
+    /// </summary>
+    public string? ImportCustomIcon(string sourcePath, string itemId, out string? error)
+    {
+        error = null;
+        try
+        {
+            if (string.IsNullOrWhiteSpace(sourcePath) || !File.Exists(sourcePath))
+            {
+                error = "图片不存在";
+                return null;
+            }
+
+            string library = IconLibraryDirectory;
+            if (IsUnderDirectory(sourcePath, library))
+            {
+                return sourcePath;
+            }
+
+            Directory.CreateDirectory(library);
+            string destination = Path.Combine(library, itemId + Path.GetExtension(sourcePath));
+            File.Copy(sourcePath, destination, overwrite: true);
+
+            // 同 Id 换过扩展名时清掉旧版本，库里一个条目只留一份图标
+            foreach (string stale in Directory.GetFiles(library, itemId + ".*"))
+            {
+                if (!string.Equals(stale, destination, StringComparison.OrdinalIgnoreCase))
+                {
+                    File.Delete(stale);
+                }
+            }
+
+            return destination;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+            _log?.Invoke($"图标入库失败：{ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// 删除图标库里没有被任何条目引用的文件。只在启动和导入后调用：
+    /// 会话内的「移除可撤销」不删文件，撤销后图标还在。
+    /// </summary>
+    public void CleanupOrphanedIcons(IReadOnlyList<LauncherItem> items)
+    {
+        try
+        {
+            string library = IconLibraryDirectory;
+            if (!Directory.Exists(library))
+            {
+                return;
+            }
+
+            var referenced = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (LauncherItem item in items)
+            {
+                if (!string.IsNullOrWhiteSpace(item.CustomIconPath))
+                {
+                    referenced.Add(Path.GetFileName(item.CustomIconPath));
+                }
+            }
+
+            foreach (string file in Directory.GetFiles(library))
+            {
+                if (!referenced.Contains(Path.GetFileName(file)))
+                {
+                    File.Delete(file);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _log?.Invoke($"清理图标库失败：{ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 导出配置到 .qa 文件（zip 容器：config.json + 图标库），用于设置窗口的「导出」。
+    /// 库内图标在 JSON 里只记文件名，跨机器导入时映射回本地图标库；
+    /// 库外路径（如 MSIX 包 logo）原样保留，跨机器失效时由导入清理。
+    /// </summary>
     public bool Export(AppConfig config, string filePath)
     {
         try
         {
-            string json = System.Text.Json.JsonSerializer.Serialize(config, AppJsonContext.Default.AppConfig);
-            File.WriteAllText(filePath, json);
+            string library = IconLibraryDirectory;
+            var bundled = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var exportItems = new List<LauncherItem>(config.Items.Count);
+            foreach (LauncherItem item in config.Items)
+            {
+                string? custom = item.CustomIconPath;
+                if (custom is not null && IsUnderDirectory(custom, library) && File.Exists(custom))
+                {
+                    string fileName = Path.GetFileName(custom);
+                    custom = fileName;
+                    bundled.Add(fileName);
+                }
+
+                exportItems.Add(new LauncherItem
+                {
+                    Id = item.Id,
+                    Name = item.Name,
+                    Kind = item.Kind,
+                    Target = item.Target,
+                    Arguments = item.Arguments,
+                    WorkingDirectory = item.WorkingDirectory,
+                    CustomIconPath = custom
+                });
+            }
+
+            var exportConfig = new AppConfig
+            {
+                SchemaVersion = config.SchemaVersion,
+                Settings = config.Settings,
+                Items = exportItems
+            };
+
+            using FileStream stream = File.Create(filePath);
+            using var archive = new ZipArchive(stream, ZipArchiveMode.Create);
+            WriteTextEntry(archive, "config.json",
+                System.Text.Json.JsonSerializer.Serialize(exportConfig, AppJsonContext.Default.AppConfig));
+
+            foreach (string fileName in bundled)
+            {
+                using Stream source = File.OpenRead(Path.Combine(library, fileName));
+                using Stream target = archive.CreateEntry("icons/" + fileName, CompressionLevel.Optimal).Open();
+                source.CopyTo(target);
+            }
+
             return true;
         }
         catch (Exception ex)
@@ -195,7 +331,7 @@ public sealed class ConfigStore
         }
     }
 
-    /// <summary>从文件读入一份配置并做规范化；文件无效返回 null。</summary>
+    /// <summary>从 .qa 文件（zip 容器）读入配置：还原图标库并映射回本机路径；文件无效返回 null。</summary>
     public AppConfig? Import(string filePath)
     {
         try
@@ -205,20 +341,143 @@ public sealed class ConfigStore
                 return null;
             }
 
-            string text = File.ReadAllText(filePath);
-            if (string.IsNullOrWhiteSpace(text))
+            using FileStream stream = File.OpenRead(filePath);
+            using var archive = new ZipArchive(stream, ZipArchiveMode.Read);
+
+            ZipArchiveEntry? configEntry = archive.GetEntry("config.json");
+            if (configEntry is null)
             {
                 return null;
             }
 
-            AppConfig? config = System.Text.Json.JsonSerializer.Deserialize(text, AppJsonContext.Default.AppConfig);
-            return config is null ? null : Normalize(config);
+            string json;
+            using (var reader = new StreamReader(configEntry.Open()))
+            {
+                json = reader.ReadToEnd();
+            }
+
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return null;
+            }
+
+            AppConfig? config = System.Text.Json.JsonSerializer.Deserialize(json, AppJsonContext.Default.AppConfig);
+            if (config is null)
+            {
+                return null;
+            }
+
+            ExtractIconLibrary(archive);
+            RemapImportedIcons(config);
+            return Normalize(config);
         }
         catch (Exception ex)
         {
             _log?.Invoke($"导入配置失败：{ex.Message}");
             return null;
         }
+    }
+
+    /// <summary>解包 icons/ 下的图标到本地图标库；只取文件名，防 zip 路径穿越。</summary>
+    private void ExtractIconLibrary(ZipArchive archive)
+    {
+        string library = IconLibraryDirectory;
+        Directory.CreateDirectory(library);
+        foreach (ZipArchiveEntry entry in archive.Entries)
+        {
+            if (!entry.FullName.StartsWith("icons/", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            string fileName = Path.GetFileName(entry.FullName);
+            if (fileName.Length == 0)
+            {
+                continue;
+            }
+
+            entry.ExtractToFile(Path.Combine(library, fileName), overwrite: true);
+        }
+    }
+
+    /// <summary>导入配置里的图标路径映射回本机：库内文件名还原成本地路径；库外路径本机已失效的清掉，走自动图标提取。</summary>
+    private void RemapImportedIcons(AppConfig config)
+    {
+        string library = IconLibraryDirectory;
+        foreach (LauncherItem item in config.Items)
+        {
+            string? custom = item.CustomIconPath;
+            if (string.IsNullOrWhiteSpace(custom))
+            {
+                continue;
+            }
+
+            if (Path.IsPathRooted(custom))
+            {
+                item.CustomIconPath = File.Exists(custom) ? custom : null;
+            }
+            else
+            {
+                string candidate = Path.Combine(library, Path.GetFileName(custom));
+                item.CustomIconPath = File.Exists(candidate) ? candidate : null;
+            }
+        }
+    }
+
+    private static void WriteTextEntry(ZipArchive archive, string name, string content)
+    {
+        using var writer = new StreamWriter(archive.CreateEntry(name, CompressionLevel.Optimal).Open());
+        writer.Write(content);
+    }
+
+    /// <summary>存储模式切换时把图标库整体搬到新配置目录（尽力而为，缺文件不阻断切换）。</summary>
+    private static void CopyIconLibrary(string oldConfigFile, string newConfigFile)
+    {
+        string oldLibrary = Path.Combine(Path.GetDirectoryName(oldConfigFile) ?? ".", "icons");
+        string newLibrary = Path.Combine(Path.GetDirectoryName(newConfigFile) ?? ".", "icons");
+        if (!Directory.Exists(oldLibrary))
+        {
+            return;
+        }
+
+        Directory.CreateDirectory(newLibrary);
+        foreach (string file in Directory.GetFiles(oldLibrary))
+        {
+            File.Copy(file, Path.Combine(newLibrary, Path.GetFileName(file)), overwrite: true);
+        }
+    }
+
+    /// <summary>存储模式切换后，把条目里指向旧图标库的绝对路径改指新库；库外路径不动。</summary>
+    private static void RemapIconLibraryPaths(AppConfig? config, string oldConfigFile, string newConfigFile)
+    {
+        if (config is null)
+        {
+            return;
+        }
+
+        string oldLibrary = Path.Combine(Path.GetDirectoryName(oldConfigFile) ?? ".", "icons");
+        string newLibrary = Path.Combine(Path.GetDirectoryName(newConfigFile) ?? ".", "icons");
+        foreach (LauncherItem item in config.Items)
+        {
+            string? custom = item.CustomIconPath;
+            if (custom is null || !IsUnderDirectory(custom, oldLibrary))
+            {
+                continue;
+            }
+
+            string candidate = Path.Combine(newLibrary, Path.GetFileName(custom));
+            item.CustomIconPath = File.Exists(candidate) ? candidate : custom;
+        }
+    }
+
+    private static bool IsUnderDirectory(string path, string directory)
+    {
+        string full = Path.GetFullPath(path)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        string root = Path.GetFullPath(directory)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            + Path.DirectorySeparatorChar;
+        return full.StartsWith(root, StringComparison.OrdinalIgnoreCase);
     }
     /// <summary>补齐字段、去重 Id、清掉非法项，避免坏配置把 UI 带崩。</summary>
     public static AppConfig Normalize(AppConfig config)
