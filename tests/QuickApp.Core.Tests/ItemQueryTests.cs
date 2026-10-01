@@ -243,4 +243,12 @@ public sealed class VersionUtilTests
         Assert.False(VersionUtil.IsNewer(new Version(0, 1, 0), new Version(0, 1, 0)));
         Assert.False(VersionUtil.IsNewer(null, new Version(0, 1, 0)));
     }
+
+    [Fact]
+    public void IsNewer_normalizes_to_four_parts_before_comparing()
+    {
+        // 手工构造的三段 Version（Revision=-1）不能被 0.3.0.0 > 0.3.0.-1 误判为更新
+        Assert.False(VersionUtil.IsNewer(new Version(0, 3, 0, 0), new Version(0, 3, 0)));
+        Assert.True(VersionUtil.IsNewer(new Version(0, 3, 1, 0), new Version(0, 3, 0)));
+    }
 }

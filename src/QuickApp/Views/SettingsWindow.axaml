@@ -204,7 +204,7 @@
                       <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding CollapseAfterLaunch}" />
                     </Grid>
                     <Grid Classes="row" ColumnDefinitions="*,Auto">
-                      <TextBlock Classes="row" Text="启动时检查更新" />
+                      <TextBlock Classes="row" Text="自动检查更新（启动时及每 12 小时）" />
                       <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding CheckUpdates}" />
                     </Grid>
                     <Border Classes="groupsep" />

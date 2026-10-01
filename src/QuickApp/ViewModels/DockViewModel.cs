@@ -71,6 +71,10 @@ public sealed class DockViewModel : ViewModelBase
     private string? _storageModeResult;
     private UpdateInfo? _pendingUpdate;
     private bool _isCheckingUpdate;
+
+    /// <summary>运行中周期检查的间隔（小时）。常驻应用靠它发现新版本。</summary>
+    private const int UpdateCheckIntervalHours = 12;
+    private DateTime _lastUpdateCheckAt = DateTime.MinValue;
     private int _toastToken;
     private string _updateResultText = "尚未检查";
     private bool _isDownloadingUpdate;
@@ -126,6 +130,7 @@ public sealed class DockViewModel : ViewModelBase
         LoadInstalledApps();
         _installedAppProvider.Changed += OnInstalledAppsChanged;
         RefreshPalette();
+        _ = RunPeriodicUpdateCheckAsync();
 
         // 主题=跟随系统时，操作系统深浅切换实时生效（原型 matchMedia 监听的等价实现）。
         // RefreshPalette 会写 RequestedThemeVariant，可能在系统变体与显式变体间来回；
@@ -1312,10 +1317,17 @@ public sealed class DockViewModel : ViewModelBase
 
     // ---------------- 更新 ----------------
 
-    public async Task CheckUpdateAsync()
+    public async Task CheckUpdateAsync(bool silent = false)
     {
         if (IsCheckingUpdate)
         {
+            return;
+        }
+
+        // 手动检查防抖：短时间重复点击不重复请求（限流恢复期间尤其不该放大流量）
+        if (!silent && DateTime.UtcNow - _lastUpdateCheckAt < TimeSpan.FromSeconds(15))
+        {
+            Toast("刚刚检查过更新");
             return;
         }
 
@@ -1324,12 +1336,19 @@ public sealed class DockViewModel : ViewModelBase
         {
             Version current = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version ?? new Version(0, 1, 0);
             UpdateCheckResult result = await _updates.CheckAsync(current).ConfigureAwait(true);
+            _lastUpdateCheckAt = DateTime.UtcNow;
 
             if (!result.Succeeded)
             {
-                _updateResultText = "检查更新失败，请稍后重试";
+                _updateResultText = string.IsNullOrWhiteSpace(result.Error)
+                    ? "检查更新失败，请稍后重试"
+                    : "检查更新失败：" + result.Error;
                 this.RaisePropertyChanged(nameof(UpdateResultText));
-                Toast(_updateResultText);
+                if (!silent)
+                {
+                    Toast(_updateResultText);
+                }
+
                 return;
             }
 
@@ -1349,7 +1368,11 @@ public sealed class DockViewModel : ViewModelBase
                 RaiseDownloadStateChanged();
                 _updateResultText = "已是最新版本 " + VersionText;
                 this.RaisePropertyChanged(nameof(UpdateResultText));
-                Toast(_updateResultText);
+                if (!silent)
+                {
+                    Toast(_updateResultText);
+                }
+
                 return;
             }
 
@@ -1374,6 +1397,39 @@ public sealed class DockViewModel : ViewModelBase
         finally
         {
             IsCheckingUpdate = false;
+        }
+    }
+
+    /// <summary>
+    /// 运行中周期检查更新：Dock 常驻可能几周不重启，只靠启动检查会漏掉新版本。
+    /// 沿用「检查更新」开关；失败静默（不 Toast），发现新版本才提示。
+    /// </summary>
+    private async Task RunPeriodicUpdateCheckAsync()
+    {
+        try
+        {
+            using var timer = new PeriodicTimer(TimeSpan.FromHours(UpdateCheckIntervalHours));
+            while (await timer.WaitForNextTickAsync().ConfigureAwait(false))
+            {
+                try
+                {
+                    if (!Settings.CheckUpdates)
+                    {
+                        continue;
+                    }
+
+                    await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(
+                        () => CheckUpdateAsync(silent: true)).ConfigureAwait(true);
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Error("周期检查更新失败", ex);
+                }
+            }
+        }
+        catch
+        {
+            // PeriodicTimer 释放（进程退出）时结束循环
         }
     }
 

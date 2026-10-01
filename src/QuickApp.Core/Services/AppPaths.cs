@@ -14,14 +14,15 @@ public static class AppPaths
     /// <summary>滚动备份保留的历史份数（config.1.json 最新；当前文件 + 4 份 = 5 个时间点）。</summary>
     public const int RollingBackupCount = 4;
 
-    /// <summary>配置文件完整路径。</summary>
-    public static string ConfigFile(string baseDirectory)
-    {
-        string dir = IsPortable(baseDirectory)
+    /// <summary>配置目录：便携模式在 exe 旁，安装版在 %APPDATA%\QuickApp。</summary>
+    public static string ConfigDirectory(string baseDirectory)
+        => IsPortable(baseDirectory)
             ? baseDirectory
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "QuickApp");
-        return Path.Combine(dir, "config.json");
-    }
+
+    /// <summary>配置文件完整路径。</summary>
+    public static string ConfigFile(string baseDirectory)
+        => Path.Combine(ConfigDirectory(baseDirectory), "config.json");
 
     /// <summary>配置备份文件路径（保存前留一份）。</summary>
     public static string ConfigBackupFile(string configFile) => configFile + ".bak";
@@ -41,11 +42,11 @@ public static class AppPaths
     /// 原图挪走/删除不影响图标，导入导出与便携模式也天然带上它。
     /// </summary>
     public static string IconLibraryDirectory(string baseDirectory)
-    {
-        string configFile = ConfigFile(baseDirectory);
-        string dir = Path.GetDirectoryName(configFile) ?? ".";
-        return Path.Combine(dir, "icons");
-    }
+        => Path.Combine(ConfigDirectory(baseDirectory), "icons");
+
+    /// <summary>更新检查缓存（ETag + 上次 release）：条件请求 304 不计入 GitHub API 配额。</summary>
+    public static string UpdateStateFile(string baseDirectory)
+        => Path.Combine(ConfigDirectory(baseDirectory), "update-state.json");
 
     public static bool IsPortable(string baseDirectory)
         => File.Exists(Path.Combine(baseDirectory, PortableMarker));

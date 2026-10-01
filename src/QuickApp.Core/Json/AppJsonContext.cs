@@ -15,6 +15,7 @@ namespace QuickApp.Core.Json;
 [JsonSerializable(typeof(LauncherItem))]
 [JsonSerializable(typeof(QuickApp.Core.Services.GitHubRelease))]
 [JsonSerializable(typeof(QuickApp.Core.Services.GitHubAsset))]
+[JsonSerializable(typeof(QuickApp.Core.Services.UpdateCheckState))]
 public sealed partial class AppJsonContext : JsonSerializerContext
 {
 }

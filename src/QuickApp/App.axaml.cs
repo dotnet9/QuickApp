@@ -90,7 +90,8 @@ public partial class App : Application
             owner: "dotnet9",
             repo: "QuickApp",
             log: AppLog.Info,
-            preferInstaller: !AppPaths.IsPortable(AppContext.BaseDirectory)));
+            preferInstaller: !AppPaths.IsPortable(AppContext.BaseDirectory),
+            stateFile: AppPaths.UpdateStateFile(AppContext.BaseDirectory)));
         services.AddSingleton<IUpdateDownloader>(_ => new UpdateDownloader(
             new HttpClient { Timeout = TimeSpan.FromMinutes(10) }));
         services.AddSingleton(sp => new DockViewModel(

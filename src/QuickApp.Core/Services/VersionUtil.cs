@@ -39,7 +39,8 @@ public static class VersionUtil
             Math.Max(version.Revision, 0));
     }
 
-    /// <summary>candidate 是否比 current 新。</summary>
+    /// <summary>candidate 是否比 current 新。两边都补齐到四段再比：
+    /// 手工构造的三段 Version（Revision=-1）否则会被 0.3.0.0 > 0.3.0.-1 误判为更新。</summary>
     public static bool IsNewer(Version? candidate, Version? current)
     {
         if (candidate is null)
@@ -52,6 +53,13 @@ public static class VersionUtil
             return true;
         }
 
-        return candidate > current;
+        return Normalize(candidate) > Normalize(current);
     }
+
+    private static Version Normalize(Version version)
+        => new(
+            Math.Max(version.Major, 0),
+            Math.Max(version.Minor, 0),
+            Math.Max(version.Build, 0),
+            Math.Max(version.Revision, 0));
 }
