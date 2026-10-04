@@ -2035,6 +2035,10 @@ public partial class DockWindow : Window, IDockHost
         SetFocused(null);
         UpdateScrollChromeLayout();
         ScheduleReposition();
+        // 左↔右互换时窗口尺寸不变、不会触发 SizeChanged 里的 UpdateScrollChrome，
+        // 滚动指示条会停留在旧边算出的一侧，看起来就像应用块外沿多了条边框；
+        // 等 Background 优先级（晚于新朝向的布局）按新边重算一次。
+        Dispatcher.UIThread.Post(UpdateScrollChrome, DispatcherPriority.Background);
     }
 
     /// <summary>内容尺寸变化后重新贴边（布局要等一帧才稳定）。</summary>
