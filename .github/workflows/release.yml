@@ -1,4 +1,4 @@
-name: release
+﻿name: release
 
 # 推送 v* 标签即发布：Windows x64 使用 NativeAOT，其它平台使用自包含单文件并生成原生安装包。
 on:
@@ -51,6 +51,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: 安装 NativeAOT 依赖 (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y clang zlib1g-dev
 
       - name: 安装 .NET SDK
         uses: actions/setup-dotnet@v4

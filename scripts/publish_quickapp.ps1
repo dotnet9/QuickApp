@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
     [ValidateSet("win-x64", "win-x86", "linux-x64", "linux-arm64", "osx-x64", "osx-arm64")]
@@ -19,7 +19,8 @@ else {
     "net10.0"
 }
 
-$isWindowsAot = $RuntimeIdentifier -eq "win-x64"
+# 全平台 NativeAOT：完整反射元数据保全（源生成 JSON / 运行时 JSON 配置），单线程 ILC 更稳
+$useAot = $true
 $outputPath = Join-Path (Join-Path (Join-Path $publishRoot $RuntimeIdentifier) $targetFramework) "QuickApp"
 
 if ([string]::IsNullOrWhiteSpace($Version)) {
@@ -40,15 +41,17 @@ $publishArguments = @(
     "-p:Version=$Version",
     "-p:DebugType=None",
     "-p:DebugSymbols=false",
-    "-p:PublishTrimmed=$($isWindowsAot.ToString().ToLowerInvariant())",
-    "-p:PublishSingleFile=$((!$isWindowsAot).ToString().ToLowerInvariant())",
-    "-p:PublishAot=$($isWindowsAot.ToString().ToLowerInvariant())"
+    "-p:PublishTrimmed=true",
+    "-p:PublishSingleFile=false",
+    "-p:PublishAot=true"
 )
 
-if ($isWindowsAot) {
+if ($useAot) {
     $publishArguments += @(
         "-p:StripSymbols=true",
         "-p:IlcSingleThreaded=true",
+        "-p:IlcGenerateCompleteTypeMetadata=true",
+        "-p:IlcTrimMetadata=false",
         "-p:TreatWarningsAsErrors=false",
         "-p:ILLinkTreatWarningsAsErrors=false"
     )
