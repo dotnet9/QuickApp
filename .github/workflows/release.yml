@@ -146,6 +146,7 @@ jobs:
         shell: pwsh
         env:
           VERSION: ${{ steps.version.outputs.version }}
+          TAG_NAME: ${{ steps.version.outputs.tag_name }}
         run: |
           $releaseNotes = ".github/release-notes/v$env:VERSION.md"
           if (-not (Test-Path -LiteralPath $releaseNotes -PathType Leaf)) {
