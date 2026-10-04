@@ -163,5 +163,6 @@ jobs:
             artifacts/release/*.deb
             artifacts/release/*.dmg
             artifacts/release/*.pkg
+            artifacts/release/*.zip
             artifacts/release/*.sha256
             artifacts/release/*.exe
