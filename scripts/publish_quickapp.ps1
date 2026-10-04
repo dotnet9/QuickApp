@@ -47,8 +47,10 @@ $publishArguments = @(
 )
 
 if ($useAot) {
+    # 交叉编译（linux-arm64）与 Apple ld_classic 不支持 -gz=zlib（压缩调试段）：这些平台保留符号
+    $stripSymbols = $RuntimeIdentifier -notin @("linux-arm64", "osx-x64", "osx-arm64")
     $publishArguments += @(
-        "-p:StripSymbols=true",
+        "-p:StripSymbols=$($stripSymbols.ToString().ToLowerInvariant())",
         "-p:IlcSingleThreaded=true",
         "-p:IlcGenerateCompleteTypeMetadata=true",
         "-p:IlcTrimMetadata=false",
