@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
@@ -18,6 +18,8 @@ public sealed class ConfigStore
 
     public ConfigStore(string baseDirectory, Action<string>? log = null)
     {
+        // 旧版安装版配置在 %APPDATA%，先一次性迁到 %LOCALAPPDATA% 再解析路径
+        AppPaths.MigrateLegacyConfig(baseDirectory, log);
         _configFile = AppPaths.ConfigFile(baseDirectory);
         _log = log;
     }

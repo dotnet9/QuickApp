@@ -439,10 +439,10 @@ public sealed class DockViewModel : ViewModelBase
 
     public string ConfigFilePath => _store.ConfigFile;
 
-    /// <summary>存储模式说明（安装版 = %APPDATA%，便携版 = 程序目录）。</summary>
+    /// <summary>存储模式说明（安装版 = %LOCALAPPDATA%，便携版 = 程序目录）。</summary>
     public string StorageModeText => AppPaths.IsPortable(AppContext.BaseDirectory)
         ? "便携版 · 配置随程序目录"
-        : "安装版 · 配置在 %APPDATA%\\QuickApp";
+        : "安装版 · 配置在 %LOCALAPPDATA%\\QuickApp";
 
     /// <summary>切换到另一模式的按钮文案。</summary>
     public string StorageModeSwitchText => AppPaths.IsPortable(AppContext.BaseDirectory) ? "切换为安装版" : "切换为便携版";
