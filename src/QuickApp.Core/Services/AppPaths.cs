@@ -60,6 +60,9 @@ public static class AppPaths
     /// %LOCALAPPDATA%\QuickApp。新位置还没有配置而旧位置有 → 整目录复制过去
     /// （含 icons、update-state.json 与滚动备份），旧目录原样保留作为备份。
     /// 新位置已有配置（已迁移/全新安装）则什么都不做。
+    /// v0.4.2/0.4.3 的迁移有缺陷：把内容拷到了 LOCALAPPDATA 根（少了一级 QuickApp），
+    /// 随后应用又自动生成了默认配置——根目录散落的旧文件是"跑过坏迁移"的标记，
+    /// 此时需要用旧数据覆盖修复新位置的默认配置。
     /// </summary>
     public static void MigrateLegacyConfig(
         string baseDirectory,
@@ -72,25 +75,39 @@ public static class AppPaths
             return;
         }
 
-        string newRoot = newRootOverride ?? Path.GetDirectoryName(ConfigDirectory(baseDirectory))!;
-        string newConfig = Path.Combine(newRoot, "config.json");
-        if (File.Exists(newConfig))
-        {
-            return;
-        }
+        string newConfigDirectory = newRootOverride ?? ConfigDirectory(baseDirectory);
+        string newConfig = Path.Combine(newConfigDirectory, "config.json");
 
         string legacyAppDataRoot = legacyRootOverride
             ?? Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         string legacyRoot = Path.Combine(legacyAppDataRoot, LegacyConfigRoot);
-        if (!Directory.Exists(legacyRoot) || !File.Exists(Path.Combine(legacyRoot, "config.json")))
+        string legacyConfig = Path.Combine(legacyRoot, "config.json");
+        if (!File.Exists(legacyConfig))
+        {
+            return;
+        }
+
+        // 坏迁移的散落标记：LOCALAPPDATA 根下出现 QuickApp 的配置文件
+        var strayRoot = Path.GetDirectoryName(newConfigDirectory)!;
+        var strayConfig = Path.Combine(strayRoot, "config.json");
+        bool brokenCopyLeftStrays = File.Exists(strayConfig);
+        if (File.Exists(newConfig) && !brokenCopyLeftStrays)
         {
             return;
         }
 
         try
         {
-            CopyDirectory(legacyRoot, newRoot);
-            log?.Invoke("已把配置从 " + legacyRoot + " 迁移到 " + newRoot);
+            CopyDirectory(legacyRoot, newConfigDirectory, overwrite: brokenCopyLeftStrays);
+            if (brokenCopyLeftStrays)
+            {
+                CleanupStrayFiles(strayRoot);
+                log?.Invoke("检测到 v0.4.2/0.4.3 的错误迁移路径，已用 " + legacyRoot + " 的旧配置修复 " + newConfigDirectory);
+            }
+            else
+            {
+                log?.Invoke("已把配置从 " + legacyRoot + " 迁移到 " + newConfigDirectory);
+            }
         }
         catch (Exception ex)
         {
@@ -99,10 +116,31 @@ public static class AppPaths
         }
     }
 
+    /// <summary>清理 v0.4.2/0.4.3 错误迁移散落在 LOCALAPPDATA 根的文件（均为本应用创建的已知名称）。</summary>
+    private static void CleanupStrayFiles(string root)
+    {
+        var strayFiles = new[] { "config.json", "config.json.bak", "update-state.json",
+            "config.1.json", "config.2.json", "config.3.json", "config.4.json" };
+        foreach (var name in strayFiles)
+        {
+            var path = Path.Combine(root, name);
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+            }
+        }
+
+        var strayIcons = Path.Combine(root, "icons");
+        if (Directory.Exists(strayIcons))
+        {
+            Directory.Delete(strayIcons, recursive: true);
+        }
+    }
+
     private static string GetRootDirectory()
         => Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
 
-    private static void CopyDirectory(string sourceDirectory, string targetDirectory)
+    private static void CopyDirectory(string sourceDirectory, string targetDirectory, bool overwrite = false)
     {
         Directory.CreateDirectory(targetDirectory);
         foreach (string file in Directory.EnumerateFiles(sourceDirectory, "*", SearchOption.AllDirectories))
@@ -110,7 +148,7 @@ public static class AppPaths
             string relative = Path.GetRelativePath(sourceDirectory, file);
             string target = Path.Combine(targetDirectory, relative);
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-            File.Copy(file, target, overwrite: false);
+            File.Copy(file, target, overwrite: overwrite);
         }
     }
 }
