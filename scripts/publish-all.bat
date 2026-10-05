@@ -1,6 +1,6 @@
 @echo off
 rem Publish QuickApp for all supported platforms:
-rem   win-x64 (NativeAOT) + win-x86 / linux-x64 / linux-arm64 / osx-x64 / osx-arm64 (self-contained single-file)
+rem   win-x64 (NativeAOT) + linux-x64 / linux-arm64 / osx-x64 / osx-arm64 (self-contained single-file)
 rem
 rem Usage:
 rem   publish-all.bat                     project default version
@@ -9,7 +9,7 @@ rem   publish-all.bat 0.2.2               override the version
 setlocal EnableExtensions EnableDelayedExpansion
 set "SCRIPT_ROOT=%~dp0"
 set "VERSION=%~1"
-set "ALL_PLATFORMS=win-x64 win-x86 linux-x64 linux-arm64 osx-x64 osx-arm64"
+set "ALL_PLATFORMS=win-x64 linux-x64 linux-arm64 osx-x64 osx-arm64"
 set /a FAILED=0
 set /a DONE=0
 

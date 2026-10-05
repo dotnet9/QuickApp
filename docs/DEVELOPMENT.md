@@ -57,7 +57,7 @@ pwsh scripts/publish_quickapp.ps1 -RuntimeIdentifier osx-arm64 -Version 0.2.2
 pwsh scripts/package_macos_dmg.ps1 -RuntimeIdentifier osx-arm64 -Version 0.2.2 -Force
 ```
 
-可用 RID：`win-x64`、`win-x86`、`linux-x64`、`linux-arm64`、`osx-x64`、`osx-arm64`。`scripts/publish-all.bat` 一次发布全部 RID、`scripts/publish-win-x64.bat` 只发 win-x64；Windows x64 使用 NativeAOT，其余 RID 使用自包含单文件。
+可用 RID：`win-x64`、`linux-x64`、`linux-arm64`、`osx-x64`、`osx-arm64`。`scripts/publish-all.bat` 一次发布全部 RID、`scripts/publish-win-x64.bat` 只发 win-x64；Windows x64 使用 NativeAOT，其余 RID 使用自包含单文件。
 
 ## 持续集成与 Release
 
@@ -75,7 +75,7 @@ GitHub Actions 会在推送 `v*` 标签时分别构建 Windows、Linux 和 macOS
 
 ## 使用说明
 
-首次启动会创建默认配置并显示几个 Windows 内置项目。配置文件默认位于：
+首次启动会创建空配置，Dock 默认为空，可从系统应用搜索直接启动，或点 `＋` 加入 Dock；旧版本预置的内置程序条目会在加载老配置时自动清理。配置文件默认位于：
 
 ```text
 %APPDATA%\QuickApp\config.json

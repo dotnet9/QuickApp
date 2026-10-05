@@ -1,7 +1,7 @@
 ﻿[CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet("win-x64", "win-x86", "linux-x64", "linux-arm64", "osx-x64", "osx-arm64")]
+    [ValidateSet("win-x64", "linux-x64", "linux-arm64", "osx-x64", "osx-arm64")]
     [string] $RuntimeIdentifier,
 
     [string] $Version = ""
