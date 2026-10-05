@@ -42,11 +42,13 @@ public sealed class ConfigStoreTests : IDisposable
     }
 
     [Fact]
-    public void Missing_file_yields_default_seed_items()
+    public void Missing_file_yields_empty_item_list()
     {
         AppConfig config = CreateStore().Load();
 
-        Assert.NotEmpty(config.Items);
+        // 不预置任何条目：预置的内置程序在非 Windows 平台全是死链，
+        // 用户还得一个个手工删。首次启动应该是干净的空Dock。
+        Assert.Empty(config.Items);
         Assert.Equal(1, config.SchemaVersion);
     }
 
@@ -75,8 +77,39 @@ public sealed class ConfigStoreTests : IDisposable
 
         AppConfig config = store.Load();
 
-        Assert.NotEmpty(config.Items);                                        // 回退到默认
+        Assert.Empty(config.Items);                                            // 回退到默认（空列表）
         Assert.True(File.Exists(store.ConfigFile + ".broken"));               // 坏文件被留档
+    }
+
+    /// <summary>历史版本预置的 Windows 内置程序条目，加载时应被自动清掉并回写，不留给用户手工删。</summary>
+    [Fact]
+    public void Legacy_windows_seed_items_are_dropped_and_persisted()
+    {
+        ConfigStore store = CreateStore();
+        File.WriteAllText(store.ConfigFile, """
+        {
+          "schemaVersion": 1,
+          "settings": {},
+          "items": [
+            { "id": "seed-explorer", "name": "文件资源管理器", "kind": 0, "target": "explorer.exe" },
+            { "id": "seed-notepad",  "name": "记事本",         "kind": 0, "target": "notepad.exe" },
+            { "id": "seed-calc",     "name": "计算器",         "kind": 0, "target": "calc.exe" },
+            { "id": "seed-cmd",      "name": "命令提示符",     "kind": 2, "target": "start cmd.exe" },
+            { "id": "mine",          "name": "我的应用",       "kind": 0, "target": "/Applications/Safari.app" }
+          ]
+        }
+        """);
+
+        AppConfig config = store.Load();
+
+        Assert.DoesNotContain(config.Items, i => (i.Target ?? "").EndsWith(".exe", StringComparison.OrdinalIgnoreCase));
+        Assert.DoesNotContain(config.Items, i => (i.Target ?? "") == "start cmd.exe");
+        Assert.Contains(config.Items, i => i.Id == "mine");                   // 用户自己的条目必须留着
+
+        // 回写生效，重启一次不会又冒出预置条目
+        AppConfig reloaded = CreateStore().Load();
+        Assert.Single(reloaded.Items);
+        Assert.Equal("mine", reloaded.Items[0].Id);
     }
 
     [Fact]

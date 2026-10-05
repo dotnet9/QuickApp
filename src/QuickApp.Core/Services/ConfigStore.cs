@@ -47,7 +47,19 @@ public sealed class ConfigStore
             AppConfig? config = System.Text.Json.JsonSerializer.Deserialize(
                 text, AppJsonContext.Default.AppConfig);
 
-            return config is null ? CreateDefault() : Normalize(config);
+            if (config is null)
+            {
+                return CreateDefault();
+            }
+
+            AppConfig normalized = Normalize(config);
+            if (DropForeignSeedItems(normalized))
+            {
+                // 清掉了历史版本预置的内置程序条目，回写一次避免每次启动重复处理
+                Save(normalized);
+            }
+
+            return normalized;
         }
         catch (Exception ex)
         {
@@ -522,18 +534,60 @@ public sealed class ConfigStore
         return config;
     }
 
-    /// <summary>首次运行的种子项：几个 Windows 内置程序，方便立刻看到效果。</summary>
+    /// <summary>
+    /// 清掉历史版本注入的 Windows 内置程序种子项。
+    /// 这些内置程序名（explorer.exe 等）只存在于 Windows，在 macOS / Linux 上
+    /// 会变成几个点不开的 exe 条目，得用户手工删——所以任何平台都不保留。
+    /// 只按 Target 精确匹配 CreateDefault 写过的四个值，用户自己加的同名命令不动。
+    /// 返回 true 表示有改动。
+    /// </summary>
+    private bool DropForeignSeedItems(AppConfig config)
+    {
+        if (config.Items.Count == 0)
+        {
+            return false;
+        }
+
+        var kept = new List<LauncherItem>(config.Items.Count);
+        bool changed = false;
+        foreach (LauncherItem item in config.Items)
+        {
+            if (WindowsSeedTargets.Contains(item.Target ?? string.Empty))
+            {
+                changed = true;
+                _log?.Invoke($"已移除预置的内置程序条目：{item.Name}");
+                continue;
+            }
+
+            kept.Add(item);
+        }
+
+        if (changed)
+        {
+            config.Items = kept;
+        }
+
+        return changed;
+    }
+
+    /// <summary>旧版本 CreateDefault 预置的 Windows 内置程序目标，一律视为无效。</summary>
+    private static readonly HashSet<string> WindowsSeedTargets = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "explorer.exe",
+        "notepad.exe",
+        "calc.exe",
+        "start cmd.exe"
+    };
+
+    /// <summary>
+    /// 首次运行的默认配置：条目列表为空。
+    /// 曾按平台注入过 Windows 内置程序（explorer.exe / notepad.exe / calc.exe / cmd.exe），
+    /// 但预置条目在非 Windows 平台全是点不开的死链，在 Windows 上也只是四个可有可无的默认项，
+    /// 却要用户自己一个个删干净——不值得，空列表让用户按自己的习惯添加。
+    /// </summary>
     public static AppConfig CreateDefault()
     {
-        var config = new AppConfig();
-        config.Items.AddRange(new[]
-        {
-            new LauncherItem { Id = "seed-explorer", Name = "文件资源管理器", Kind = ItemKind.App, Target = "explorer.exe" },
-            new LauncherItem { Id = "seed-notepad", Name = "记事本", Kind = ItemKind.App, Target = "notepad.exe" },
-            new LauncherItem { Id = "seed-calc", Name = "计算器", Kind = ItemKind.App, Target = "calc.exe" },
-            new LauncherItem { Id = "seed-cmd", Name = "命令提示符", Kind = ItemKind.Command, Target = "start cmd.exe" }
-        });
-        return config;
+        return new AppConfig();
     }
 
     private void TryQuarantineBrokenFile()
