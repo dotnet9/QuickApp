@@ -1,0 +1,14 @@
+[
+  {
+    "id": "vex",
+    "name": "Vex",
+    "displayName": "Vex · 维刻",
+    "description": "极简之力，妙笔成章 —— 跨平台 Markdown 编辑器：实时预览、大纲导航、文档统计，可导出 HTML / PDF / Word 与公众号富文本。",
+    "owner": "dotnet9",
+    "repo": "Vex",
+    "installArgumentsWindows": "/VERYSILENT /NORESTART /SUPPRESSMSGBOXES",
+    "launcherPathsWindows": [ "%LOCALAPPDATA%\\Programs\\Vex\\Vex.exe", "%ProgramFiles%\\Vex\\Vex.exe" ],
+    "launcherPathsLinux": [ "/usr/bin/vex", "/opt/Vex/vex" ],
+    "launcherPathsMacOS": [ "/Applications/Vex.app" ]
+  }
+]

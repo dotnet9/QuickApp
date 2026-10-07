@@ -52,6 +52,10 @@ public partial class App : Application
         var viewModel = _services.GetRequiredService<DockViewModel>();
         var appIcon = CreateAppIcon();
 
+        // 推荐应用：卡片装配 + 后台周期刷新（版本徽标保持新鲜）
+        var recommendedApps = BuildRecommendedApps(_services, viewModel);
+        _ = recommendedApps.RunPeriodicRefreshAsync();
+
         _dock = new DockWindow();
         _dock.Attach(viewModel);
         _dock.Icon = appIcon;
@@ -104,7 +108,54 @@ public partial class App : Application
             sp.GetRequiredService<IAutoStartService>(),
             appName: "QuickApp"));
 
+        // 推荐应用：目录内嵌、安装包地址运行时按系统实时解析（推荐软件发新版无需更新 QuickApp）
+        services.AddSingleton<IRecommendedAppsService>(_ => new RecommendedAppsService(
+            new HttpClient { Timeout = TimeSpan.FromSeconds(12) },
+            log: AppLog.Info));
+        services.AddSingleton(_ => new RecommendedAppsStateStore(AppContext.BaseDirectory, AppLog.Info));
+
         return services.BuildServiceProvider();
+    }
+
+    /// <summary>
+    /// 装配推荐应用控制器：卡片安装完成后自动加入 Dock、Dock 成员变化反向同步到卡片；
+    /// 下载与安装能力由 DockViewModel 提供（复用自更新的下载器与静默安装逻辑）。
+    /// </summary>
+    private static RecommendedAppsController BuildRecommendedApps(ServiceProvider services, DockViewModel dock)
+    {
+        var controller = new RecommendedAppsController(
+            services.GetRequiredService<IRecommendedAppsService>(),
+            services.GetRequiredService<RecommendedAppsStateStore>(),
+            refreshCard: card => card.RefreshAsync(),
+            installCompleted: card => dock.RefreshRecommendedIcon(card.Id),
+            dockMembershipChanged: (card, joining) =>
+            {
+                if (joining)
+                {
+                    dock.AddRecommendedItem(card.App, card.InstalledRecord?.LauncherPath);
+                }
+                else
+                {
+                    dock.RemoveRecommendedItem(card.Id);
+                }
+            },
+            toast: message =>
+            {
+                dock.Toast(message);
+                return message;
+            });
+
+        foreach (RecommendedAppCardViewModel card in controller.Cards)
+        {
+            card.DownloadAsync = dock.DownloadRecommendedAssetAsync;
+            card.RunInstallerAsync = installerPath => dock.InstallRecommendedPackageAsync(card.App, installerPath);
+            card.Initialize(
+                inDock: dock.IsRecommendedInDock(card.Id),
+                record: services.GetRequiredService<RecommendedAppsStateStore>().Find(card.Id));
+        }
+
+        dock.RecommendedApps = controller;
+        return controller;
     }
 
     /// <summary>全局唤起热键（默认 Ctrl+Alt+Space）：显隐切换，收起状态下一按即唤出。</summary>

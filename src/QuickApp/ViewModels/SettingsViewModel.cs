@@ -144,6 +144,14 @@ public sealed class SettingsViewModel : ViewModelBase
 
     private AppSettings Settings => _dock.Settings;
 
+    // ---------------- 推荐应用 ----------------
+
+    /// <summary>推荐页签的卡片集合（控制器随 Dock 依赖注入创建）。</summary>
+    public RecommendedAppsController? RecommendedApps => _dock.RecommendedApps;
+
+    /// <summary>推荐页签可见时刷新卡片（TTL 内走缓存，过期才出网）。</summary>
+    public void RefreshRecommendedApps() => _ = _dock.RefreshRecommendedAppsAsync();
+
     // ---------------- 外观 ----------------
 
     public int ThemeIndex

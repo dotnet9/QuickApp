@@ -99,6 +99,87 @@
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="Padding" Value="18,4,18,18" />
     </Style>
+    <!-- 推荐 · 卡片（原型 .rec-card） -->
+    <Style Selector="ItemsControl.rec-list">
+      <Setter Property="Margin" Value="0,4,0,10" />
+    </Style>
+    <Style Selector="Border.rec-card">
+      <Setter Property="Padding" Value="14,13" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="BorderBrush" Value="{DynamicResource QALineBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Background" Value="{DynamicResource QAHoverBrush}" />
+      <Setter Property="Margin" Value="0,0,0,10" />
+    </Style>
+    <Style Selector="Border.rec-icon">
+      <Setter Property="Width" Value="44" />
+      <Setter Property="Height" Value="44" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="Background" Value="{DynamicResource QAHoverBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource QALineBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Padding" Value="7" />
+    </Style>
+    <Style Selector="TextBlock.rec-title">
+      <Setter Property="FontSize" Value="13.5" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{DynamicResource QATextBrush}" />
+    </Style>
+    <Style Selector="Border.rec-ver">
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="CornerRadius" Value="999" />
+      <Setter Property="BorderBrush" Value="{DynamicResource QAAccentBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Padding" Value="8,3" />
+      <Setter Property="Margin" Value="8,0,0,0" />
+    </Style>
+    <Style Selector="TextBlock.rec-ver">
+      <Setter Property="FontSize" Value="10.5" />
+      <Setter Property="Foreground" Value="{DynamicResource QAAccentBrush}" />
+    </Style>
+    <Style Selector="TextBlock.rec-desc">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Foreground" Value="{DynamicResource QATextDimBrush}" />
+    </Style>
+    <Style Selector="TextBlock.rec-meta">
+      <Setter Property="FontSize" Value="11" />
+      <Setter Property="Foreground" Value="{DynamicResource QATextDimBrush}" />
+    </Style>
+    <Style Selector="ProgressBar.rec-progress">
+      <Setter Property="Height" Value="4" />
+      <Setter Property="MinHeight" Value="4" />
+      <Setter Property="CornerRadius" Value="2" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Foreground" Value="{DynamicResource QAAccentBrush}" />
+      <Setter Property="Background" Value="{DynamicResource QAActiveBrush}" />
+    </Style>
+    <Style Selector="Border.rec-badge">
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="CornerRadius" Value="999" />
+      <Setter Property="BorderBrush" Value="#663FB96F" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="Padding" Value="10,4" />
+      <Setter Property="Margin" Value="0,0,8,0" />
+    </Style>
+    <Style Selector="TextBlock.rec-badge">
+      <Setter Property="FontSize" Value="11.5" />
+      <Setter Property="Foreground" Value="#3FB96F" />
+    </Style>
+    <!-- 推荐 · 安装按钮（强调色实底，原型 .chip.primary） -->
+    <Style Selector="Button.rec-install">
+      <Setter Property="Background" Value="{DynamicResource QAAccentBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource QAAccentInkBrush}" />
+      <Setter Property="Padding" Value="14,5" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="MinHeight" Value="26" />
+    </Style>
+    <Style Selector="Button.rec-install:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource QAAccentBrush}" />
+      <Setter Property="Opacity" Value="0.92" />
+    </Style>
   </Window.Styles>
 
   <!-- 透明边距 10px（浅色桌面减少透出）——原型阴影 18/40 超出该投影区，按比例衰减为 12/28，色值同 0.45/0.35 -->
@@ -323,6 +404,94 @@
                       <Button Theme="{StaticResource LinkButton}" Name="ExportButton" Content="导出配置" />
                       <Button Theme="{StaticResource LinkButton}" Name="OpenConfigFolderButton" Content="打开配置文件夹" />
                     </StackPanel>
+                  </StackPanel>
+                </ScrollViewer>
+              </Border>
+            </TabItem>
+
+            <TabItem Classes="settings-tab">
+              <TabItem.Header>
+                <StackPanel Orientation="Horizontal" Spacing="9">
+                  <Path Classes="tab-icon"
+                        Data="{x:Static icons:Icons.Rocket}"
+                        StrokeThickness="1.75"
+                        Width="16"
+                        Height="16"
+                        Stretch="Uniform" />
+                  <TextBlock Text="推荐" VerticalAlignment="Center" />
+                </StackPanel>
+              </TabItem.Header>
+              <Border Classes="tab-content">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+                  <StackPanel>
+                    <TextBlock Classes="section" Text="推荐应用" />
+                    <TextBlock Classes="hint" TextWrapping="Wrap"
+                               Text="精选作者自研软件，一键下载并安装（安装包实时取自各仓库 GitHub Releases 最新发布，附 sha256 校验）；安装完成后自动把快捷方式加入 Dock，可随时在编辑模式移除。" />
+                    <ItemsControl Classes="rec-list" ItemsSource="{Binding RecommendedApps}">
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:RecommendedAppCardViewModel">
+                          <Border Classes="rec-card">
+                            <StackPanel Spacing="10">
+                              <Grid ColumnDefinitions="Auto,*,Auto" >
+                                <Border Grid.Column="0" Classes="rec-icon" Margin="0,0,12,0">
+                                  <Image Source="{Binding Icon}" Stretch="Uniform" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                                  <StackPanel Orientation="Horizontal" Spacing="0">
+                                    <TextBlock Classes="rec-title" Text="{Binding DisplayName}" />
+                                    <Border Classes="rec-ver" IsVisible="{Binding LatestTag, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                      <TextBlock Classes="rec-ver" Text="{Binding VersionBadge}" />
+                                    </Border>
+                                  </StackPanel>
+                                  <TextBlock Classes="rec-desc" Text="{Binding Description}" />
+                                  <TextBlock Classes="rec-meta" Text="{Binding MetaText}" IsVisible="{Binding MetaText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                </StackPanel>
+                              </Grid>
+                              <!-- 下载/安装中：进度条 + 取消 -->
+                              <StackPanel IsVisible="{Binding IsDownloading}" Spacing="6">
+                                <ProgressBar Classes="rec-progress" Minimum="0" Maximum="100"
+                                             Value="{Binding DownloadProgress}" />
+                                <Grid ColumnDefinitions="*,Auto,Auto">
+                                  <TextBlock Grid.Column="0" Classes="hint" VerticalAlignment="Center"
+                                             Text="{Binding InstallHint}" />
+                                  <TextBlock Grid.Column="1" Classes="rec-meta" Margin="0,0,10,0" VerticalAlignment="Center"
+                                             Text="{Binding DownloadProgress, StringFormat={}{0:0}%}" />
+                                  <Button Grid.Column="2" Theme="{StaticResource LinkButton}" Content="取消" Command="{Binding CancelCommand}" />
+                                </Grid>
+                              </StackPanel>
+                              <StackPanel IsVisible="{Binding IsInstalling}" Spacing="6">
+                                <ProgressBar Classes="rec-progress" IsIndeterminate="True" />
+                                <TextBlock Classes="hint" Text="{Binding InstallingHint}" />
+                              </StackPanel>
+                              <!-- 常态：安装 / 已装徽标 + Dock 开关 / 发布页 -->
+                              <StackPanel IsVisible="{Binding IsIdle}" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                                <TextBlock Classes="hint" Margin="0,0,4,0" VerticalAlignment="Center"
+                                           Text="{Binding Error}"
+                                           IsVisible="{Binding Error, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+                                <Button Classes="rec-install" Content="{Binding InstallButtonText}" Command="{Binding InstallCommand}" />
+                                <Button Theme="{StaticResource LinkButton}" Content="发布页" Command="{Binding OpenReleasePageCommand}" />
+                              </StackPanel>
+                              <StackPanel IsVisible="{Binding IsResolving}" HorizontalAlignment="Right">
+                                <TextBlock Classes="hint" Text="正在获取最新版本…" />
+                              </StackPanel>
+                              <StackPanel IsVisible="{Binding IsInstalled}" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+                                <Border Classes="rec-badge">
+                                  <StackPanel Orientation="Horizontal" Spacing="5">
+                                    <Path Data="{x:Static icons:Icons.Check}" Stroke="#3FB96F" StrokeThickness="2.4"
+                                          StrokeLineCap="Round" Width="12" Height="12" Stretch="Uniform" />
+                                    <TextBlock Classes="rec-badge" Text="已安装" />
+                                  </StackPanel>
+                                </Border>
+                                <Button Theme="{StaticResource LinkButton}" Content="{Binding DockButtonText}" Command="{Binding ToggleDockCommand}" />
+                                <Button Theme="{StaticResource LinkButton}" Content="发布页" Command="{Binding OpenReleasePageCommand}" />
+                              </StackPanel>
+                            </StackPanel>
+                          </Border>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock Classes="hint" TextWrapping="Wrap"
+                               Text="推荐列表随应用版本更新 · 全部作品见 doc.codewf.com" />
                   </StackPanel>
                 </ScrollViewer>
               </Border>

@@ -105,4 +105,5 @@ public sealed record UpdateInfo(
     string PageUrl,
     string? AssetUrl,
     string? AssetName,
-    string? ChecksumUrl = null);
+    string? ChecksumUrl = null,
+    long? AssetSize = null);

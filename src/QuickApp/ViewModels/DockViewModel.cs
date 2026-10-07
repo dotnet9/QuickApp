@@ -60,6 +60,7 @@ public sealed class DockViewModel : ViewModelBase
     /// <summary>更新就绪的成功色（原型 --ok），不随主题切换。</summary>
     private static readonly IBrush UpdateSuccessBrush = new SolidColorBrush(Color.FromRgb(0x3F, 0xB9, 0x6F));
 
+    /// <summary>编辑模式移除可撤销的记忆，与推荐应用「移出 Dock」共用一套撤销栈。</summary>
     private IDockHost? _host;
     private string _searchQuery = string.Empty;
     private bool _isSearchOpen;
@@ -943,9 +944,27 @@ public sealed class DockViewModel : ViewModelBase
         }
 
         _lastRemovedItems = new List<(LauncherItem Item, int Index)> { (vm.Model, index) };
+        SyncRecommendedCardsAfterDockChange(vm.Model.RecommendedId);
         RefreshFilter();
         Save();
         Toast("已移除 " + vm.Name, "撤销", UndoRemoveCommand, 5000);
+    }
+
+    /// <summary>Dock 条目增删/导入后，把推荐卡片的「已加入 Dock」状态对齐现实。</summary>
+    private void SyncRecommendedCardsAfterDockChange(string? recommendedId = null)
+    {
+        if (RecommendedApps is null)
+        {
+            return;
+        }
+
+        foreach (RecommendedAppCardViewModel card in RecommendedApps.Cards)
+        {
+            if (recommendedId is null || string.Equals(card.Id, recommendedId, StringComparison.OrdinalIgnoreCase))
+            {
+                RecommendedApps.SyncDockMembership(card.Id, IsRecommendedInDock(card.Id));
+            }
+        }
     }
 
     private void ClearAllItems()
@@ -987,6 +1006,7 @@ public sealed class DockViewModel : ViewModelBase
 
         ApplyItemLayout();
         RefreshFilter();
+        SyncRecommendedCardsAfterDockChange();
         Save();
         Toast("已恢复");
     }
@@ -1101,6 +1121,7 @@ public sealed class DockViewModel : ViewModelBase
         _config.Items = imported.Items;
 
         RebuildItems();
+        SyncRecommendedCardsAfterDockChange();
         RefreshPalette();
         ApplySettings(paletteChanged: false, sizeChanged: true, save: false);
         if (edgeChanged)
@@ -1559,6 +1580,146 @@ public sealed class DockViewModel : ViewModelBase
             _host?.OpenUrl(url);
         }
     }
+
+    // ---------------- 推荐应用 ----------------
+
+    /// <summary>
+    /// 推荐应用安装完成后（或用户点「加入 Dock」）把快捷方式放进 Dock。
+    /// 同一推荐应用的条目已存在时只刷新图标与路径，不重复添加。
+    /// 主程序路径以安装后探测结果优先；没探测到就用条目里已有的（或空，启动时再报错）。
+    /// </summary>
+    public void AddRecommendedItem(RecommendedApp app, string? launcherPath)
+    {
+        LauncherItem? existing = _config.Items.FirstOrDefault(item =>
+            string.Equals(item.RecommendedId, app.Id, StringComparison.OrdinalIgnoreCase));
+        if (existing is not null)
+        {
+            if (!string.IsNullOrWhiteSpace(launcherPath))
+            {
+                existing.Target = launcherPath;
+            }
+
+            ItemViewModel? existingVm = _allItems.FirstOrDefault(vm => ReferenceEquals(vm.Model, existing));
+            if (existingVm is not null)
+            {
+                _ = LoadIconAsync(existingVm);
+            }
+
+            Save();
+            return;
+        }
+
+        var model = new LauncherItem
+        {
+            Id = "i" + Guid.NewGuid().ToString("N")[..8],
+            Name = app.Name,
+            Kind = ItemKind.App,
+            Target = launcherPath ?? string.Empty,
+            RecommendedId = app.Id
+        };
+
+        _config.Items.Add(model);
+        var vm = new ItemViewModel(model, RunItem, RemoveItem);
+        _allItems.Add(vm);
+        _ = LoadIconAsync(vm);
+        ApplyItemLayout();
+        RefreshFilter();
+        Save();
+    }
+
+    /// <summary>推荐卡片「移出 Dock」：只摘快捷方式，保留安装状态，可随时再加回。</summary>
+    public void RemoveRecommendedItem(string appId)
+    {
+        LauncherItem? model = _config.Items.FirstOrDefault(item =>
+            string.Equals(item.RecommendedId, appId, StringComparison.OrdinalIgnoreCase));
+        if (model is null)
+        {
+            return;
+        }
+
+        ItemViewModel? vm = _allItems.FirstOrDefault(item => ReferenceEquals(item.Model, model));
+        if (vm is not null)
+        {
+            _allItems.Remove(vm);
+        }
+
+        _config.Items.Remove(model);
+        RefreshFilter();
+        Save();
+    }
+
+    /// <summary>Dock 条目里某推荐应用是否已有快捷方式（编辑模式移除后变 false）。</summary>
+    public bool IsRecommendedInDock(string appId)
+        => _config.Items.Any(item =>
+            string.Equals(item.RecommendedId, appId, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>推荐卡片下载安装包：复用自更新的下载器（临时目录 + sha256 校验 + 原子改名）。</summary>
+    public Task<UpdateDownloadResult> DownloadRecommendedAssetAsync(
+        UpdateInfo update,
+        IProgress<UpdateDownloadProgress> progress,
+        CancellationToken cancellationToken)
+        => _updateDownloader.DownloadAsync(update, progress, cancellationToken);
+
+    /// <summary>
+    /// 运行推荐应用的安装包。Windows 上 Inno 安装器带静默参数后台安装；
+    /// 其他平台/无参数时交给系统打开安装包，由用户手动完成。
+    /// </summary>
+    public async Task<bool> InstallRecommendedPackageAsync(RecommendedApp app, string installerPath)
+    {
+        try
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                string arguments = app.InstallArgumentsWindows ?? string.Empty;
+                using var process = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = installerPath,
+                    Arguments = arguments,
+                    UseShellExecute = true
+                });
+                if (process is not null && !string.IsNullOrWhiteSpace(arguments))
+                {
+                    await process.WaitForExitAsync().ConfigureAwait(false);
+                    return process.ExitCode == 0;
+                }
+
+                return true;
+            }
+
+            await Task.Run(() =>
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = installerPath,
+                    UseShellExecute = true
+                })).ConfigureAwait(false);
+            // 手动安装：无法确认完成，交由用户「加入 Dock」时重新探测路径
+            return true;
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("运行推荐应用安装包失败：" + app.Name, ex);
+            return false;
+        }
+    }
+
+    /// <summary>推荐应用安装完成后刷新一次图标缓存来源（新装的应用第一次提取图标可能还没就绪）。</summary>
+    public void RefreshRecommendedIcon(string appId)
+    {
+        LauncherItem? model = _config.Items.FirstOrDefault(item =>
+            string.Equals(item.RecommendedId, appId, StringComparison.OrdinalIgnoreCase));
+        ItemViewModel? vm = _allItems.FirstOrDefault(item => item.Model.RecommendedId == appId);
+        if (model is not null && vm is not null)
+        {
+            _ = LoadIconAsync(vm);
+        }
+    }
+
+    /// <summary>推荐应用控制器（设置 · 推荐页签的数据源）；DI 构造后由 App 装配。</summary>
+    public RecommendedAppsController? RecommendedApps { get; set; }
+
+    /// <summary>设置窗口打开推荐页签时刷新卡片版本信息（服务层带 TTL 缓存）。</summary>
+    public Task RefreshRecommendedAppsAsync()
+        => RecommendedApps?.RefreshAsync() ?? Task.CompletedTask;
 
     // ---------------- 视图回调：尺寸/透明度/标签变化后由窗口重新应用 ----------------
 

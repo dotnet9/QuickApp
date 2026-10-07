@@ -22,4 +22,7 @@ public sealed class LauncherItem
 
     /// <summary>用户选择的本地图片图标（png/jpg/ico 等）；为空时按目标自动提取真实图标。</summary>
     public string? CustomIconPath { get; set; }
+
+    /// <summary>来源为推荐应用时的目录条目 Id（设置 · 推荐页用它识别已安装的快捷方式）。</summary>
+    public string? RecommendedId { get; set; }
 }

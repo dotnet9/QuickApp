@@ -52,6 +52,10 @@ public static class AppPaths
     public static string UpdateStateFile(string baseDirectory)
         => Path.Combine(ConfigDirectory(baseDirectory), "update-state.json");
 
+    /// <summary>推荐应用安装状态（appId → 已装版本/主程序路径）。</summary>
+    public static string RecommendedStateFile(string baseDirectory)
+        => Path.Combine(ConfigDirectory(baseDirectory), "recommended-state.json");
+
     public static bool IsPortable(string baseDirectory)
         => File.Exists(Path.Combine(baseDirectory, PortableMarker));
 

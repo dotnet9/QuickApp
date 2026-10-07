@@ -27,6 +27,8 @@
     <!-- Logo 内嵌资源（窗口/托盘/关于页），与根目录 logo.svg 同源 -->
     <AvaloniaResource Include="..\..\logo.ico" Link="Assets/logo.ico" />
     <AvaloniaResource Include="..\..\logo.png" Link="Assets/logo.png" />
+    <!-- 推荐应用图标（rec-{id}.png 命名约定，设置 · 推荐卡片用） -->
+    <AvaloniaResource Include="Assets\rec-vex.png" />
   </ItemGroup>
 
   <ItemGroup>

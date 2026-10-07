@@ -6,4 +6,9 @@
     <AssemblyName>QuickApp.Core</AssemblyName>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- 推荐应用目录：内嵌随版本发布；安装包地址不在这里，运行时按系统实时解析 -->
+    <EmbeddedResource Include="RecommendedApps.json" />
+  </ItemGroup>
+
 </Project>

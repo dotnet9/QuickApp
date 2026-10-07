@@ -27,6 +27,14 @@ public partial class SettingsWindow : Window
         StorageModeButton.Click += OnToggleStorageMode;
         OpenConfigFolderButton.Click += OnOpenConfigFolder;
         Opened += (_, _) => RefreshMonitorOptions();
+        // 打开推荐页签时轻量刷新（服务层 TTL 缓存内不出网）
+        SettingsTabs.SelectionChanged += (_, _) =>
+        {
+            if (SettingsTabs.SelectedIndex == 3)
+            {
+                _vm?.RefreshRecommendedApps();
+            }
+        };
     }
 
     /// <summary>切换设置分类；由 Dock 的“关于”入口直接打开对应 Tab。</summary>
@@ -36,7 +44,8 @@ public partial class SettingsWindow : Window
         {
             "appearance" => 1,
             "data" => 2,
-            "about" => 3,
+            "recommend" => 3,
+            "about" => 4,
             _ => 0
         };
     }
