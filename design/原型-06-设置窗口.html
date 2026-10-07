@@ -47,6 +47,7 @@
         <button class="settings-tab active" type="button" role="tab" aria-selected="true" data-tab="general"><span class="tab-icon" data-icon="gear"></span>常规</button>
         <button class="settings-tab" type="button" role="tab" aria-selected="false" data-tab="appearance"><span class="tab-icon" data-icon="app"></span>外观</button>
         <button class="settings-tab" type="button" role="tab" aria-selected="false" data-tab="data"><span class="tab-icon" data-icon="database"></span>数据</button>
+        <button class="settings-tab" type="button" role="tab" aria-selected="false" data-tab="recommend"><span class="tab-icon" data-icon="rocket"></span>推荐</button>
         <button class="settings-tab" type="button" role="tab" aria-selected="false" data-tab="about"><span class="tab-icon" data-icon="info"></span>关于</button>
       </nav>
 
@@ -116,6 +117,18 @@
               <button class="chip" id="btnImport" type="button">导入配置</button>
               <button class="chip" id="btnExport" type="button">导出配置</button>
             </div>
+          </div>
+        </section>
+
+        <!-- 推荐 -->
+        <section class="settings-panel" data-panel="recommend" role="tabpanel" hidden>
+          <div class="group">
+            <h3>推荐应用</h3>
+            <div class="row"><span class="row-note">精选作者自研软件，一键下载并安装（安装包来自 GitHub Releases，附 sha256 校验）；安装完成后自动把快捷方式加入 Dock，可随时在编辑模式移除。</span></div>
+            <div class="rec-list" id="recList"></div>
+          </div>
+          <div class="group">
+            <div class="row"><span class="row-note">推荐列表随应用版本更新 · 全部作品见 <a class="about-url" href="https://doc.codewf.com/" target="_blank" rel="noreferrer">doc.codewf.com</a></span></div>
           </div>
         </section>
 
@@ -213,6 +226,141 @@
     QA.toast('发现更新 v0.2.5', {actionLabel:'查看（原型 05）', onAction:() => { location.href = '原型-05-更新提示.html'; }});
   });
   QA.$('#aboutLicense').addEventListener('click', () => QA.toast('许可证：MIT'));
+
+  /* 推荐应用：一键下载安装，完成后自动把快捷方式加入背景 Dock。
+     phase: idle 未安装 → downloading 下载中 → installing 安装中 → installed 已安装。
+     installed 后与 Dock 双向同步：移出后可再「加入 Dock」。 */
+  const RECOMMENDED = [
+    {
+      id:'vex', name:'Vex · 维刻', version:'v1.5.1',
+      desc:'极简之力，妙笔成章 —— 跨平台 Markdown 编辑器：实时预览、大纲导航、文档统计，可导出 HTML / PDF / Word 与公众号富文本。',
+      asset:'Vex-v1.5.1-win-x64-setup.exe', size:'40.7 MB', released:'2026-10-06',
+      page:'https://github.com/dotnet9/Vex/releases/latest', icon:'assets/vex-logo.svg',
+      exe:'C:\\Program Files\\Vex\\Vex.exe',
+      phase:'idle', progress:0, inDock:false
+    }
+  ];
+  const recList = QA.$('#recList');
+
+  function chip(label, opts = {}){
+    return QA.h('button', {class:'chip' + (opts.primary ? ' primary' : ''), type:'button', text:label, onclick:opts.onClick});
+  }
+
+  function buildRecCard(rec){
+    const card = QA.h('div', {class:'rec-card', 'data-rec':rec.id},
+      QA.h('div', {class:'rec-head'},
+        QA.h('span', {class:'rec-icon'}, QA.h('img', {src:rec.icon, alt:rec.name + ' 图标', draggable:'false'})),
+        QA.h('div', {class:'rec-info'},
+          QA.h('div', {class:'rec-title'},
+            QA.h('strong', {text:rec.name}),
+            QA.h('span', {class:'rec-ver', text:rec.version})
+          ),
+          QA.h('div', {class:'rec-desc', text:rec.desc}),
+          QA.h('div', {class:'rec-meta', text:rec.asset + ' · ' + rec.size + ' · 更新于 ' + rec.released})
+        )
+      )
+    );
+
+    if(rec.phase === 'downloading' || rec.phase === 'installing'){
+      const progress = QA.h('div', {class:'update-progress' + (rec.phase === 'installing' ? ' indeterminate' : '')}, QA.h('i'));
+      if(rec.phase === 'downloading') progress.firstElementChild.style.width = rec.progress + '%';
+      const line = QA.h('div', {class:'rec-download'}, progress,
+        rec.phase === 'downloading'
+          ? [
+              QA.h('span', {class:'rec-pct', text:Math.floor(rec.progress) + '%'}),
+              chip('取消', {onClick:() => cancelDownload(rec)})
+            ]
+          : QA.h('span', {class:'rec-phase-note', text:'正在安装，完成后自动加入 Dock…'})
+      );
+      card.append(line);
+    }else{
+      const actions = QA.h('div', {class:'rec-actions'});
+      if(rec.phase === 'idle'){
+        actions.append(chip('安装', {primary:true, onClick:() => startDownload(rec)}));
+      }else{
+        actions.append(QA.h('span', {class:'rec-badge', html:QA.svg('check', 12, 2.6) + '<span>' + (rec.inDock ? '已安装 · 已加入 Dock' : '已安装') + '</span>'}));
+        actions.append(chip(rec.inDock ? '移出 Dock' : '加入 Dock', {onClick:() => rec.inDock ? removeFromDock(rec) : addToDock(rec)}));
+      }
+      actions.append(chip('发布页', {onClick:() => window.open(rec.page, '_blank', 'noopener')}));
+      card.append(QA.h('div', {class:'rec-foot'}, actions));
+    }
+    return card;
+  }
+
+  function renderRec(rec){
+    const card = buildRecCard(rec);
+    const old = recList.querySelector('.rec-card[data-rec="' + rec.id + '"]');
+    if(old) old.replaceWith(card); else recList.append(card);
+  }
+  function renderRecProgress(rec){
+    const card = recList.querySelector('.rec-card[data-rec="' + rec.id + '"]');
+    if(!card) return;
+    const bar = card.querySelector('.update-progress i');
+    const pct = card.querySelector('.rec-pct');
+    if(bar) bar.style.width = rec.progress + '%';
+    if(pct) pct.textContent = Math.floor(rec.progress) + '%';
+  }
+
+  function startDownload(rec){
+    if(rec.phase !== 'idle') return;
+    rec.phase = 'downloading';
+    rec.progress = 0;
+    renderRec(rec);
+    QA.toast('开始下载 ' + rec.name + ' ' + rec.version, {progress:0});
+    rec.timer = setInterval(() => {
+      rec.progress = Math.min(100, rec.progress + 3 + Math.random() * 7);
+      renderRecProgress(rec);
+      if(rec.progress >= 100){
+        clearInterval(rec.timer);
+        startInstall(rec);
+      }
+    }, 200);
+  }
+  function cancelDownload(rec){
+    clearInterval(rec.timer);
+    rec.phase = 'idle';
+    rec.progress = 0;
+    renderRec(rec);
+    QA.toast('已取消下载 ' + rec.name);
+  }
+  function startInstall(rec){
+    rec.phase = 'installing';
+    renderRec(rec);
+    QA.toast(rec.name + ' 下载完成，正在安装');
+    rec.timer = setTimeout(() => {
+      rec.phase = 'installed';
+      addToDock(rec);
+    }, 1600);
+  }
+
+  function addToDock(rec){
+    rec.inDock = true;
+    if(!items.some(it => it.recId === rec.id)){
+      items.push({id:'rec-' + rec.id, recId:rec.id, name:'Vex', type:'app', target:rec.exe, customUrl:rec.icon});
+    }
+    refreshDock('rec-' + rec.id);
+    renderRec(rec);
+    QA.toast('已安装 ' + rec.name + '，快捷方式已加入 Dock');
+  }
+  function removeFromDock(rec){
+    rec.inDock = false;
+    const idx = items.findIndex(it => it.recId === rec.id);
+    if(idx >= 0) items.splice(idx, 1);
+    refreshDock();
+    renderRec(rec);
+    QA.toast('已从 Dock 移除 ' + rec.name + '（应用本体保留）');
+  }
+  function refreshDock(highlightId){
+    QA.renderTiles(QA.$('#dockItems'), items, st);
+    if(highlightId){
+      const node = QA.$('.dock-item[data-id="' + highlightId + '"]');
+      if(node){
+        node.classList.add('just-added');
+        setTimeout(() => node.classList.remove('just-added'), 420);
+      }
+    }
+  }
+  RECOMMENDED.forEach(renderRec);
 
   /* 关闭 */
   function close(){ location.href = '原型-01-主面板.html'; }
