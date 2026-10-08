@@ -73,7 +73,7 @@ GitHub Actions 会在推送 `v*` 标签时分别构建 Windows、Linux 和 macOS
 
 默认检查只访问 GitHub 网页端点：读取 `releases/latest` 的重定向头获取版本号，有新版本时再解析 `expanded_assets/{tag}` 安装包列表，不自动回退到 GitHub API，避免代理共享出口 IP 的 API 限流。版本号已确认而安装包列表暂不可用时，仍显示新版本并提供发布页入口；失败或空资产列表不会写入缓存，下次检查可重新解析。推荐应用解析复用同一策略。`UpdateChecker` 的 `allowApiFallback` 仅供需要 API 回退的调用方显式启用。
 
-这种设计把检查更新和安装更新分开，避免覆盖便携模式、运行中的文件或用户配置。Windows 安装器升级时保留 `%APPDATA%\QuickApp\config.json`，卸载也不会删除该配置目录。
+这种设计把检查更新和安装更新分开，避免覆盖便携模式、运行中的文件或用户配置。Windows 安装器升级时保留 `%LOCALAPPDATA%\QuickApp\config.json`，卸载也不会删除该配置目录。
 
 ## 使用说明
 
@@ -100,7 +100,7 @@ GitHub Actions 会在推送 `v*` 标签时分别构建 Windows、Linux 和 macOS
 ```text
 src/QuickApp.Core   平台无关的模型、搜索、启动计划、配置和停靠计算
 src/QuickApp        Avalonia 桌面应用、窗口、视图模型和 Windows 平台服务
-design              HTML 原型（每界面一个文件）与共享样式、脚本
+design              单入口 index.html 交互原型与共享样式、脚本
 docs                开发文档与 README 演示动图
 tests               Core 层单元测试
 scripts             发布、打包和 Windows 安装包脚本
@@ -117,4 +117,6 @@ Core 层保持平台无关并可单测；Windows API 集中在 `src/QuickApp/Pla
 
 ## 贡献
 
-修改界面时先同步 [`design`](../design) 下的对应原型页，再同步 Avalonia 实现。提交前运行 `dotnet test QuickApp.slnx --no-restore` 和 `git diff --check`。
+修改界面时先同步唯一入口 [`design/index.html`](../design/index.html) 的交互原型，再同步 Avalonia 实现。`design` 只保留这一个 HTML；新增界面必须通过实际 Dock、菜单、右键或设置入口打开，数据和交互状态互通，不能以独立演示页代替产品流程。样式和脚本放在 `design/assets`。
+
+原型用浏览器本地存储保存演示配置；启动系统程序、文件/目录选择、显示器迁移和下载安装用演示状态模拟，配置导入导出使用 JSON。原型不会操作真实 QuickApp 配置或安装软件。提交前运行 `dotnet test QuickApp.slnx --no-restore` 和 `git diff --check`，并从页面入口验证修改涉及的完整操作链路。
