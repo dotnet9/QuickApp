@@ -429,7 +429,7 @@
                     <TextBlock Classes="section" Text="推荐应用" />
                     <TextBlock Classes="hint" TextWrapping="Wrap"
                                Text="精选作者自研软件，一键下载并安装（安装包实时取自各仓库 GitHub Releases 最新发布，附 sha256 校验）；安装完成后自动把快捷方式加入 Dock，可随时在编辑模式移除。" />
-                    <ItemsControl Classes="rec-list" ItemsSource="{Binding RecommendedApps}">
+                    <ItemsControl Classes="rec-list" ItemsSource="{Binding RecommendedApps.Cards}">
                       <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:RecommendedAppCardViewModel">
                           <Border Classes="rec-card">
