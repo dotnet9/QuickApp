@@ -24,7 +24,8 @@ public static class DockPlacement
         int dockHeight,
         Models.DockEdge edge,
         int margin = DefaultMargin,
-        int hiddenOffset = 0)
+        int hiddenOffset = 0,
+        int alongOffset = 0)
     {
         int x;
         int y;
@@ -32,22 +33,22 @@ public static class DockPlacement
         switch (edge)
         {
             case Models.DockEdge.Bottom:
-                x = workX + (workWidth - dockWidth) / 2;
+                x = workX + (workWidth - dockWidth) / 2 + alongOffset;
                 y = workY + workHeight - dockHeight - margin + hiddenOffset;
                 break;
 
             case Models.DockEdge.Left:
                 x = workX + margin + hiddenOffset;
-                y = workY + (workHeight - dockHeight) / 2;
+                y = workY + (workHeight - dockHeight) / 2 + alongOffset;
                 break;
 
             case Models.DockEdge.Right:
                 x = workX + workWidth - dockWidth - margin + hiddenOffset;
-                y = workY + (workHeight - dockHeight) / 2;
+                y = workY + (workHeight - dockHeight) / 2 + alongOffset;
                 break;
 
             default:
-                x = workX + (workWidth - dockWidth) / 2;
+                x = workX + (workWidth - dockWidth) / 2 + alongOffset;
                 y = workY + margin + hiddenOffset;
                 break;
         }
@@ -71,7 +72,45 @@ public static class DockPlacement
             _ => -(dockHeight + gap + beyondEdge)
         };
 
-    /// <summary>把手按原型内缩显示在显示器边界内，坐标使用完整边界而非工作区。</summary>
+    /// <summary>
+    /// 偏移比例（-1 贴起点、0 居中、+1 贴终点）换算成沿边像素位移，叠加到 Anchor 的居中坐标上。
+    /// 结果夹在「贴起点 ~ 贴终点」之间，屏幕变小或比例越界时也不会把 Dock 推出所在边。
+    /// </summary>
+    public static int EdgeOffsetAlong(double ratio, int workLength, int dockLength)
+    {
+        int free = workLength - dockLength;
+        int baseOffset = free / 2;
+        double r = Math.Clamp(ratio, -1, 1);
+        int along = (int)Math.Round(free / 2.0 * r, MidpointRounding.AwayFromZero);
+        int min = Math.Min(0, free) - baseOffset;
+        int max = Math.Max(0, free) - baseOffset;
+        return Math.Clamp(along, min, max);
+    }
+
+    /// <summary>
+    /// 把窗口当前的沿边位置换算回偏移比例，拖动结束时用它记住「松手处在边的哪个位置」。
+    /// 比例（而非像素）落盘，换分辨率、换主屏后仍按同一相对位置还原。
+    /// </summary>
+    public static double OffsetRatio(
+        Models.DockEdge edge,
+        int dockX, int dockY, int dockWidth, int dockHeight,
+        int workX, int workY, int workWidth, int workHeight)
+    {
+        bool horizontal = edge is Models.DockEdge.Top or Models.DockEdge.Bottom;
+        int workLength = horizontal ? workWidth : workHeight;
+        int dockLength = horizontal ? dockWidth : dockHeight;
+        int workCenter = (horizontal ? workX : workY) + workLength / 2;
+        int dockCenter = (horizontal ? dockX : dockY) + dockLength / 2;
+        int freeHalf = (workLength - dockLength) / 2;
+        if (freeHalf <= 0)
+        {
+            return 0;
+        }
+
+        return Math.Clamp((dockCenter - workCenter) / (double)freeHalf, -1, 1);
+    }
+
+    /// <summary>把手按原型内缩显示在显示器边界内，坐标使用完整边界而非工作区；沿边偏移跟随 Dock 记忆位置。</summary>
     public static (int X, int Y) AnchorHandle(
         int screenX,
         int screenY,
@@ -80,14 +119,15 @@ public static class DockPlacement
         int handleWidth,
         int handleHeight,
         Models.DockEdge edge,
-        int inset)
+        int inset,
+        int alongOffset = 0)
     {
         return edge switch
         {
-            Models.DockEdge.Bottom => (screenX + (screenWidth - handleWidth) / 2, screenY + screenHeight - handleHeight - inset),
-            Models.DockEdge.Left => (screenX + inset, screenY + (screenHeight - handleHeight) / 2),
-            Models.DockEdge.Right => (screenX + screenWidth - handleWidth - inset, screenY + (screenHeight - handleHeight) / 2),
-            _ => (screenX + (screenWidth - handleWidth) / 2, screenY + inset)
+            Models.DockEdge.Bottom => (screenX + (screenWidth - handleWidth) / 2 + alongOffset, screenY + screenHeight - handleHeight - inset),
+            Models.DockEdge.Left => (screenX + inset, screenY + (screenHeight - handleHeight) / 2 + alongOffset),
+            Models.DockEdge.Right => (screenX + screenWidth - handleWidth - inset, screenY + (screenHeight - handleHeight) / 2 + alongOffset),
+            _ => (screenX + (screenWidth - handleWidth) / 2 + alongOffset, screenY + inset)
         };
     }
 

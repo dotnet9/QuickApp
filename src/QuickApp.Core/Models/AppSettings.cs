@@ -44,4 +44,11 @@ public sealed class AppSettings
 
     /// <summary>停靠的屏幕序号；-1 表示主屏。</summary>
     public int MonitorIndex { get; set; } = -1;
+
+    /// <summary>
+    /// 沿停靠边的偏移比例：-1 贴起点、0 居中（默认）、+1 贴终点。
+    /// 拖动 Dock 后记录松手位置，之后展开、收起、收起把手都保持在这个位置，
+    /// 不再自动回到边中间——方便躲开桌面上不想被遮挡的区域。
+    /// </summary>
+    public double EdgeOffsetRatio { get; set; }
 }

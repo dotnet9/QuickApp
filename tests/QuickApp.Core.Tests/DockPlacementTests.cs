@@ -154,4 +154,67 @@ public sealed class DockPlacementTests
         Assert.Equal(50, DockPlacement.LerpOffset(0, 100, 0.5));
         Assert.Equal(-50, DockPlacement.LerpOffset(0, -100, 0.5));
     }
+
+    // ---------------- 沿边偏移记忆（拖动后不回边中间） ----------------
+
+    [Theory]
+    [InlineData(0, 0)]      // 居中（默认，兼容旧配置）
+    [InlineData(-1, -560)]  // 贴起点：-(1920-800)/2
+    [InlineData(1, 560)]    // 贴终点
+    [InlineData(0.5, 280)]
+    public void Edge_offset_ratio_maps_to_pixels_along_the_edge(double ratio, int expected)
+        => Assert.Equal(expected, DockPlacement.EdgeOffsetAlong(ratio, WorkW, DockW));
+
+    [Fact]
+    public void Edge_offset_stays_inside_the_screen_when_ratio_is_out_of_range()
+    {
+        int underflow = DockPlacement.EdgeOffsetAlong(-5, WorkW, DockW);
+        int overflow = DockPlacement.EdgeOffsetAlong(5, WorkW, DockW);
+
+        Assert.Equal(-560, underflow);
+        Assert.Equal(560, overflow);
+    }
+
+    [Fact]
+    public void Edge_offset_keeps_an_oversized_dock_as_far_in_as_possible()
+    {
+        // Dock 比工作区还长：比例 +1 表示贴到终点（右缘对齐工作区右缘），不会再往外推
+        int along = DockPlacement.EdgeOffsetAlong(1, workLength: 1000, dockLength: 1200);
+
+        Assert.Equal(-100, along);
+        (int x, int _) = DockPlacement.Anchor(0, 0, 1000, 500, 1200, 80, DockEdge.Top, alongOffset: along);
+        Assert.Equal(1000 - 1200, x);
+    }
+
+    [Theory]
+    [InlineData(DockEdge.Top)]
+    [InlineData(DockEdge.Bottom)]
+    public void Offset_ratio_round_trips_for_horizontal_edges(DockEdge edge)
+    {
+        int along = DockPlacement.EdgeOffsetAlong(0.6, WorkW, DockW);
+        (int x, int y) = DockPlacement.Anchor(WorkX, WorkY, WorkW, WorkH, DockW, DockH, edge, alongOffset: along);
+        double ratio = DockPlacement.OffsetRatio(edge, x, y, DockW, DockH, WorkX, WorkY, WorkW, WorkH);
+
+        Assert.Equal(0.6, ratio, precision: 2);
+    }
+
+    [Theory]
+    [InlineData(DockEdge.Left)]
+    [InlineData(DockEdge.Right)]
+    public void Offset_ratio_round_trips_for_vertical_edges(DockEdge edge)
+    {
+        int along = DockPlacement.EdgeOffsetAlong(-0.4, WorkH, DockH);
+        (int x, int y) = DockPlacement.Anchor(WorkX, WorkY, WorkW, WorkH, DockW, DockH, edge, alongOffset: along);
+        double ratio = DockPlacement.OffsetRatio(edge, x, y, DockW, DockH, WorkX, WorkY, WorkW, WorkH);
+
+        Assert.Equal(-0.4, ratio, precision: 2);
+    }
+
+    [Fact]
+    public void Offset_ratio_is_zero_when_the_dock_fills_the_edge()
+        => Assert.Equal(0, DockPlacement.OffsetRatio(DockEdge.Top, -100, 0, WorkW + 200, DockH, WorkX, WorkY, WorkW, WorkH));
+
+    [Fact]
+    public void Offset_ratio_clamps_when_the_window_is_dropped_outside()
+        => Assert.Equal(1, DockPlacement.OffsetRatio(DockEdge.Top, 5000, 0, DockW, DockH, WorkX, WorkY, WorkW, WorkH));
 }

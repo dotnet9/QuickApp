@@ -585,8 +585,14 @@ public partial class DockWindow : Window, IDockHost
         int height = (int)Math.Ceiling(_revealHandleWindow.Height * scaling);
         int inset = (int)Math.Round(5 * scaling, MidpointRounding.AwayFromZero);
         PixelRect bounds = screen.Value.Bounds;
+        int along = _vm.Settings.Edge switch
+        {
+            DockEdge.Left or DockEdge.Right =>
+                DockPlacement.EdgeOffsetAlong(_vm.Settings.EdgeOffsetRatio, bounds.Height, height),
+            _ => DockPlacement.EdgeOffsetAlong(_vm.Settings.EdgeOffsetRatio, bounds.Width, width)
+        };
         (int x, int y) = DockPlacement.AnchorHandle(
-            bounds.X, bounds.Y, bounds.Width, bounds.Height, width, height, _vm.Settings.Edge, inset);
+            bounds.X, bounds.Y, bounds.Width, bounds.Height, width, height, _vm.Settings.Edge, inset, along);
         _revealHandleWindow.Position = new PixelPoint(x, y);
     }
 
@@ -1809,7 +1815,7 @@ public partial class DockWindow : Window, IDockHost
         return false;
     }
 
-    /// <summary>松手：吸附到拖动中判定的最近边；与当前边相同则只是把窗口摆回去。</summary>
+    /// <summary>松手：吸附到拖动中判定的最近边，并记住沿边的松手位置（之后展开、收起、把手都在这里，不再自动回边中间）；与当前边相同则只是把窗口摆回去。</summary>
     private void FinishDockDrag()
     {
         _dockDragging = false;
@@ -1823,20 +1829,53 @@ public partial class DockWindow : Window, IDockHost
 
         DockEdge edge = _dragEdge;
         bool changed = _vm.Settings.Edge != edge;
-        bool monitorChanged = _vm.Settings.MonitorIndex != _dragMonitorIndex;
         // Set the destination screen before SetEdge saves and schedules the final placement.
         _vm.Settings.MonitorIndex = _dragMonitorIndex;
+
+        // 拖完记住沿边位置：换算成比例落盘，换分辨率/换屏后按同一相对位置还原
+        if (ScreenAt(_dragMonitorIndex) is { } target)
+        {
+            double scaling = target.Scaling <= 0 ? 1 : target.Scaling;
+            int dockWidth = (int)Math.Ceiling(ClientSize.Width * scaling);
+            int dockHeight = (int)Math.Ceiling(ClientSize.Height * scaling);
+            _vm.Settings.EdgeOffsetRatio = Math.Round(
+                DockPlacement.OffsetRatio(
+                    edge, Position.X, Position.Y, dockWidth, dockHeight,
+                    target.Work.X, target.Work.Y, target.Work.Width, target.Work.Height),
+                3, MidpointRounding.AwayFromZero);
+        }
+
         _vm.SetEdgeCommand.Execute(edge);
         if (!changed)
         {
-            if (monitorChanged)
-            {
-                _vm.Save();
-            }
-
+            _vm.Save();
             _vm.Toast("Dock 回到" + DockPlacement.Label(edge) + "边缘");
             ScheduleReposition();
         }
+    }
+
+    /// <summary>按显示器序号取工作区与缩放；-1 表示主屏，找不到返回 null。</summary>
+    private (PixelRect Work, double Scaling)? ScreenAt(int index)
+    {
+        try
+        {
+            if (index >= 0 && index < Screens.All.Count)
+            {
+                var screen = Screens.All[index];
+                return (screen.WorkingArea, screen.Scaling);
+            }
+
+            if (Screens.Primary is { } primary)
+            {
+                return (primary.WorkingArea, primary.Scaling);
+            }
+        }
+        catch
+        {
+            // 屏幕枚举失败时按居中处理
+        }
+
+        return null;
     }
 
     /// <summary>按窗口中心落在光标所在屏幕工作区的哪条边附近判定吸附边。</summary>
@@ -2103,12 +2142,20 @@ public partial class DockWindow : Window, IDockHost
 
         int hidden = DockPlacement.HiddenOffset(_vm.Settings.Edge, dockWidth, dockHeight, beyondEdge: beyond);
         int offset = DockPlacement.LerpOffset(0, hidden, progress);
+        // 拖动后记住的沿边位置：展开与收起都停在这里，不自动回到边中间
+        int along = _vm.Settings.Edge switch
+        {
+            DockEdge.Left or DockEdge.Right =>
+                DockPlacement.EdgeOffsetAlong(_vm.Settings.EdgeOffsetRatio, work.Height, dockHeight),
+            _ => DockPlacement.EdgeOffsetAlong(_vm.Settings.EdgeOffsetRatio, work.Width, dockWidth)
+        };
 
         (int x, int y) = DockPlacement.Anchor(
             work.X, work.Y, work.Width, work.Height,
             dockWidth, dockHeight, _vm.Settings.Edge,
             (int)Math.Round((DockMargin - WindowShadowMargin) * scaling, MidpointRounding.AwayFromZero),
-            offset);
+            offset,
+            along);
 
         var target = new PixelPoint(x, y);
         if (Position != target)
@@ -2269,6 +2316,59 @@ public partial class DockWindow : Window, IDockHost
         SearchBox.Focus();
         SearchBox.SelectAll();
     }, DispatcherPriority.Loaded);
+
+    /// <summary>
+    /// 全局快捷键唤起：展开 Dock 并打开搜索、聚焦输入框，再把输入法切回英文，
+    /// 保证按下热键后可以直接打字母检索（用户仍可手动切回中文）。
+    /// </summary>
+    public void SummonSearchFromHotkey()
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_vm is null)
+            {
+                return;
+            }
+
+            _vm.IsDockVisible = true;
+            _vm.IsSearchOpen = true;
+            Topmost = true;
+            Activate();
+            SearchBox.Focus();
+            SetEnglishIme();
+        }, DispatcherPriority.Input);
+    }
+
+    /// <summary>Windows：把本窗口的 IME 切到英文态（ImmSetOpenStatus），不改用户默认布局。</summary>
+    private void SetEnglishIme()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        try
+        {
+            IntPtr hwnd = TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
+            if (hwnd == IntPtr.Zero)
+            {
+                return;
+            }
+
+            IntPtr context = NativeMethods.ImmGetContext(hwnd);
+            if (context == IntPtr.Zero)
+            {
+                return;
+            }
+
+            NativeMethods.ImmSetOpenStatus(context, false);
+            NativeMethods.ImmReleaseContext(hwnd, context);
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("切换英文输入法失败", ex);
+        }
+    }
 
     /// <summary>被第二个实例或托盘唤醒：显示并激活。</summary>
     public void ActivateFromExternal()

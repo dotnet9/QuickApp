@@ -178,6 +178,19 @@ internal static unsafe partial class NativeMethods
     [LibraryImport("kernel32.dll")]
     internal static partial int GetCurrentThreadId();
 
+    // ---------------- 输入法（唤起搜索时默认切英文） ----------------
+
+    [LibraryImport("imm32.dll")]
+    internal static partial IntPtr ImmGetContext(IntPtr hWnd);
+
+    [LibraryImport("imm32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool ImmSetOpenStatus(IntPtr hIMC, [MarshalAs(UnmanagedType.Bool)] bool open);
+
+    [LibraryImport("imm32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool ImmReleaseContext(IntPtr hWnd, IntPtr hIMC);
+
     [StructLayout(LayoutKind.Sequential)]
     internal struct MSG
     {

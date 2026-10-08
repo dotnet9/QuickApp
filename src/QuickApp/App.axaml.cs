@@ -176,7 +176,7 @@ public partial class App : Application
         return controller;
     }
 
-    /// <summary>全局唤起热键（默认 Ctrl+Alt+Space）：显隐切换，收起状态下一按即唤出。</summary>
+    /// <summary>全局唤起热键（默认 Ctrl+Alt+Space）：弹出搜索界面并聚焦，见 <see cref="ToggleDockFromHotkey"/>。</summary>
     private void RegisterGlobalHotkey(DockViewModel viewModel, bool notify = false)
     {
         try
@@ -202,10 +202,20 @@ public partial class App : Application
         }
     }
 
+    /// <summary>
+    /// 全局唤起热键（默认 Ctrl+Alt+Space）：未在搜索态时弹出搜索并聚焦输入框（输入法切英文），
+    /// 已在搜索态且未钉住时收回，等效一个开关。
+    /// </summary>
     private void ToggleDockFromHotkey(DockViewModel viewModel)
     {
-        // 收起（且未钉住）时唤出；显示时收回，等效一个开关
-        viewModel.IsDockVisible = !(viewModel.IsDockVisible && !viewModel.IsPinned);
+        if (viewModel.IsDockVisible && viewModel.IsSearchOpen && !viewModel.IsPinned)
+        {
+            viewModel.IsDockVisible = false;
+            return;
+        }
+
+        viewModel.IsDockVisible = true;
+        _dock?.SummonSearchFromHotkey();
     }
 
     /// <summary>
