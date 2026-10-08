@@ -1,83 +1,179 @@
 <!DOCTYPE html>
-<html lang="zh-CN" data-theme="dark">
+<html lang="zh-CN" data-theme="dark" data-style="glass" data-label="icon" data-search-open="false" data-edit="false" data-edge="top">
 <head>
-<meta charset="utf-8">
-<title>QuickApp 界面原型 · 目录</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="icon" href="../logo.svg">
-<link rel="stylesheet" href="assets/proto.css">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>QuickApp · 交互原型</title>
+<link rel="icon" href="../logo.svg"><link rel="stylesheet" href="assets/proto.css">
 </head>
-<body>
+<body class="dock-visible">
+<button class="desktop-app" id="launchApp" title="启动 QuickApp"><img src="../logo.svg" alt=""><span>QuickApp</span></button>
+<div class="taskbar"><span class="desktop-caption">QuickApp 交互原型</span><span class="spacer"></span><button id="trayButton" title="QuickApp 托盘菜单" aria-label="QuickApp 托盘菜单"><img src="../logo.svg" alt=""></button><span class="clock" id="clock"></span></div>
+<button class="dock-handle" id="dockHandle" type="button" title="悬停停留后展开 Dock" aria-label="展开 Dock"></button>
+<div class="dock" id="dock" role="toolbar" aria-label="快捷 Dock">
+  <div class="dock-search" id="searchRow" hidden>
+    <span class="search-icon" data-icon="search"></span><input id="searchInput" placeholder="搜索应用、目录、网址或命令" aria-label="搜索应用、目录、网址或命令" autocomplete="off">
+    <span class="search-count" id="searchCount"></span><button class="icon-btn" id="searchClear" data-icon="x" aria-label="清除搜索" title="清除搜索"></button>
+  </div>
+  <div class="dock-body">
+    <div class="items-wrap"><div class="dock-items" id="dockItems" role="list"></div><div class="fade fade-left" id="fadeLeft"></div><div class="fade fade-right" id="fadeRight"></div><div class="scroll-indicator" id="scrollIndicator" hidden><i id="scrollThumb"></i></div></div>
+    <div class="dock-tools"><div class="dock-divider"></div><div class="dock-actions">
+      <button class="icon-btn" id="btnSearch" data-icon="search" title="搜索（S）" aria-label="搜索"></button>
+      <button class="icon-btn" id="btnPin" data-icon="pin" title="钉住 Dock" aria-label="钉住 Dock" aria-pressed="false"></button>
+      <button class="icon-btn" id="btnMenu" data-icon="more" title="更多操作" aria-label="更多操作" aria-haspopup="menu" aria-expanded="false"></button>
+      <button class="icon-btn low-priority" id="btnHide" title="收起" aria-label="收起"></button>
+    </div></div>
+  </div>
+  <div id="updateSlot"></div>
+  <div class="dock-editbar" id="dockEditbar" hidden><span>拖动排序 · 双击改名 · × 移除</span><span class="spacer"></span><button class="chip primary" id="editDone"><span class="chip-icon" data-icon="check"></span>完成</button></div>
+</div>
+<div class="overlay-layer"><div class="bubble" id="bubble" hidden><span class="bubble-name" id="bubbleName"></span><span class="bubble-target" id="bubbleTarget"></span></div><div class="drop-line" id="dropLine" hidden></div></div>
+<div id="updatePopover" hidden></div>
+<input type="file" id="iconFile" accept="image/*,.ico" hidden><input type="file" id="importFile" accept=".json" hidden>
+<div class="modal-layer" id="settingsLayer" hidden>
+  <div class="scrim" data-dismiss="settingsLayer"></div>
 
-<div class="proto-index">
-  <div class="hero">
-    <img src="../logo.svg" alt="QuickApp logo">
-    <div>
-      <h1>QuickApp 界面原型</h1>
-      <p>按界面拆分的 HTML 原型 · 零依赖 · 离线可用 · Avalonia 实现以原型为准</p>
+  <div class="modal-card settings-card" role="dialog" aria-modal="true" aria-label="设置">
+    <div class="modal-head">
+      <h2>设置</h2>
+      <button class="icon-btn" id="settingsClose" data-icon="x" title="关闭" aria-label="关闭"></button>
+    </div>
+    <div class="settings-layout">
+      <nav class="settings-nav" role="tablist" aria-label="设置分类">
+        <button class="settings-tab active" type="button" role="tab" aria-selected="true" data-tab="general"><span class="tab-icon" data-icon="gear"></span>常规</button>
+        <button class="settings-tab" type="button" role="tab" aria-selected="false" data-tab="appearance"><span class="tab-icon" data-icon="app"></span>外观</button>
+        <button class="settings-tab" type="button" role="tab" aria-selected="false" data-tab="data"><span class="tab-icon" data-icon="database"></span>数据</button>
+        <button class="settings-tab" type="button" role="tab" aria-selected="false" data-tab="recommend"><span class="tab-icon" data-icon="rocket"></span>推荐</button>
+        <button class="settings-tab" type="button" role="tab" aria-selected="false" data-tab="about"><span class="tab-icon" data-icon="info"></span>关于</button>
+      </nav>
+
+      <div class="settings-content">
+        <!-- 常规 -->
+        <section class="settings-panel" data-panel="general" role="tabpanel">
+          <div class="group">
+            <h3>启动与显示</h3>
+            <div class="row"><label class="row-label" for="swAutoStart">开机启动</label><span class="spacer"></span>
+              <button class="switch" id="swAutoStart" data-switch="autoStart" role="switch" aria-checked="true"><i></i></button></div>
+            <div class="row"><label class="row-label" for="swEdgeReveal">悬停唤出</label><span class="row-note">停留片刻后展开 Dock</span><span class="spacer"></span>
+              <button class="switch" id="swEdgeReveal" data-switch="edgeReveal" role="switch" aria-checked="true"><i></i></button></div>
+            <div class="row"><label class="row-label" for="selMonitor">目标显示器</label><span class="spacer"></span>
+              <select class="select-control" id="selMonitor" aria-label="目标显示器">
+                <option value="display-1">主显示器</option>
+                <option value="display-2">显示器 2 · 左侧</option>
+                <option value="display-3">显示器 3 · 右侧</option>
+              </select></div>
+            <div class="row"><span class="row-note">Dock 只存在于所选显示器：停靠、收起、唤出把手都在它上面，切换后整体迁移；显示器被拔掉时回落主显示器</span></div>
+            <div class="row"><label class="row-label" for="rgAutoHide">自动隐藏延时</label><span class="spacer"></span>
+              <input type="range" id="rgAutoHide" min="0" max="2000" step="100" value="700" aria-label="自动隐藏延时">
+              <output id="outAutoHide">700 ms</output></div>
+            <div class="row"><label class="row-label" for="swAutoCollapse">运行后收起</label><span class="spacer"></span>
+              <button class="switch" id="swAutoCollapse" data-switch="autoCollapse" role="switch" aria-checked="true"><i></i></button></div>
+            <div class="row"><label class="row-label" for="swCheckUpdates">启动时检查更新</label><span class="spacer"></span>
+              <button class="switch" id="swCheckUpdates" data-switch="checkUpdates" role="switch" aria-checked="true"><i></i></button></div>
+          </div>
+          <div class="group">
+            <h3>快捷键</h3>
+            <div class="row"><span class="row-label">全局唤起</span><span class="spacer"></span><span class="row-note">固定：Ctrl + Alt + Space</span></div>
+            <div class="row"><span class="row-note">← → ↑ ↓ 移动 · Enter 运行 · 1–9 快速启动 · S / Ctrl+K 搜索 · E 编辑 · Esc 关闭</span></div>
+          </div>
+        </section>
+
+        <!-- 外观 -->
+        <section class="settings-panel" data-panel="appearance" role="tabpanel" hidden>
+          <div class="group">
+            <h3>界面与显示</h3>
+            <div class="row"><span class="row-label">主题</span><span class="spacer"></span>
+              <div class="seg" data-control="themePref">
+                <button data-value="system">跟随系统</button><button data-value="dark">深色</button><button data-value="light">浅色</button>
+              </div></div>
+            <div class="row"><span class="row-label">风格</span><span class="spacer"></span>
+              <div class="seg" data-control="style"><button data-value="glass">毛玻璃</button><button data-value="flat">扁平</button></div></div>
+            <div class="row"><span class="row-label">图标标签</span><span class="spacer"></span>
+              <div class="seg" data-control="label"><button data-value="icon">仅图标</button><button data-value="iconText">图标 + 名称</button></div></div>
+            <div class="row"><span class="row-label">图标尺寸</span><span class="spacer"></span>
+              <input type="range" id="rgTile" min="32" max="64" step="2" value="44" aria-label="图标尺寸">
+              <output id="outTile">44</output></div>
+            <div class="row"><span class="row-label">面板圆角</span><span class="spacer"></span>
+              <input type="range" id="rgRadius" min="8" max="32" step="1" value="18" aria-label="面板圆角">
+              <output id="outRadius">18</output></div>
+            <div class="row"><span class="row-note">毛玻璃在部分系统上可能退化为纯色</span></div>
+          </div>
+        </section>
+
+        <!-- 数据 -->
+        <section class="settings-panel" data-panel="data" role="tabpanel" hidden>
+          <div class="group">
+            <h3>配置</h3>
+            <div class="row"><span class="row-label">配置文件位置</span><span class="spacer"></span>
+              <span class="row-note" id="configPath">%LOCALAPPDATA%\QuickApp\config.json</span></div>
+            <div class="row"><span class="row-label">存储位置</span><span class="spacer"></span>
+              <span class="row-note" id="storageMode">安装版 · 用户配置目录</span></div>
+            <div class="row"><button class="chip" id="switchStorage" type="button">切换为便携版</button></div>
+            <div class="row"><span class="row-note">导入配置会替换当前的快捷项与设置</span></div>
+            <div class="row">
+              <button class="chip" id="btnImport" type="button">导入配置</button>
+              <button class="chip" id="btnExport" type="button">导出配置</button>
+              <button class="chip" id="btnOpenConfig" type="button">打开配置文件夹</button>
+              <button class="chip" id="btnReloadConfig" type="button">重新加载配置</button>
+            </div>
+            <p class="row-note error" id="configError" hidden></p>
+          </div>
+        </section>
+
+        <!-- 推荐 -->
+        <section class="settings-panel" data-panel="recommend" role="tabpanel" hidden>
+          <div class="group">
+            <h3>推荐应用</h3>
+            <div class="row"><span class="row-note">精选作者自研软件，一键下载并安装（安装包来自 GitHub Releases，附 sha256 校验）；安装完成后自动把快捷方式加入 Dock，可随时在编辑模式移除。</span></div>
+            <div class="rec-list" id="recList"></div>
+          </div>
+          <div class="group">
+            <div class="row"><span class="row-note">推荐列表随应用版本更新 · 全部作品见 <a class="about-url" href="https://doc.codewf.com/" target="_blank" rel="noreferrer">doc.codewf.com</a></span></div>
+          </div>
+        </section>
+
+        <!-- 关于 -->
+        <section class="settings-panel" data-panel="about" role="tabpanel" hidden>
+          <div class="about-hero">
+            <div class="about-mark"><img src="../logo.svg" alt="QuickApp logo"></div>
+            <div><strong>QuickApp</strong><span>快捷应用启动器</span></div>
+          </div>
+          <div class="group">
+            <div class="row"><span class="row-label">版本</span><span class="spacer"></span><span class="row-note">v0.5.2</span></div>
+            <div class="row"><span class="row-label">定位</span><span class="spacer"></span><span class="row-note">快速打开软件、文件、目录、网址与常用命令</span></div>
+          </div>
+          <div class="group">
+            <h3>项目信息</h3>
+            <div class="row"><span class="row-label">作者</span><span class="spacer"></span><span class="row-note">沙漠尽头的狼</span></div>
+            <div class="row"><span class="row-label">官方网站</span><span class="spacer"></span><a class="row-note about-url" href="https://codewf.com" target="_blank" rel="noreferrer">https://codewf.com</a></div>
+            <div class="row"><span class="row-label">仓库地址</span><span class="spacer"></span><a class="row-note about-url" href="https://github.com/dotnet9/QuickApp" target="_blank" rel="noreferrer">https://github.com/dotnet9/QuickApp</a></div>
+          </div>
+          <div class="group">
+            <div class="row"><span class="row-label">检查更新</span><span class="spacer"></span>
+              <button class="chip" id="aboutCheckUpdate" type="button">立即检查</button></div>
+            <div class="row"><span class="row-note" id="aboutCheckResult">尚未检查更新</span></div>
+          </div>
+          <div class="about-links">
+            <button class="chip" type="button" id="aboutLicense">许可证</button>
+          </div>
+        </section>
+      </div>
     </div>
   </div>
-
-  <div class="proto-grid">
-    <a class="proto-card" href="原型-01-主面板.html">
-      <span class="no">01</span>
-      <strong>主面板</strong>
-      <span>Dock 常规态：图标悬停放大（不裁剪）、气泡、四边停靠、钉住、收起把手唤出、滚轮翻页。</span>
-      <span class="tags"><i>上/下/左/右</i><i>深/浅</i><i>仅图标 / 图标+名称</i></span>
-    </a>
-    <a class="proto-card" href="原型-02-搜索.html">
-      <span class="no">02</span>
-      <strong>搜索</strong>
-      <span>搜索行 + 分组结果（已配置 / 系统应用「未配置」）+ 空态；名称、拼音、首字母、路径匹配。</span>
-      <span class="tags"><i>Enter 启动</i><i>＋ 加入 Dock</i></span>
-    </a>
-    <a class="proto-card" href="原型-03-编辑模式.html">
-      <span class="no">03</span>
-      <strong>编辑模式</strong>
-      <span>移除角标（可撤销）、拖动排序（插入线）、双击就地改名、底部工具条「重置 / 完成」。</span>
-      <span class="tags"><i>E 进入</i><i>Esc 退出</i></span>
-    </a>
-    <a class="proto-card" href="原型-04-更多操作菜单.html">
-      <span class="no">04</span>
-      <strong>更多操作菜单</strong>
-      <span>Dock 菜单（添加 / 管理 / 停靠四向选择 / 设置 / 退出）、图标右键菜单、更换图标（选本地图片，不内置图标库）。</span>
-      <span class="tags"><i>贴按钮弹出</i><i>空间不足翻转</i></span>
-    </a>
-    <a class="proto-card" href="原型-05-更新提示.html">
-      <span class="no">05</span>
-      <strong>更新提示</strong>
-      <span>本次新增规范：横排更新条（min-width 330）与竖排「新版本」胶囊 + 弹出卡片；S1–S4 状态机。</span>
-      <span class="tags"><i>修复压扁缺陷</i><i>禁止星号列</i></span>
-    </a>
-    <a class="proto-card" href="原型-06-设置窗口.html">
-      <span class="no">06</span>
-      <strong>设置窗口</strong>
-      <span>常规 / 外观 / 数据 / 推荐 / 关于 五页签；外观控件实时作用于页面；推荐页一键下载安装自研软件（下载进度、取消、安装中），完成后自动把快捷方式加入 Dock。</span>
-      <span class="tags"><i>TabControl</i><i>方向键切换</i><i>推荐 App</i></span>
-    </a>
-    <a class="proto-card" href="原型-07-添加命令行.html">
-      <span class="no">07</span>
-      <strong>添加命令行 · 导入确认</strong>
-      <span>400px 小对话框：名称 + 命令表单校验；导入配置的破坏性操作二次确认。</span>
-      <span class="tags"><i>Esc / 遮罩关闭</i></span>
-    </a>
-    <a class="proto-card" href="原型-08-托盘与通知.html">
-      <span class="no">08</span>
-      <strong>托盘菜单 · Toast</strong>
-      <span>托盘菜单（开关项 + 危险项）；Toast 轻通知：动作按钮、下载进度、同类不堆叠。</span>
-      <span class="tags"><i>2.2s / 5s</i><i>可撤销</i></span>
-    </a>
-  </div>
-
-  <div class="spec" style="width:min(980px,100%)">
-    <b>本次修订（对应 v0.2.5 反馈）</b>
-    <ul>
-      <li>原型从单文件拆分为每界面一个 HTML（本目录），共享视觉 token 与组件：<code>assets/proto.css</code>、<code>assets/proto.js</code>。</li>
-      <li>新增「更新提示」页：修复出现新版本提示时竖排 Dock 被压扁的问题——横排用面板内更新条、竖排用胶囊 + 弹出卡片，并注明 Avalonia <code>SizeToContent</code> 下禁用星号列。</li>
-      <li>悬浮放大防裁剪：图标滚动区四周留白提升到 18px（峰值缩放 1.52 + 5px 朝内位移），四边停靠均不裁切。</li>
-    </ul>
-  </div>
 </div>
-
-</body>
-</html>
+<div class="modal-layer" id="editorLayer" hidden><div class="scrim" data-dismiss="editorLayer"></div><form class="modal-card item-editor" id="editor" role="dialog" aria-modal="true" aria-labelledby="editorTitle">
+<div class="modal-head"><h2 id="editorTitle">编辑快捷项</h2><button type="button" class="icon-btn" data-icon="x" id="close" aria-label="关闭"></button></div>
+<div class="modal-body"><div class="stack">
+<label for="kind">类型</label><select id="kind"><option value="app">程序 / 文件 / 目录</option><option value="web">网址</option><option value="cmd">命令</option></select>
+<label for="name">名称</label><input id="name" placeholder="留空时根据目标生成" >
+<label for="target" id="targetLabel">路径或程序名</label><div class="browse-row"><input id="target"  autocomplete="off"><button type="button" class="chip" id="browse">文件…</button><button type="button" class="chip" id="folder">目录…</button></div>
+<div id="argsRow"><label for="args">启动参数（可选）</label><input id="args" placeholder="例如：--new-window"></div>
+<div id="cwdRow"><label for="cwd">工作目录（可选）</label><div class="browse-row"><input id="cwd" placeholder="例如：C:\Work\QuickApp"><button type="button" class="chip" id="browseCwd">选择…</button></div></div>
+<div id="commandOptions" hidden><label for="shell">命令解释器</label><select id="shell"><option value="cmd">CMD</option><option value="powershell">PowerShell</option></select>
+<label class="check-row"><input id="terminal" type="checkbox" checked>在终端运行并保留窗口</label><p class="note">查看输出请使用终端；后台运行适合无需交互的操作。</p></div>
+<label for="hotkey">全局快捷键（可选 · Windows）</label><div class="browse-row"><input id="hotkey" readonly placeholder="点击后按组合键，例如 Ctrl + Alt + D"><button type="button" class="chip" id="clearKey">清除</button></div>
+<p class="note">QuickApp 运行时，Dock 收起也可直接启动。</p>
+</div><div id="error" class="error" role="alert" hidden></div>
+<div class="row"><span class="spacer"></span><button type="button" class="chip" id="cancel">取消</button><button class="chip primary" type="submit" id="save">保存</button></div></div></form></div>
+<div class="modal-layer" id="dialogLayer" hidden><div class="scrim" data-dismiss="dialogLayer"></div><div class="modal-card small" role="dialog" aria-modal="true" aria-labelledby="dialogTitle"><div class="modal-head"><h2 id="dialogTitle"></h2><button class="icon-btn" id="dialogClose" data-icon="x" aria-label="关闭"></button></div><div class="modal-body" id="dialogBody"></div></div></div>
+<script src="assets/proto.js"></script><script src="assets/app.js"></script>
+</body></html>

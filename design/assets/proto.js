@@ -1,7 +1,7 @@
 /* ============================================================================
    QuickApp 原型共享脚本（零依赖、离线可用）
    提供：SVG 图标、演示数据、Dock 渲染、悬停气泡、Toast、右键菜单、更新提示。
-   各 原型-*.html 只保留自己界面所需的状态与事件。
+   index.html 为唯一页面；assets/app.js 管理各界面的共享状态与入口。
    ========================================================================== */
 window.QA = (function(){
   'use strict';
@@ -215,7 +215,7 @@ window.QA = (function(){
 
   /* 滚动外观：两端渐隐 + 指示条（轴向随停靠边） */
   function updateScrollChrome(itemsEl, fades){
-    const vertical = document.documentElement.dataset.edge === 'left' || document.documentElement.dataset.edge === 'right';
+    const vertical = itemsEl.classList.contains('searching') || document.documentElement.dataset.edge === 'left' || document.documentElement.dataset.edge === 'right';
     const sc = itemsEl;
     const total = vertical ? sc.scrollHeight : sc.scrollWidth;
     const view = vertical ? sc.clientHeight : sc.clientWidth;
@@ -361,11 +361,21 @@ window.QA = (function(){
     menuEl = h('div', {class:'menu', role:'menu', 'aria-label':'菜单'});
     for(const row of spec) menuEl.append(menuRow(row));
     document.body.append(menuEl);
+    menuEl.addEventListener('keydown', e => {
+      if(!['ArrowUp','ArrowDown','Home','End'].includes(e.key)) return;
+      const entries = $$('button', menuEl);
+      const index = entries.indexOf(document.activeElement);
+      const next = e.key === 'Home' ? 0 : e.key === 'End' ? entries.length - 1
+        : (index + (e.key === 'ArrowUp' ? -1 : 1) + entries.length) % entries.length;
+      e.preventDefault(); entries[next]?.focus();
+    });
     const rect = menuEl.getBoundingClientRect();
     menuEl.style.left = Math.max(8, Math.min(x, window.innerWidth - rect.width - 8)) + 'px';
     menuEl.style.top = Math.max(8, Math.min(y, window.innerHeight - rect.height - 8)) + 'px';
     const btn = $('#btnMenu');
     if(btn) btn.setAttribute('aria-expanded', 'true');
+    const opened = menuEl;
+    requestAnimationFrame(() => opened.isConnected && $('button', opened)?.focus());
     return menuEl;
   }
   /* 菜单贴着 Dock 操作按钮弹出（方向随停靠边翻转） */
@@ -388,7 +398,7 @@ window.QA = (function(){
     if(menuEl && !e.target.closest('.menu')) closeMenu();
   });
   document.addEventListener('keydown', e => {
-    if(e.key === 'Escape' && menuEl){ closeMenu(); e.stopPropagation(); }
+    if(e.key === 'Escape' && menuEl){ closeMenu(); e.preventDefault(); }
   });
 
   /* 停靠位置四向选择器（桌面示意框） */
@@ -496,7 +506,7 @@ window.QA = (function(){
     return card;
   }
 
-  /* ---------------- 10. 控制台控件绑定 ---------------- */
+  /* ---------------- 10. 设置控件绑定 ---------------- */
   /* [data-control] 分段按钮：state[key] = data-value，回调通知 */
   function bindControls(root, state, onChange){
     root.addEventListener('click', e => {
@@ -527,43 +537,6 @@ window.QA = (function(){
     });
   }
 
-  /* ---------------- 11. 控制台骨架 ---------------- */
-  function consoleSkeleton(rowsHtml, note){
-    return h('div', {class:'proto-panel', id:'protoPanel'},
-      h('div', {class:'proto-head'},
-        h('strong', {text:'原型控制台'}), h('span', {text:'不属于产品界面'}),
-        h('button', {class:'icon-btn', id:'protoHide', 'data-icon':'x', title:'隐藏控制台', 'aria-label':'隐藏控制台'})
-      ),
-      h('div', {class:'proto-body'},
-        h('div', {class:'proto-row'}, h('span', {text:'主题'}),
-          h('div', {class:'seg sm', 'data-control':'themePref'},
-            h('button', {'data-value':'system'}, h('span', {text:'跟随'})),
-            h('button', {'data-value':'dark'}, h('span', {text:'深'})),
-            h('button', {'data-value':'light'}, h('span', {text:'浅'}))
-          )),
-        h('div', {class:'proto-row'}, h('span', {text:'停靠边'}),
-          h('div', {class:'seg sm', 'data-control':'edge', role:'group', 'aria-label':'停靠边缘'},
-            h('button', {'data-value':'top'}, h('span', {text:'上'})),
-            h('button', {'data-value':'bottom'}, h('span', {text:'下'})),
-            h('button', {'data-value':'left'}, h('span', {text:'左'})),
-            h('button', {'data-value':'right'}, h('span', {text:'右'}))
-          )),
-        ...rowsHtml,
-        note ? h('div', {class:'proto-note', html:note}) : null
-      )
-    );
-  }
-  function wireConsoleHide(panel, toggleBtn){
-    $('#protoHide', panel).addEventListener('click', () => {
-      panel.hidden = true;
-      toggleBtn.hidden = false;
-    });
-    toggleBtn.addEventListener('click', () => {
-      panel.hidden = false;
-      toggleBtn.hidden = true;
-    });
-  }
-
   return {
     GLYPHS, svg, hydrateIcons,
     SEED, INSTALLED, searchItems,
@@ -573,6 +546,6 @@ window.QA = (function(){
     closeMenu, openMenu, openMenuAtButton, menuRow, dockEdgePicker,
     updateBarNode, updateCardNode, updatePillNode,
     collapseGlyph, setCollapseBtn,
-    bindControls, syncControls, consoleSkeleton, wireConsoleHide
+    bindControls, syncControls
   };
 })();
