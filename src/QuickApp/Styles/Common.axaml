@@ -34,7 +34,7 @@
     <Setter Property="Theme" Value="{DynamicResource QAMenuItem}" />
   </Style>
 
-  <!-- 菜单容器：原型 .menu min-width 196 / padding 6 / r11 -->
+  <!-- 菜单容器：原型 .menu min-width 87 / padding 6 / r11；宽度由内容自然撑开 -->
   <Style Selector="ContextMenu">
     <Setter Property="MinWidth" Value="87" />
     <Setter Property="Padding" Value="6" />

@@ -271,7 +271,8 @@ public sealed class ItemViewModel : ViewModelBase
     /// <summary>明确提供 CornerRadius 类型，确保图标四角圆角在 Avalonia 绑定中生效。</summary>
     public CornerRadius TileCornerRadius => new(TileRadius);
 
-    public double IconSize => Math.Round(TileSize, 1);
+    /// <summary>真实图标按原型 .tile-img 的 72% 等比放入瓦片，避免贴边显得过满。</summary>
+    public double IconSize => Math.Round(TileSize * 0.72, 1);
 
     /// <summary>占位图形尺寸：应用类 0.9×tile、网页/命令 0.5×tile（原型 tileNode 的类型分支）。</summary>
     public double GlyphSize => Math.Round(TileSize * (Model.Kind == QuickApp.Core.Models.ItemKind.App ? 0.9 : 0.5), 1);

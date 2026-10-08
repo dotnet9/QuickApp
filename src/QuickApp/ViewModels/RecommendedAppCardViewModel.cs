@@ -45,6 +45,7 @@ public sealed class RecommendedAppCardViewModel : ViewModelBase
 
     private RecommendedCardPhase _phase = RecommendedCardPhase.Idle;
     private string? _latestTag;
+    private string? _assetName;
     private long? _assetSize;
     private double _downloadProgress;
     private string? _error;
@@ -120,9 +121,9 @@ public sealed class RecommendedAppCardViewModel : ViewModelBase
     {
         get
         {
-            string asset = _assetSize is > 0
-                ? FormatSize(_assetSize.Value)
-                : string.Empty;
+            string assetName = _assetName ?? string.Empty;
+            string assetSize = _assetSize is > 0 ? FormatSize(_assetSize.Value) : string.Empty;
+            string asset = string.Join(" · ", new[] { assetName, assetSize }.Where(part => part.Length > 0));
             string installed = InstalledRecord?.Version is { Length: > 0 } version
                 ? "已装 " + version
                 : string.Empty;
@@ -211,6 +212,7 @@ public sealed class RecommendedAppCardViewModel : ViewModelBase
             if (release is null)
             {
                 LatestTag = null;
+                _assetName = null;
                 _assetSize = null;
                 Error = "暂时无法获取版本信息";
                 if (Phase == RecommendedCardPhase.Resolving)
@@ -221,6 +223,7 @@ public sealed class RecommendedAppCardViewModel : ViewModelBase
             }
 
             LatestTag = release.Tag;
+            _assetName = release.AssetName;
             _assetSize = release.AssetSize;
             if (Phase == RecommendedCardPhase.Resolving)
             {
@@ -267,6 +270,12 @@ public sealed class RecommendedAppCardViewModel : ViewModelBase
             _toast?.Invoke(DisplayName + "：没有匹配当前系统的安装包");
             return;
         }
+
+        LatestTag = release.Tag;
+        _assetName = release.AssetName;
+        _assetSize = release.AssetSize;
+        this.RaisePropertyChanged(nameof(MetaText));
+        this.RaisePropertyChanged(nameof(VersionBadge));
 
         var update = new UpdateInfo(
             VersionUtil.Parse(release.Tag) ?? new Version(0, 0, 0),

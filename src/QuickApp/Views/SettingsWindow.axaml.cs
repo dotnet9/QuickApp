@@ -21,6 +21,15 @@ public partial class SettingsWindow : Window
         ImportButton.Click += OnImportConfig;
         CloseButton.Click += (_, _) => Close();
         HeaderBar.PointerPressed += OnHeaderPressed;
+        SettingsTabs.KeyDown += OnSettingsTabsKeyDown;
+        KeyDown += (_, e) =>
+        {
+            if (e.Key == Avalonia.Input.Key.Escape)
+            {
+                Close();
+                e.Handled = true;
+            }
+        };
         WebsiteButton.Click += (_, _) => OpenUrl("https://codewf.com");
         RepoButton.Click += (_, _) => OpenUrl("https://github.com/dotnet9/QuickApp");
         LicenseButton.Click += (_, _) => ShowLicense();
@@ -57,6 +66,26 @@ public partial class SettingsWindow : Window
         {
             BeginMoveDrag(e);
         }
+    }
+
+    /// <summary>设置页签按原型支持方向键循环切换。</summary>
+    private void OnSettingsTabsKeyDown(object? sender, Avalonia.Input.KeyEventArgs e)
+    {
+        int step = e.Key switch
+        {
+            Avalonia.Input.Key.Left or Avalonia.Input.Key.Up => -1,
+            Avalonia.Input.Key.Right or Avalonia.Input.Key.Down => 1,
+            _ => 0
+        };
+
+        if (step == 0 || SettingsTabs.ItemCount == 0)
+        {
+            return;
+        }
+
+        int current = SettingsTabs.SelectedIndex < 0 ? 0 : SettingsTabs.SelectedIndex;
+        SettingsTabs.SelectedIndex = (current + step + SettingsTabs.ItemCount) % SettingsTabs.ItemCount;
+        e.Handled = true;
     }
 
     public void Attach(DockViewModel dock)
@@ -195,7 +224,9 @@ public partial class SettingsWindow : Window
         var dialog = new Window
         {
             Title = "替换快捷配置？",
-            Width = 390,
+            // The prototype card is 380px wide. The transparent 14px outer
+            // margin belongs to the window, so the host window is 408px.
+            Width = 408,
             SizeToContent = SizeToContent.Height,
             CanResize = false,
             ShowInTaskbar = false,
@@ -204,6 +235,15 @@ public partial class SettingsWindow : Window
             Background = Brushes.Transparent,
             TransparencyLevelHint = new[] { WindowTransparencyLevel.Transparent },
             TransparencyBackgroundFallback = Brushes.Transparent
+        };
+        dialog.KeyDown += (_, e) =>
+        {
+            if (e.Key == Avalonia.Input.Key.Escape)
+            {
+                completion.TrySetResult(false);
+                dialog.Close();
+                e.Handled = true;
+            }
         };
 
         var cancel = new Button { Content = "取消", MinWidth = 76, Padding = new Avalonia.Thickness(12, 6) };
@@ -227,14 +267,42 @@ public partial class SettingsWindow : Window
             HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
             Children = { cancel, confirm }
         };
-        var content = new StackPanel
+        var body = new StackPanel
         {
             Spacing = 8,
+            Margin = new Avalonia.Thickness(16, 6, 16, 16),
             Children =
             {
-                new TextBlock { Text = "导入将替换当前 " + _vm.ItemCount + " 个快捷项及设置。", FontSize = 14, FontWeight = FontWeight.SemiBold, Foreground = _vm.TextBrush },
-
+                new TextBlock
+                {
+                    Text = "导入将替换当前 " + _vm.ItemCount + " 个快捷项及设置。",
+                    FontSize = 11.5,
+                    Foreground = _vm.TextDimBrush,
+                    TextWrapping = TextWrapping.Wrap
+                },
                 actions
+            }
+        };
+        var header = new Border
+        {
+            Padding = new Avalonia.Thickness(16, 14),
+            BorderBrush = _vm.PanelBorderBrush,
+            BorderThickness = new Avalonia.Thickness(0, 0, 0, 1),
+            Child = new TextBlock
+            {
+                Text = "替换快捷配置？",
+                FontSize = 14,
+                FontWeight = FontWeight.SemiBold,
+                Foreground = _vm.TextBrush
+            }
+        };
+        DockPanel.SetDock(header, Dock.Top);
+        var content = new DockPanel
+        {
+            Children =
+            {
+                header,
+                body
             }
         };
         dialog.Content = new Grid
@@ -247,7 +315,7 @@ public partial class SettingsWindow : Window
                     Background = _vm.BackgroundBrush,
                     BorderBrush = _vm.PanelBorderBrush,
                     BorderThickness = new Avalonia.Thickness(1),
-                    CornerRadius = new Avalonia.CornerRadius(_vm.PanelRadius),
+                    CornerRadius = new Avalonia.CornerRadius(14),
                     Padding = new Avalonia.Thickness(18),
                     Child = content
                 }
@@ -318,7 +386,7 @@ public partial class SettingsWindow : Window
         var dialog = new Window
         {
             Title = "许可证",
-            Width = 390,
+            Width = 408,
             SizeToContent = SizeToContent.Height,
             CanResize = false,
             ShowInTaskbar = false,
@@ -327,6 +395,14 @@ public partial class SettingsWindow : Window
             Background = Brushes.Transparent,
             TransparencyLevelHint = new[] { WindowTransparencyLevel.Transparent },
             TransparencyBackgroundFallback = Brushes.Transparent
+        };
+        dialog.KeyDown += (_, e) =>
+        {
+            if (e.Key == Avalonia.Input.Key.Escape)
+            {
+                dialog.Close();
+                e.Handled = true;
+            }
         };
 
         var close = new Button { Content = "知道了", HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right };
@@ -364,7 +440,7 @@ public partial class SettingsWindow : Window
                     Background = _vm?.BackgroundBrush ?? Brushes.White,
                     BorderBrush = _vm?.PanelBorderBrush ?? Brushes.Gray,
                     BorderThickness = new Avalonia.Thickness(1),
-                    CornerRadius = new Avalonia.CornerRadius(_vm?.PanelRadius ?? 14),
+                    CornerRadius = new Avalonia.CornerRadius(14),
                     Padding = new Avalonia.Thickness(18),
                     Child = content
                 }

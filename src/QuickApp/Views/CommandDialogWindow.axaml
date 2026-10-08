@@ -4,7 +4,7 @@
         x:Class="QuickApp.Views.CommandDialogWindow"
         x:DataType="vm:DockViewModel"
         Title="添加命令行"
-        Width="432"
+        Width="412"
         SizeToContent="Height"
         CanResize="False"
         ShowInTaskbar="False"
@@ -35,7 +35,7 @@
             Background="{Binding SettingsBackgroundBrush}"
             BorderBrush="{Binding PanelBorderBrush}"
             BorderThickness="1"
-            CornerRadius="{Binding PanelCornerRadius}">
+            CornerRadius="14">
       <StackPanel Margin="16,0,16,16">
 
         <Grid ColumnDefinitions="*,Auto" Margin="-16,0,-16,0" Name="HeaderBar" Cursor="SizeAll">

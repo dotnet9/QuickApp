@@ -29,6 +29,14 @@ public partial class CommandDialogWindow : Window
                 BeginMoveDrag(e);
             }
         };
+        KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.Escape)
+            {
+                Close();
+                e.Handled = true;
+            }
+        };
         NameBox.KeyDown += (_, e) =>
         {
             if (e.Key == Key.Enter)

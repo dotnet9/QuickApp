@@ -41,6 +41,8 @@
                    Width="{Binding IconSize}"
                    Height="{Binding IconSize}"
                    IsVisible="{Binding HasIcon}"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
                    Stretch="Uniform" />
 
             <!-- 没有真实图标时的占位：类型相关的线性图标（应用类透明底 + 正文色，原型 .tile.app-icon） -->

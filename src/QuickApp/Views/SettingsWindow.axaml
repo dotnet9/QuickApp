@@ -5,8 +5,8 @@
         x:Class="QuickApp.Views.SettingsWindow"
         x:DataType="vm:SettingsViewModel"
         Title="QuickApp 设置"
-        Width="732"
-        Height="560"
+        Width="720"
+        Height="520"
         CanResize="False"
         ShowInTaskbar="True"
         WindowDecorations="None"
@@ -108,7 +108,7 @@
       <Setter Property="CornerRadius" Value="12" />
       <Setter Property="BorderBrush" Value="{DynamicResource QALineBrush}" />
       <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="Background" Value="{DynamicResource QAHoverBrush}" />
+      <Setter Property="Background" Value="{DynamicResource QAResultRowBrush}" />
       <Setter Property="Margin" Value="0,0,0,10" />
     </Style>
     <Style Selector="Border.rec-icon">
@@ -285,7 +285,7 @@
                       <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding CollapseAfterLaunch}" />
                     </Grid>
                     <Grid Classes="row" ColumnDefinitions="*,Auto">
-                      <TextBlock Classes="row" Text="自动检查更新（启动时及每 12 小时）" />
+                      <TextBlock Classes="row" Text="启动时检查更新" />
                       <ToggleButton Grid.Column="1" Classes="switch" IsChecked="{Binding CheckUpdates}" />
                     </Grid>
                     <Border Classes="groupsep" />

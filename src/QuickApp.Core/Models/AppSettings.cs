@@ -19,8 +19,8 @@ public sealed class AppSettings
 
     public double CornerRadius { get; set; } = 18;
 
-    /// <summary>面板不透明度 0.4 ~ 1.0。</summary>
-    public double PanelOpacity { get; set; } = 0.4;
+    /// <summary>兼容旧配置的字段；原型定稿后 Dock 面板固定为 100% 不透明。</summary>
+    public double PanelOpacity { get; set; } = 1.0;
 
     /// <summary>钉住后不再自动隐藏。</summary>
     public bool Pinned { get; set; }
