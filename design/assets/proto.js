@@ -419,7 +419,7 @@ window.QA = (function(){
         h('button', {class:'chip', type:'button', onclick:actions.dismiss}, h('span', {text:'忽略'}))
       ));
     }else if(u.phase === 'noasset'){
-      line.append(h('span', {class:'update-text', html:'发现新版本 <b>' + u.tag + '</b> <span class="update-tag">· 没有匹配当前系统的安装包</span>'}));
+      line.append(h('span', {class:'update-text', html:'发现新版本 <b>' + u.tag + '</b> <span class="update-tag">· 暂无法获取当前系统的安装包</span>'}));
       line.append(h('span', {class:'update-actions'},
         h('button', {class:'chip primary', type:'button', onclick:actions.openPage}, h('span', {class:'chip-icon', html:svg('link', 14, 2)}), h('span', {text:'打开发布页'})),
         h('button', {class:'chip', type:'button', onclick:actions.dismiss}, h('span', {text:'忽略'}))
@@ -456,7 +456,7 @@ window.QA = (function(){
     const titles = {found:'发现新版本', noasset:'发现新版本', downloading:'正在下载更新', ready:'更新已就绪'};
     const descs = {
       found:'已按当前系统与架构选定安装包，下载完成后需再次点击安装，程序不会静默替换。',
-      noasset:'没有匹配当前系统的安装包，可以前往 Release 页面手动选择资产。',
+      noasset:'暂无法获取当前系统的安装包，可以前往 Release 页面手动选择资产。',
       downloading:'下载在后台进行，可随时取消；完成后 Dock 会提示安装。',
       ready:'安装包已校验存放，点击安装后由系统安装器接管，程序随后退出。'
     };

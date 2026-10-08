@@ -90,7 +90,7 @@ public partial class App : Application
         services.AddSingleton<IInstalledAppProvider>(_ => PlatformServices.CreateInstalledAppProvider(AppLog.Info));
         services.AddSingleton<IIconProvider>(_ => PlatformServices.CreateIconProvider(AppPaths.IconCacheDirectory(), AppLog.Info));
         services.AddSingleton<IUpdateChecker>(_ => new UpdateChecker(
-            new HttpClient { Timeout = TimeSpan.FromSeconds(12) },
+            new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(12) },
             owner: "dotnet9",
             repo: "QuickApp",
             log: AppLog.Info,
@@ -110,7 +110,7 @@ public partial class App : Application
 
         // 推荐应用：目录内嵌、安装包地址运行时按系统实时解析（推荐软件发新版无需更新 QuickApp）
         services.AddSingleton<IRecommendedAppsService>(_ => new RecommendedAppsService(
-            new HttpClient { Timeout = TimeSpan.FromSeconds(12) },
+            new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(12) },
             log: AppLog.Info));
         services.AddSingleton(_ => new RecommendedAppsStateStore(AppContext.BaseDirectory, AppLog.Info));
 

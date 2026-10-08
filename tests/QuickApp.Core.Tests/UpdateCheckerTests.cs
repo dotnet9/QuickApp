@@ -82,7 +82,8 @@ public sealed class UpdateCheckerTests
             repo: "QuickApp",
             apiBase: "https://example.test",
             preferInstaller: false,
-            webBase: "https://example.test");
+            webBase: "https://example.test",
+            allowApiFallback: true);
 
         UpdateCheckResult result = await checker.CheckAsync(new Version(0, 1, 0));
 
@@ -107,7 +108,7 @@ public sealed class UpdateCheckerTests
 
         Assert.False(result.Succeeded);
         Assert.Null(result.Update);
-        Assert.Equal("HTTP 500", result.Error);
+        Assert.Contains("500", result.Error);
     }
 
     [Fact]
@@ -120,7 +121,8 @@ public sealed class UpdateCheckerTests
             owner: "dotnet9",
             repo: "QuickApp",
             apiBase: "https://example.test",
-            webBase: "https://example.test");
+            webBase: "https://example.test",
+            allowApiFallback: true);
 
         UpdateCheckResult first = await checker.CheckAsync(new Version(0, 1, 0));
         UpdateCheckResult second = await checker.CheckAsync(new Version(0, 1, 0));
@@ -148,7 +150,8 @@ public sealed class UpdateCheckerTests
                 repo: "QuickApp",
                 apiBase: "https://example.test",
                 stateFile: stateFile,
-                webBase: "https://example.test");
+                webBase: "https://example.test",
+                allowApiFallback: true);
 
             UpdateCheckResult first = await okChecker.CheckAsync(new Version(0, 1, 0));
 
@@ -165,7 +168,8 @@ public sealed class UpdateCheckerTests
                 repo: "QuickApp",
                 apiBase: "https://example.test",
                 stateFile: stateFile,
-                webBase: "https://example.test");
+                webBase: "https://example.test",
+                allowApiFallback: true);
 
             UpdateCheckResult second = await againChecker.CheckAsync(new Version(0, 1, 0));
 
@@ -333,7 +337,8 @@ public sealed class UpdateCheckerTests
             owner: "dotnet9",
             repo: "QuickApp",
             apiBase: "https://api.example.test",
-            webBase: "https://example.test");
+            webBase: "https://example.test",
+            allowApiFallback: true);
 
         UpdateCheckResult result = await checker.CheckAsync(new Version(0, 1, 0));
 
@@ -360,13 +365,222 @@ public sealed class UpdateCheckerTests
             repo: "QuickApp",
             apiBase: "https://example.test",
             runtimeIdentifier: rid,
-            webBase: "https://example.test");
+            webBase: "https://example.test",
+            allowApiFallback: true);
 
         UpdateCheckResult result = await checker.CheckAsync(new Version(0, 1, 0));
 
         Assert.True(result.Succeeded);
         Assert.Equal(expectedName, result.Update!.AssetName);
         Assert.Equal("https://example.test/native.sha256", result.Update.ChecksumUrl);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Forbidden)]
+    [InlineData(HttpStatusCode.TooManyRequests)]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    public async Task Default_web_failure_never_requests_api(HttpStatusCode status)
+    {
+        var handler = new WebStubHandler(_ => new HttpResponseMessage(status));
+        var checker = CreateWebChecker(handler);
+
+        UpdateCheckResult result = await checker.CheckAsync(new Version(0, 1, 0));
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(((int)status).ToString(), result.Error);
+        Assert.Equal(1, handler.Requests);
+        Assert.Equal(0, handler.ApiRequests);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Default_web_network_failure_never_requests_api(bool timeout)
+    {
+        var handler = new WebStubHandler(_ =>
+        {
+            throw timeout ? new TaskCanceledException("timeout") : new HttpRequestException("offline");
+        });
+        var checker = CreateWebChecker(handler);
+
+        UpdateCheckResult result = await checker.CheckAsync(new Version(0, 1, 0));
+
+        Assert.False(result.Succeeded);
+        Assert.Contains(timeout ? "超时" : "offline", result.Error);
+        Assert.Equal(1, handler.Requests);
+        Assert.Equal(0, handler.ApiRequests);
+    }
+
+    [Theory]
+    [InlineData(9)]
+    [InlineData(10)]
+    public async Task Current_or_newer_version_skips_assets_and_api(int major)
+    {
+        var handler = new WebStubHandler(_ => LatestRedirect());
+        var checker = CreateWebChecker(handler);
+
+        UpdateCheckResult result = await checker.CheckAsync(new Version(major, 9, 9));
+
+        Assert.True(result.Succeeded);
+        Assert.Null(result.Update);
+        Assert.Equal(1, handler.Requests);
+        Assert.Equal(0, handler.AssetRequests);
+        Assert.Equal(0, handler.ApiRequests);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.NotFound)]
+    [InlineData(HttpStatusCode.TooManyRequests)]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    public async Task Asset_http_failure_preserves_update_and_release_page(HttpStatusCode status)
+    {
+        var handler = new WebStubHandler(request =>
+            request.RequestUri!.AbsolutePath.EndsWith("/latest", StringComparison.Ordinal)
+                ? LatestRedirect()
+                : new HttpResponseMessage(status));
+        var checker = CreateWebChecker(handler, allowApiFallback: true);
+
+        UpdateCheckResult result = await checker.CheckAsync(new Version(0, 1, 0));
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("v9.9.9", result.Update!.Tag);
+        Assert.Equal("https://example.test/dotnet9/QuickApp/releases/tag/v9.9.9", result.Update.PageUrl);
+        Assert.Null(result.Update.AssetUrl);
+        Assert.Equal(0, handler.ApiRequests);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Asset_network_failure_preserves_update(bool timeout)
+    {
+        var handler = new WebStubHandler(request =>
+        {
+            if (request.RequestUri!.AbsolutePath.EndsWith("/latest", StringComparison.Ordinal))
+            {
+                return LatestRedirect();
+            }
+
+            throw timeout ? new TaskCanceledException("timeout") : new HttpRequestException("offline");
+        });
+        var checker = CreateWebChecker(handler, allowApiFallback: true);
+
+        UpdateCheckResult result = await checker.CheckAsync(new Version(0, 1, 0));
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("v9.9.9", result.Update!.Tag);
+        Assert.Null(result.Update.AssetUrl);
+        Assert.Equal(0, handler.ApiRequests);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Failed_or_empty_asset_list_is_retried_without_caching(bool emptyHtml)
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "QuickAppTests", Guid.NewGuid().ToString("N"));
+        string stateFile = Path.Combine(dir, "update-state.json");
+        int assetRequests = 0;
+        try
+        {
+            var handler = new WebStubHandler(request =>
+            {
+                if (request.RequestUri!.AbsolutePath.EndsWith("/latest", StringComparison.Ordinal))
+                {
+                    return LatestRedirect();
+                }
+
+                if (++assetRequests == 1)
+                {
+                    return emptyHtml ? Html("<div></div>") : new HttpResponseMessage(HttpStatusCode.InternalServerError);
+                }
+
+                return Html("<a href=\"/dotnet9/QuickApp/releases/download/v9.9.9/QuickApp-v9.9.9-win-x64-setup.exe\">setup</a>");
+            });
+            var checker = CreateWebChecker(handler, stateFile: stateFile);
+
+            UpdateCheckResult first = await checker.CheckAsync(new Version(0, 1, 0));
+
+            Assert.True(first.Succeeded);
+            Assert.Null(first.Update!.AssetUrl);
+            Assert.False(File.Exists(stateFile));
+
+            UpdateCheckResult second = await checker.CheckAsync(new Version(0, 1, 0));
+
+            Assert.True(second.Succeeded);
+            Assert.Equal("QuickApp-v9.9.9-win-x64-setup.exe", second.Update!.AssetName);
+            Assert.True(File.Exists(stateFile));
+            Assert.Equal(2, handler.AssetRequests);
+            Assert.Equal(0, handler.ApiRequests);
+        }
+        finally
+        {
+            if (Directory.Exists(dir))
+            {
+                Directory.Delete(dir, recursive: true);
+            }
+        }
+    }
+
+    [Theory]
+    [InlineData("before")]
+    [InlineData("latest")]
+    [InlineData("assets")]
+    public async Task Cancellation_never_falls_back_to_api(string stage)
+    {
+        using var cancellation = new CancellationTokenSource();
+        var handler = new WebStubHandler(request =>
+        {
+            bool latest = request.RequestUri!.AbsolutePath.EndsWith("/latest", StringComparison.Ordinal);
+            if ((stage == "latest" && latest) || (stage == "assets" && !latest))
+            {
+                cancellation.Cancel();
+                throw new OperationCanceledException(cancellation.Token);
+            }
+
+            return LatestRedirect();
+        });
+        var checker = CreateWebChecker(handler, allowApiFallback: true);
+        if (stage == "before")
+        {
+            cancellation.Cancel();
+        }
+
+        UpdateCheckResult result = await checker.CheckAsync(new Version(0, 1, 0), cancellation.Token);
+
+        Assert.False(result.Succeeded);
+        Assert.Equal("操作已取消", result.Error);
+        Assert.Equal(0, handler.ApiRequests);
+        Assert.Equal(stage == "before" ? 0 : stage == "latest" ? 1 : 2, handler.Requests);
+    }
+
+    [Fact]
+    public async Task Invalid_web_tag_reports_failure_instead_of_latest_version()
+    {
+        var handler = new WebStubHandler(_ => LatestRedirect("not-a-version"));
+        var checker = CreateWebChecker(handler);
+
+        UpdateCheckResult result = await checker.CheckAsync(new Version(0, 1, 0));
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("有效版本号", result.Error);
+        Assert.Equal(0, handler.AssetRequests);
+        Assert.Equal(0, handler.ApiRequests);
+    }
+
+    private static UpdateChecker CreateWebChecker(WebStubHandler handler, string? stateFile = null, bool allowApiFallback = false)
+        => new(new HttpClient(handler), "dotnet9", "QuickApp",
+            apiBase: "https://api.example.test",
+            runtimeIdentifier: "win-x64",
+            stateFile: stateFile,
+            webBase: "https://example.test",
+            allowApiFallback: allowApiFallback);
+
+    private static HttpResponseMessage LatestRedirect(string tag = "v9.9.9")
+    {
+        var response = new HttpResponseMessage(HttpStatusCode.Found);
+        response.Headers.Location = new Uri($"/dotnet9/QuickApp/releases/tag/{tag}", UriKind.Relative);
+        return response;
     }
 
     private static UpdateChecker CreateChecker(string json)
@@ -377,7 +591,8 @@ public sealed class UpdateCheckerTests
             owner: "dotnet9",
             repo: "QuickApp",
             apiBase: "https://example.test",
-            webBase: "https://example.test");
+            webBase: "https://example.test",
+            allowApiFallback: true);
     }
 
     private static HttpResponseMessage Json(string json)

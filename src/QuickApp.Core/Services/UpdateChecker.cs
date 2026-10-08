@@ -23,8 +23,8 @@ public sealed record UpdateCheckState(string? Etag, GitHubRelease? Release);
 ///   走代理时被同出口用户共享、极易耗尽，网页端点没有这个限制）；
 /// - expanded_assets/{tag} 是发布页懒加载资产列表的接口，从中解析资产名与下载直链；
 /// - tag 与上次缓存一致时连资产请求都省掉，用缓存的 release 做版本比较。
-/// 网页端点拿不到（改版/超时/网络）才退回 Releases API：ETag 条件请求 304 不计配额，
-/// 403/429 按 Retry-After / X-RateLimit-Reset 退避，恢复前不再发请求。
+/// 默认只使用网页端点；安装包列表不可用时仍提示新版本并提供发布页。
+/// 显式启用 API 回退时使用 ETag 条件请求，并对 403/429 按指示退避。
 /// 任何网络/解析异常都吞掉返回失败结果，不打扰用户。
 /// </summary>
 public sealed class UpdateChecker : IUpdateChecker
@@ -41,6 +41,7 @@ public sealed class UpdateChecker : IUpdateChecker
     private readonly bool _preferInstaller;
     private readonly string? _runtimeIdentifier;
     private readonly string? _stateFile;
+    private readonly bool _allowApiFallback;
     private DateTime _blockedUntilUtc = DateTime.MinValue;
 
     public UpdateChecker(
@@ -52,7 +53,8 @@ public sealed class UpdateChecker : IUpdateChecker
         bool preferInstaller = true,
         string? runtimeIdentifier = null,
         string? stateFile = null,
-        string? webBase = null)
+        string? webBase = null,
+        bool allowApiFallback = false)
     {
         _http = http ?? throw new ArgumentNullException(nameof(http));
         _owner = owner;
@@ -63,18 +65,22 @@ public sealed class UpdateChecker : IUpdateChecker
         _preferInstaller = preferInstaller;
         _runtimeIdentifier = runtimeIdentifier;
         _stateFile = stateFile;
+        _allowApiFallback = allowApiFallback;
     }
 
     public async Task<UpdateCheckResult> CheckAsync(Version current, CancellationToken cancellationToken = default)
     {
         try
         {
-            UpdateCheckResult? viaWeb = await CheckViaWebAsync(current, cancellationToken).ConfigureAwait(false);
-            if (viaWeb is not null)
+            cancellationToken.ThrowIfCancellationRequested();
+            UpdateCheckResult viaWeb = await CheckViaWebAsync(current, cancellationToken).ConfigureAwait(false);
+            if (viaWeb.Succeeded || !_allowApiFallback)
             {
                 return viaWeb;
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
+            _log?.Invoke($"网页检查失败，退回 API：{viaWeb.Error}");
             return await CheckViaApiAsync(current, cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
@@ -88,19 +94,25 @@ public sealed class UpdateChecker : IUpdateChecker
         }
     }
 
-    /// <summary>网页端点检查：不占 API 配额。拿不到结果返回 null，由调用方退回 API。</summary>
-    private async Task<UpdateCheckResult?> CheckViaWebAsync(Version current, CancellationToken cancellationToken)
+    /// <summary>网页端点检查：版本与安装包解析分开，安装包列表失败不影响已确认的新版本。</summary>
+    private async Task<UpdateCheckResult> CheckViaWebAsync(Version current, CancellationToken cancellationToken)
     {
         try
         {
             string? tag = await FetchLatestTagViaRedirectAsync(cancellationToken).ConfigureAwait(false);
-            if (string.IsNullOrWhiteSpace(tag))
+            if (string.IsNullOrWhiteSpace(tag) || VersionUtil.Parse(tag) is not { } candidate)
             {
-                return null;
+                return UpdateCheckResult.Failed("GitHub 发布页未解析到有效版本号，请稍后重试");
+            }
+
+            if (!VersionUtil.IsNewer(candidate, current))
+            {
+                return UpdateCheckResult.Latest();
             }
 
             UpdateCheckState? state = TryReadState();
             if (state?.Release is { } cached
+                && cached.Assets is { Length: > 0 }
                 && string.Equals(cached.TagName, tag, StringComparison.OrdinalIgnoreCase))
             {
                 // 没发新版：缓存的 release 直接做版本比较，资产请求也省掉
@@ -110,22 +122,29 @@ public sealed class UpdateChecker : IUpdateChecker
             GitHubRelease? release = await FetchWebReleaseAsync(tag, cancellationToken).ConfigureAwait(false);
             if (release is null)
             {
-                return null;
+                // 已确认有新版：保留发布页入口，不因资产端点失败转去消耗 API 配额。
+                return EvaluateRelease(new GitHubRelease
+                {
+                    TagName = tag,
+                    HtmlUrl = $"{_webBase}/{_owner}/{_repo}/releases/tag/{Uri.EscapeDataString(tag)}"
+                }, current);
             }
 
-            TrySaveState(new UpdateCheckState(Etag: null, release));
+            if (release.Assets is { Length: > 0 })
+            {
+                TrySaveState(new UpdateCheckState(Etag: null, release));
+            }
             return EvaluateRelease(release, current);
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            // HttpClient 超时也抛 TaskCanceledException：网页路径超时不算失败，退回 API
-            _log?.Invoke("网页检查超时，退回 API");
-            return null;
+            _log?.Invoke("网页检查超时");
+            return UpdateCheckResult.Failed("GitHub 网页检查超时，请稍后重试");
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _log?.Invoke($"网页检查失败，退回 API：{ex.Message}");
-            return null;
+            _log?.Invoke($"网页检查失败：{ex.Message}");
+            return UpdateCheckResult.Failed(ex.Message);
         }
     }
 
@@ -137,6 +156,11 @@ public sealed class UpdateChecker : IUpdateChecker
         using HttpResponseMessage response = await _http
             .SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
             .ConfigureAwait(false);
+
+        if (!IsRedirect(response.StatusCode))
+        {
+            response.EnsureSuccessStatusCode();
+        }
 
         // HttpClient 自动跟随重定向时最终地址写在 RequestMessage 上；跟随被禁用时读 Location 头
         Uri? finalUri = IsRedirect(response.StatusCode)
@@ -154,7 +178,21 @@ public sealed class UpdateChecker : IUpdateChecker
     /// <summary>expanded_assets 是发布页懒加载资产列表的接口；从中拼出 release 模型（说明等字段拿不到，界面未用到）。</summary>
     private async Task<GitHubRelease?> FetchWebReleaseAsync(string tag, CancellationToken cancellationToken)
     {
-        string url = $"{_webBase}/{_owner}/{_repo}/releases/expanded_assets/{tag}";
+        try
+        {
+            return await FetchWebAssetsAsync(tag, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            _log?.Invoke($"资产列表拉取失败，保留发布页入口：{ex.Message}");
+            return null;
+        }
+    }
+
+    private async Task<GitHubRelease?> FetchWebAssetsAsync(string tag, CancellationToken cancellationToken)
+    {
+        string escapedTag = Uri.EscapeDataString(tag);
+        string url = $"{_webBase}/{_owner}/{_repo}/releases/expanded_assets/{escapedTag}";
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.TryAddWithoutValidation("User-Agent", "QuickApp-UpdateChecker");
         using HttpResponseMessage response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
@@ -169,7 +207,7 @@ public sealed class UpdateChecker : IUpdateChecker
         return new GitHubRelease
         {
             TagName = tag,
-            HtmlUrl = $"{_webBase}/{_owner}/{_repo}/releases/tag/{tag}",
+            HtmlUrl = $"{_webBase}/{_owner}/{_repo}/releases/tag/{escapedTag}",
             Assets = assets.ToArray()
         };
     }

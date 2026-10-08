@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -385,8 +385,8 @@ public sealed class DockViewModel : ViewModelBase
         }
     }
 
-    /// <summary>次要说明：仅「无匹配资产」时给出降级原因，空串隐藏。</summary>
-    public string UpdateNoteText => NeedsUpdatePage ? "没有匹配当前系统的安装包" : string.Empty;
+    /// <summary>次要说明：安装包信息不可用时提供发布页入口，空串隐藏。</summary>
+    public string UpdateNoteText => NeedsUpdatePage ? "暂无法获取当前系统的安装包" : string.Empty;
 
     /// <summary>版本号（更新卡片右上角徽标）。</summary>
     public string UpdateTag => _pendingUpdate?.Tag ?? string.Empty;

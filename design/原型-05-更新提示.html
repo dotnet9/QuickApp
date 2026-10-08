@@ -97,7 +97,7 @@
     <div class="taskbar" aria-hidden="true"><i></i><i></i><i></i></div>
     <div class="dock"><div class="dock-body"><div class="items-wrap"><div class="dock-items" data-seed></div></div></div></div>
   </div>
-  <div class="stage-caption"><span class="s-badge">S4</span>没有匹配资产 —— 找不到当前系统/架构的下载资产时降级为「打开发布页」，避免下错文件。</div>
+  <div class="stage-caption"><span class="s-badge">S4</span>安装包暂不可用 —— 安装包列表获取失败或找不到当前系统/架构的下载资产时提供「打开发布页」。</div>
 
   <header class="proto-headline"><h1 style="font-size:16px">竖排 Dock（左边缘）· 胶囊 + 弹出卡片</h1></header>
 
@@ -119,7 +119,7 @@
       <li><b>S1</b> 文本 <code>发现新版本 v0.2.5</code>；按钮 <code>下载</code>（AssetUrl 与 ChecksumUrl 均存在时）/ <code>忽略</code>。</li>
       <li><b>S2</b> 文本 <code>正在下载 v0.2.5 · 45%</code> + 进度条；按钮 <code>取消</code>。Toast 同步「正在下载更新 · 45%」。</li>
       <li><b>S3</b> 文本 <code>v0.2.5 下载完成</code>；按钮 <code>安装</code> / <code>打开安装包</code>（按资产是否为 <code>*-setup.exe</code>）+ <code>忽略</code>；Toast「下载完成，请点击安装」。</li>
-      <li><b>S4</b> 文本 <code>发现新版本 v0.2.5 · 没有匹配当前系统的安装包</code>；按钮 <code>打开发布页</code> + <code>忽略</code>。</li>
+      <li><b>S4</b> 文本 <code>发现新版本 v0.2.5 · 暂无法获取当前系统的安装包</code>；按钮 <code>打开发布页</code> + <code>忽略</code>。</li>
       <li>下载失败 → Toast「下载失败，请重试」，回到 S1；取消 → 回到 S1。</li>
     </ul>
   </div>
