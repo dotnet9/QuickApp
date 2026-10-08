@@ -258,9 +258,13 @@ public sealed class DockViewModel : ViewModelBase
         ? double.PositiveInfinity
         : Math.Round(Settings.TileSize * 10 + 90);
 
-    public double ListMaxHeight => IsVertical
-        ? Math.Round(Settings.TileSize * 10 + 110)
-        : double.PositiveInfinity;
+    public double ListMaxHeight => IsSearchOpen
+        ? 300
+        : IsVertical ? Math.Round(Settings.TileSize * 10 + 110) : double.PositiveInfinity;
+
+    /// <summary>搜索时限制横排结果的行宽，使已配置快捷项换行并沿纵向滚动。</summary>
+    public double ListWrapWidth => IsSearchOpen && !IsVertical
+        ? ListMaxWidth - ListPadding.Left - ListPadding.Right : double.PositiveInfinity;
 
     /// <summary>
     /// 空状态仍保留原型中的图标区空间，避免提示文字把分隔线和操作区挤到一边。
@@ -440,6 +444,73 @@ public sealed class DockViewModel : ViewModelBase
 
     public string ConfigFilePath => _store.ConfigFile;
 
+    public string? ConfigLoadError => _store.LastLoadError;
+    public bool HasConfigLoadError => ConfigLoadError is not null;
+    public event Action? HotkeyBindingsChanged;
+    public Func<string, string?>? CheckHotkeyAvailability { get; set; }
+
+    public IReadOnlyList<HotkeyBinding> CreateItemHotkeyBindings()
+        => _allItems.Where(item => !string.IsNullOrWhiteSpace(item.Model.Hotkey))
+            .Select(item => new HotkeyBinding(item.Model.Hotkey!, item.Name,
+                () => RunItem(_allItems.FirstOrDefault(current => current.Id == item.Id)), item.Id)).ToArray();
+
+    public string? ValidateItemDraft(LauncherItem draft)
+    {
+        if (HasConfigLoadError) return "配置读取失败，请先在设置的数据页重新加载配置。";
+        string? error = LauncherItemEditor.NormalizeAndValidate(draft, _config.Items, Settings.Hotkey);
+        if (error is not null) return error;
+        LauncherItem? old = _config.Items.FirstOrDefault(item => item.Id == draft.Id);
+        bool unchanged = HotkeyGesture.TryParse(draft.Hotkey ?? string.Empty, out HotkeyGesture next, out _)
+            && HotkeyGesture.TryParse(old?.Hotkey ?? string.Empty, out HotkeyGesture previous, out _) && next == previous;
+        return !unchanged && !string.IsNullOrWhiteSpace(draft.Hotkey) ? CheckHotkeyAvailability?.Invoke(draft.Hotkey) : null;
+    }
+
+    public bool SaveItem(LauncherItem draft)
+    {
+        string? error = ValidateItemDraft(draft);
+        if (error is not null) { Toast(error); return false; }
+        var items = new List<LauncherItem>(_config.Items);
+        int index = items.FindIndex(item => item.Id == draft.Id);
+        LauncherItem saved = LauncherItemEditor.Copy(draft);
+        if (index >= 0)
+        {
+            LauncherItem old = items[index];
+            saved.CustomIconPath = old.CustomIconPath;
+            saved.RecommendedId = old.Target == saved.Target && old.Kind == saved.Kind ? old.RecommendedId : null;
+            items[index] = saved;
+        }
+        else { saved.Id = "i" + Guid.NewGuid().ToString("N")[..8]; items.Add(saved); }
+        var config = new AppConfig { SchemaVersion = _config.SchemaVersion, Settings = Settings, Items = items };
+        if (!_store.Save(config)) { Toast("保存失败，请检查配置目录权限。" ); return false; }
+        _config.Items = items;
+        RebuildItems();
+        SyncRecommendedCardsAfterDockChange();
+        HotkeyBindingsChanged?.Invoke();
+        Toast(index >= 0 ? "已更新：" + saved.Name : "已添加：" + saved.Name);
+        return true;
+    }
+
+    public bool ReloadConfig()
+    {
+        AppConfig loaded = _store.Load();
+        this.RaisePropertyChanged(nameof(ConfigLoadError));
+        this.RaisePropertyChanged(nameof(HasConfigLoadError));
+        this.RaisePropertyChanged(nameof(EmptyStateText));
+        if (HasConfigLoadError) { Toast("读取配置失败：" + ConfigLoadError); return false; }
+        _config.Items = loaded.Items;
+        _config.Settings = loaded.Settings;
+        _config.SchemaVersion = loaded.SchemaVersion;
+        RebuildItems();
+        SyncRecommendedCardsAfterDockChange();
+        ApplySettings(save: false);
+        _host?.ApplyEdge(Settings.Edge);
+        _host?.MonitorSelectionChanged();
+        _host?.AutoHideDelayChanged();
+        HotkeyBindingsChanged?.Invoke();
+        Toast("已重新加载 " + loaded.Items.Count + " 个快捷项");
+        return true;
+    }
+
     /// <summary>存储模式说明（安装版 = %LOCALAPPDATA%，便携版 = 程序目录）。</summary>
     public string StorageModeText => AppPaths.IsPortable(AppContext.BaseDirectory)
         ? "便携版 · 配置随程序目录"
@@ -548,6 +619,8 @@ public sealed class DockViewModel : ViewModelBase
             }
 
             this.RaisePropertyChanged(nameof(IsPanelExpanded));
+            this.RaisePropertyChanged(nameof(ListMaxHeight));
+            this.RaisePropertyChanged(nameof(ListWrapWidth));
 
             if (value)
             {
@@ -592,7 +665,7 @@ public sealed class DockViewModel : ViewModelBase
 
     public bool IsSearchEmpty => Items.Count == 0 && InstalledItems.Count == 0 && IsSearchGrouped;
 
-    public string EmptyStateText => IsSearchGrouped
+    public string EmptyStateText => HasConfigLoadError ? "配置读取失败 · 设置中可重试" : IsSearchGrouped
         ? "没有匹配「" + SearchQuery.Trim() + "」的项目"
         : IsEditMode ? "右键空白处添加应用" : "空空如也";
 
@@ -914,14 +987,7 @@ public sealed class DockViewModel : ViewModelBase
             CustomIconPath = vm.Model.CustomIconPath
         };
 
-        _config.Items.Add(model);
-        var configured = new ItemViewModel(model, RunItem, RemoveItem);
-        _allItems.Add(configured);
-        _ = LoadIconAsync(configured);
-        ApplyItemLayout();
-        RefreshFilter();
-        Save();
-        Toast("已添加 " + model.Name + " 到 Dock");
+        SaveItem(model);
     }
 
     private static async Task ResetRunningAsync(ItemViewModel vm)
@@ -1014,6 +1080,8 @@ public sealed class DockViewModel : ViewModelBase
     /// <summary>添加目标（设置里选择文件，或将来的拖入）。</summary>
     public void AddTargets(IEnumerable<string> paths)
     {
+        if (HasConfigLoadError) { Toast("配置读取失败，请先重新加载配置。" ); return; }
+        var items = new List<LauncherItem>(_config.Items);
         int added = 0;
         foreach (string path in paths)
         {
@@ -1022,18 +1090,17 @@ public sealed class DockViewModel : ViewModelBase
                 continue;
             }
 
+            if (items.Any(item => string.Equals(NormalizeTarget(item.Target), NormalizeTarget(LauncherItemEditor.ExpandPath(path)), OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))) continue;
+
             var model = new LauncherItem
             {
                 Id = "i" + Guid.NewGuid().ToString("N")[..8],
-                Target = path.Trim(),
+                Target = LauncherItemEditor.ExpandPath(path),
                 Kind = GuessKind(path)
             };
             model.Name = ItemQuery.ResolveDisplayName(model);
 
-            _config.Items.Add(model);
-            var vm = new ItemViewModel(model, RunItem, RemoveItem);
-            _allItems.Add(vm);
-            _ = LoadIconAsync(vm);
+            items.Add(model);
             added++;
         }
 
@@ -1042,9 +1109,10 @@ public sealed class DockViewModel : ViewModelBase
             return;
         }
 
-        ApplyItemLayout();
-        RefreshFilter();
-        Save();
+        var config = new AppConfig { SchemaVersion = _config.SchemaVersion, Settings = Settings, Items = items };
+        if (!_store.Save(config)) { Toast("保存失败，请检查配置目录权限。"); return; }
+        _config.Items = items;
+        RebuildItems();
         Toast("已添加 " + added + " 项");
     }
 
@@ -1070,12 +1138,7 @@ public sealed class DockViewModel : ViewModelBase
             Kind = ItemKind.Command
         };
 
-        _config.Items.Add(model);
-        _allItems.Add(new ItemViewModel(model, RunItem, RemoveItem));
-        ApplyItemLayout();
-        RefreshFilter();
-        Save();
-        Toast("已添加命令行：" + model.Name);
+        SaveItem(model);
     }
 
     /// <summary>「更换图标」选定本地图片后：复制进图标库（配置目录内，按条目 Id 命名）、加载显示并持久化。</summary>
@@ -1102,7 +1165,11 @@ public sealed class DockViewModel : ViewModelBase
 
     // ---------------- 导入 / 导出 ----------------
 
-    public bool ExportConfigTo(string filePath) => _store.Export(_config, filePath);
+    public bool ExportConfigTo(string filePath)
+    {
+        if (HasConfigLoadError) { Toast("配置读取失败，请先重新加载配置。"); return false; }
+        return _store.Export(_config, filePath);
+    }
 
     /// <summary>从文件导入完整配置（设置 + 列表整体替换），返回是否成功。</summary>
     public bool ImportConfigFrom(string filePath)
@@ -1111,6 +1178,12 @@ public sealed class DockViewModel : ViewModelBase
         if (imported is null)
         {
             Toast("导入失败：不是有效的 QuickApp 配置文件");
+            return false;
+        }
+
+        if (!_store.Save(imported, overwriteAfterLoadFailure: true))
+        {
+            Toast("保存导入配置失败，请检查目录权限。" );
             return false;
         }
 
@@ -1135,7 +1208,9 @@ public sealed class DockViewModel : ViewModelBase
 
         _host?.AutoHideDelayChanged();
 
-        Save();
+        this.RaisePropertyChanged(nameof(ConfigLoadError));
+        this.RaisePropertyChanged(nameof(HasConfigLoadError));
+        HotkeyBindingsChanged?.Invoke();
         // 带进来的图标刚解包到本地图标库，此时清掉被整个替换掉的旧配置残留
         _store.CleanupOrphanedIcons(_config.Items);
         Toast("已导入 " + _config.Items.Count + " 项");
@@ -1218,6 +1293,7 @@ public sealed class DockViewModel : ViewModelBase
             this.RaisePropertyChanged(nameof(DividerWidth));
             this.RaisePropertyChanged(nameof(DividerHeight));
             this.RaisePropertyChanged(nameof(ListMaxWidth));
+            this.RaisePropertyChanged(nameof(ListWrapWidth));
             this.RaisePropertyChanged(nameof(ListMaxHeight));
             this.RaisePropertyChanged(nameof(ListMinWidth));
             this.RaisePropertyChanged(nameof(ListMinHeight));
@@ -1334,7 +1410,10 @@ public sealed class DockViewModel : ViewModelBase
         }
     }
 
-    public void Save() => _store.Save(_config);
+    public void Save()
+    {
+        if (_store.Save(_config)) HotkeyBindingsChanged?.Invoke();
+    }
 
     // ---------------- 更新 ----------------
 

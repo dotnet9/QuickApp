@@ -1,5 +1,8 @@
 using System;
 using System.IO;
+using System.Linq;
+using System.Collections.Generic;
+using Avalonia.Threading;
 using System.Net.Http;
 using Avalonia;
 using Avalonia.Controls;
@@ -22,6 +25,8 @@ public partial class App : Application
     private ServiceProvider? _services;
     private ISingleInstance? _singleInstance;
     private IHotkeyService? _hotkey;
+    private string? _hotkeySignature;
+    private string? _hotkeyError;
     private DockWindow? _dock;
     private SettingsWindow? _settings;
     private TrayIcon? _tray;
@@ -65,18 +70,31 @@ public partial class App : Application
         _singleInstance.Listen(() => _dock.ActivateFromExternal());
 
         RegisterGlobalHotkey(viewModel);
+        viewModel.HotkeyBindingsChanged += () => RegisterGlobalHotkey(viewModel, notify: true);
+        if (OperatingSystem.IsWindows()) viewModel.CheckHotkeyAvailability = gesture =>
+        {
+            using IHotkeyService probe = PlatformServices.CreateHotkeyService(AppLog.Info);
+            return probe.TryRegister(gesture, () => { }, out string? error) ? null : error;
+        };
 
         desktop.MainWindow = _dock;
         _dock.Show();
 
         CreateTrayIcon(viewModel);
+        if (OperatingSystem.IsWindows() && _hotkeyError is not null) viewModel.Toast(_hotkeyError, durationMs: 10000);
+
+        if (viewModel.HasConfigLoadError)
+        {
+            viewModel.Toast("配置读取失败，原数据未覆盖，请在设置的数据页重新加载。", "重试",
+                ReactiveCommand.Create(() => viewModel.ReloadConfig()), 10000);
+        }
 
         if (viewModel.Settings.CheckUpdates)
         {
             _ = viewModel.CheckUpdateAsync();
         }
 
-        AppLog.Info("Dock 已显示，配置：" + viewModel.ConfigFilePath);
+        AppLog.Info("Dock 已显示，配置：" + viewModel.ConfigFilePath + "，快捷项：" + viewModel.Items.Count);
         base.OnFrameworkInitializationCompleted();
     }
 
@@ -159,21 +177,24 @@ public partial class App : Application
     }
 
     /// <summary>全局唤起热键（默认 Ctrl+Alt+Space）：显隐切换，收起状态下一按即唤出。</summary>
-    private void RegisterGlobalHotkey(DockViewModel viewModel)
+    private void RegisterGlobalHotkey(DockViewModel viewModel, bool notify = false)
     {
         try
         {
-            _hotkey = PlatformServices.CreateHotkeyService(AppLog.Info);
-            if (_hotkey.TryRegister(viewModel.Settings.Hotkey, () => ToggleDockFromHotkey(viewModel), out string? error))
+            var bindings = new List<HotkeyBinding>
             {
-                AppLog.Info("全局热键已注册：" + viewModel.Settings.Hotkey);
-            }
-            else
-            {
-                _hotkey.Dispose();
-                _hotkey = null;
-                AppLog.Info("全局热键注册失败：" + error);
-            }
+                new(viewModel.Settings.Hotkey, "唤出 QuickApp", () => ToggleDockFromHotkey(viewModel))
+            };
+            bindings.AddRange(viewModel.CreateItemHotkeyBindings());
+            string signature = string.Join("\n", bindings.Select(binding => binding.Gesture + "\0" + binding.Name + "\0" + binding.Identity));
+            if (_hotkeySignature == signature) return;
+            _hotkey ??= PlatformServices.CreateHotkeyService(AppLog.Info);
+            IReadOnlyList<string> errors = _hotkey.RegisterBindings(bindings);
+            _hotkeySignature = errors.Count == 0 ? signature : null;
+            _hotkeyError = errors.Count > 0 ? errors[0] : null;
+            foreach (string error in errors) AppLog.Info("全局热键注册失败：" + error);
+            if (errors.Count > 0 && notify) Dispatcher.UIThread.Post(() => viewModel.Toast(errors[0]));
+            if (errors.Count == 0) AppLog.Info("已注册 " + bindings.Count + " 个全局快捷键");
         }
         catch (Exception ex)
         {

@@ -1,0 +1,136 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:QuickApp.ViewModels"
+        x:Class="QuickApp.Views.ItemDialogWindow"
+        x:DataType="vm:DockViewModel"
+        Title="编辑快捷项"
+        Width="472"
+        SizeToContent="Height"
+        CanResize="False"
+        ShowInTaskbar="False"
+        WindowDecorations="None"
+        WindowStartupLocation="CenterOwner"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
+        TransparencyBackgroundFallback="Transparent">
+
+  <Window.Styles>
+    <Style Selector="ComboBox">
+      <Setter Property="MinHeight" Value="34" /><Setter Property="FontSize" Value="13" />
+      <Setter Property="CornerRadius" Value="8" /><Setter Property="Foreground" Value="{DynamicResource QATextBrush}" />
+      <Setter Property="Background" Value="{DynamicResource QAHoverBrush}" /><Setter Property="BorderBrush" Value="{DynamicResource QALineBrush}" />
+    </Style>
+    <Style Selector="TextBlock.row">
+      <Setter Property="FontSize" Value="12" />
+    </Style>
+    <Style Selector="TextBox">
+      <Setter Property="MinHeight" Value="34" />
+      <Setter Property="Padding" Value="10,0" />
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Background" Value="{DynamicResource QAHoverBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource QALineBrush}" />
+      <Setter Property="Foreground" Value="{DynamicResource QATextBrush}" />
+    </Style>
+  </Window.Styles>
+
+  <!-- 与设置窗口同一套卡片：整窗透明、实底圆角卡、自绘标题栏（配色直接绑 DockViewModel 的画刷） -->
+  <Grid Margin="16">
+    <Border Name="Card"
+            Background="{Binding SettingsBackgroundBrush}"
+            BorderBrush="{Binding PanelBorderBrush}"
+            BorderThickness="1"
+            CornerRadius="14">
+      <StackPanel Margin="16,0,16,16">
+
+        <Grid ColumnDefinitions="*,Auto" Margin="-16,0,-16,0" Name="HeaderBar" Cursor="SizeAll">
+          <TextBlock Grid.Column="0"
+                     Name="TitleText"
+                     Text="编辑快捷项"
+                     FontSize="14"
+                     FontWeight="SemiBold"
+                     Margin="16,14,0,14"
+                     VerticalAlignment="Center"
+                     Foreground="{Binding TextBrush}" />
+          <Button Grid.Column="1"
+                  Theme="{StaticResource IconButton}"
+                  Name="CloseButton"
+                  Width="32"
+                  Height="32"
+                  Margin="0,4,4,0"
+                  ToolTip.Tip="关闭">
+            <Path Data="M6,6 L18,18 M18,6 L6,18"
+                  Stroke="{Binding TextDimBrush}"
+                  StrokeThickness="1.75"
+                  StrokeLineCap="Round"
+                  Width="20"
+                  Height="20"
+                  Stretch="Uniform" />
+          </Button>
+        </Grid>
+        <Border Height="1" Background="{Binding PanelBorderBrush}" />
+
+        <ScrollViewer Name="FormScroll" MaxHeight="440" HorizontalScrollBarVisibility="Disabled" Margin="0,10,0,0">
+          <StackPanel Spacing="6" Margin="0,0,4,0">
+            <TextBlock Classes="row" Text="类型" Foreground="{Binding TextDimBrush}" />
+            <ComboBox Name="KindBox" HorizontalAlignment="Stretch" SelectedIndex="0">
+              <ComboBoxItem Content="程序 / 文件 / 目录" /><ComboBoxItem Content="网址" /><ComboBoxItem Content="命令" />
+            </ComboBox>
+            <TextBlock Classes="row" Text="名称" Foreground="{Binding TextDimBrush}" />
+            <TextBox Name="NameBox" PlaceholderText="留空时根据目标生成" />
+            <TextBlock Name="TargetLabel" Classes="row" Text="路径或程序名" Foreground="{Binding TextDimBrush}" />
+            <Grid ColumnDefinitions="*,Auto,Auto">
+              <TextBox Name="TargetBox" PlaceholderText="例如：C:\Work 或 explorer.exe" />
+              <Button Grid.Column="1" Name="BrowseFileButton" Theme="{StaticResource LinkButton}" Content="文件…" Margin="6,0,0,0" />
+              <Button Grid.Column="2" Name="BrowseFolderButton" Theme="{StaticResource LinkButton}" Content="目录…" Margin="6,0,0,0" />
+            </Grid>
+            <StackPanel Name="ArgumentsPanel" Spacing="6">
+              <TextBlock Classes="row" Text="启动参数（可选）" Foreground="{Binding TextDimBrush}" />
+              <TextBox Name="ArgumentsBox" PlaceholderText="例如：--new-window" />
+            </StackPanel>
+            <StackPanel Name="WorkingDirectoryPanel" Spacing="6">
+              <TextBlock Classes="row" Text="工作目录（可选）" Foreground="{Binding TextDimBrush}" />
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBox Name="WorkingDirectoryBox" PlaceholderText="例如：C:\Work\QuickApp" />
+                <Button Grid.Column="1" Name="BrowseWorkingDirectoryButton" Theme="{StaticResource LinkButton}" Content="选择…" Margin="6,0,0,0" />
+              </Grid>
+            </StackPanel>
+            <StackPanel Name="CommandOptions" Spacing="6" IsVisible="False">
+              <TextBlock Classes="row" Text="命令解释器" Foreground="{Binding TextDimBrush}" />
+              <ComboBox Name="ShellBox" HorizontalAlignment="Stretch" SelectedIndex="0">
+                <ComboBoxItem Content="CMD" /><ComboBoxItem Content="PowerShell" />
+              </ComboBox>
+              <CheckBox Name="TerminalBox" Content="在终端运行并保留窗口" Foreground="{Binding TextBrush}" />
+              <TextBlock Text="查看输出请使用终端；后台运行适合无需交互的操作。" FontSize="11" Foreground="{Binding TextDimBrush}" TextWrapping="Wrap" />
+            </StackPanel>
+            <TextBlock Name="PlatformNote" Text="当前平台的命令使用系统 Shell 在后台执行。" FontSize="11" Foreground="{Binding TextDimBrush}" TextWrapping="Wrap" IsVisible="False" />
+            <TextBlock Classes="row" Text="全局快捷键（可选 · Windows）" Foreground="{Binding TextDimBrush}" />
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBox Name="HotkeyBox" IsReadOnly="True" PlaceholderText="点击后按组合键，例如 Ctrl + Alt + D" />
+              <Button Grid.Column="1" Name="ClearHotkeyButton" Theme="{StaticResource LinkButton}" Content="清除" Margin="6,0,0,0" />
+            </Grid>
+            <TextBlock Name="HotkeyNote" Text="QuickApp 运行时，Dock 收起也可直接启动。" FontSize="11" Foreground="{Binding TextDimBrush}" TextWrapping="Wrap" />
+          </StackPanel>
+        </ScrollViewer>
+        <TextBlock Name="ErrorText" TextWrapping="Wrap" FontSize="12" Foreground="{Binding DangerBrush}" IsVisible="False" Margin="0,8,0,0" />
+
+        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" Margin="0,14,0,0">
+          <Button Theme="{StaticResource LinkButton}" Name="CancelButton" Content="取消" />
+          <Button Theme="{StaticResource LinkButton}" Name="SubmitButton" Classes="primary" IsDefault="True">
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <Path Data="M5,12.5 L9.5,17 L19,7"
+                  Stroke="{Binding $parent[Button].Foreground}"
+                  StrokeThickness="2"
+                  StrokeLineCap="Round"
+                  StrokeJoin="Round"
+                  Width="15"
+                  Height="15"
+                  Stretch="Uniform" />
+              <TextBlock Name="SubmitText" Text="保存" />
+            </StackPanel>
+          </Button>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+  </Grid>
+</Window>

@@ -4,7 +4,7 @@ using QuickApp.Core.Models;
 
 namespace QuickApp.Core.Services;
 
-/// <summary>用 BCL 的 Process 执行启动计划。Web 与应用走 ShellExecute，命令行走 cmd 且不弹窗口。</summary>
+/// <summary>用 BCL Process 执行启动计划；命令按用户选择在后台或可见终端执行。</summary>
 public sealed class ProcessLauncher : ILauncher
 {
     public bool TryStart(LauncherItem item, out string? error)

@@ -325,6 +325,9 @@ public sealed class SettingsViewModel : ViewModelBase
     // ---------------- 数据 ----------------
 
     public string ConfigFilePath => _dock.ConfigFilePath;
+    public bool HasConfigLoadError => _dock.HasConfigLoadError;
+    public string ConfigLoadStatus => "读取配置失败，原数据已保留：" + _dock.ConfigLoadError;
+    public bool ReloadConfig() => _dock.ReloadConfig();
 
     /// <summary>当前快捷项数量（导入确认摘要用）。</summary>
     public int ItemCount => _dock.Items.Count;
@@ -363,10 +366,14 @@ public sealed class SettingsViewModel : ViewModelBase
     /// <summary>导入完整配置后刷新当前设置窗口的所有绑定值。</summary>
     public void RefreshFromDock()
     {
+        this.RaisePropertyChanged(nameof(HasConfigLoadError));
+        this.RaisePropertyChanged(nameof(ConfigLoadStatus));
         this.RaisePropertyChanged(nameof(BackgroundBrush));
         this.RaisePropertyChanged(nameof(TextBrush));
         this.RaisePropertyChanged(nameof(TextDimBrush));
         this.RaisePropertyChanged(nameof(PanelBorderBrush));
+        this.RaisePropertyChanged(nameof(AccentBrush));
+        this.RaisePropertyChanged(nameof(DangerBrush));
         this.RaisePropertyChanged(nameof(IsThemeSystem));
         this.RaisePropertyChanged(nameof(IsThemeDark));
         this.RaisePropertyChanged(nameof(IsThemeLight));
@@ -418,6 +425,7 @@ public sealed class SettingsViewModel : ViewModelBase
     public IBrush TextDimBrush => _dock.TextDimBrush;
 
     public IBrush AccentBrush => _dock.AccentBrush;
+    public IBrush DangerBrush => _dock.DangerBrush;
 
     private void ApplyChange(bool palette, bool size)
     {
@@ -426,6 +434,7 @@ public sealed class SettingsViewModel : ViewModelBase
         this.RaisePropertyChanged(nameof(TextBrush));
         this.RaisePropertyChanged(nameof(TextDimBrush));
         this.RaisePropertyChanged(nameof(AccentBrush));
+        this.RaisePropertyChanged(nameof(DangerBrush));
 
         // 分段按钮的选中态（Classes.active 绑定）依赖这些属性通知，漏发就不变色
         this.RaisePropertyChanged(nameof(IsThemeSystem));

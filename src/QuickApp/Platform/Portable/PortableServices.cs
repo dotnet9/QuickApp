@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using QuickApp.Core.Models;
@@ -186,6 +187,9 @@ internal sealed class PortableHotkeyService : IHotkeyService
     public PortableHotkeyService(Action<string>? log = null) => _log = log;
 
     public string? LastParseError { get; private set; }
+
+    public IReadOnlyList<string> RegisterBindings(IReadOnlyList<HotkeyBinding> bindings)
+        => bindings.Select(binding => binding.Name + "：当前平台暂不支持全局热键。").ToArray();
 
     public bool TryRegister(string gesture, Action callback, out string? error)
     {

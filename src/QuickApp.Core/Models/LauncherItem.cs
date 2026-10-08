@@ -17,8 +17,17 @@ public sealed class LauncherItem
     /// <summary>启动参数，仅 <see cref="ItemKind.App"/> 使用。</summary>
     public string? Arguments { get; set; }
 
-    /// <summary>工作目录，仅 <see cref="ItemKind.App"/> 使用。</summary>
+    /// <summary>程序或命令执行时的工作目录。</summary>
     public string? WorkingDirectory { get; set; }
+
+    /// <summary>可选的 Windows 全局快捷键，Dock 收起时也可直接启动。</summary>
+    public string? Hotkey { get; set; }
+
+    /// <summary>Windows 命令使用 PowerShell；默认使用 CMD，其他平台使用系统 Shell。</summary>
+    public bool UsePowerShell { get; set; }
+
+    /// <summary>Windows 命令在可见终端执行并保留输出；旧配置默认后台运行。</summary>
+    public bool RunInTerminal { get; set; }
 
     /// <summary>用户选择的本地图片图标（png/jpg/ico 等）；为空时按目标自动提取真实图标。</summary>
     public string? CustomIconPath { get; set; }

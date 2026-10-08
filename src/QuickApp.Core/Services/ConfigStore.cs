@@ -26,22 +26,18 @@ public sealed class ConfigStore
 
     public string ConfigFile => _configFile;
 
+    /// <summary>读取失败时保留原因，禁止默认空配置覆盖原数据；重新加载或明确导入后解除。</summary>
+    public string? LastLoadError { get; private set; }
+
     public AppConfig Load()
     {
+        LastLoadError = null;
         try
         {
-            if (!File.Exists(_configFile))
-            {
-                // 首次运行：把默认配置落盘，设置窗口里显示的路径才真实存在
-                AppConfig defaults = CreateDefault();
-                Save(defaults);
-                return defaults;
-            }
-
             string text = File.ReadAllText(_configFile);
             if (string.IsNullOrWhiteSpace(text))
             {
-                return CreateDefault();
+                throw new System.Text.Json.JsonException("配置文件为空。");
             }
 
             AppConfig? config = System.Text.Json.JsonSerializer.Deserialize(
@@ -49,7 +45,7 @@ public sealed class ConfigStore
 
             if (config is null)
             {
-                return CreateDefault();
+                throw new System.Text.Json.JsonException("配置内容不是有效的对象。");
             }
 
             AppConfig normalized = Normalize(config);
@@ -61,16 +57,44 @@ public sealed class ConfigStore
 
             return normalized;
         }
+        catch (FileNotFoundException)
+        {
+            return CreateFirstRunConfig();
+        }
+        catch (DirectoryNotFoundException)
+        {
+            return CreateFirstRunConfig();
+        }
         catch (Exception ex)
         {
-            _log?.Invoke($"读取配置失败，已回退默认配置：{ex.Message}");
-            TryQuarantineBrokenFile();
+            LastLoadError = ex.Message;
+            _log?.Invoke($"读取配置失败（{_configFile}），已阻止空配置覆盖原文件：{ex.Message}");
+            // 只有确实无法解析的 JSON 才隔离；权限、共享锁等 I/O 问题不代表文件损坏。
+            if (ex is System.Text.Json.JsonException) TryQuarantineBrokenFile();
             return CreateDefault();
         }
     }
 
-    public bool Save(AppConfig config)
+    private AppConfig CreateFirstRunConfig()
     {
+        AppConfig defaults = CreateDefault();
+        if (File.Exists(_configFile + ".broken"))
+        {
+            LastLoadError = "配置文件缺失，原内容保留在 " + _configFile + ".broken，请恢复有效配置或导入备份。";
+            _log?.Invoke(LastLoadError);
+            return defaults;
+        }
+        if (!Save(defaults)) LastLoadError = "无法创建配置文件，请检查目录权限后重试。";
+        return defaults;
+    }
+
+    public bool Save(AppConfig config, bool overwriteAfterLoadFailure = false)
+    {
+        if (LastLoadError is not null && !overwriteAfterLoadFailure)
+        {
+            _log?.Invoke("配置读取尚未恢复，取消保存以保护已有数据。" );
+            return false;
+        }
         try
         {
             string? dir = Path.GetDirectoryName(_configFile);
@@ -94,6 +118,7 @@ public sealed class ConfigStore
                 File.Move(temp, _configFile);
             }
 
+            LastLoadError = null;
             return true;
         }
         catch (Exception ex)
@@ -122,6 +147,7 @@ public sealed class ConfigStore
     /// </summary>
     public string? SwitchStorageMode(bool toPortable, string baseDirectory, AppConfig? config = null)
     {
+        if (LastLoadError is not null) return "配置读取失败，请先重新加载或导入有效配置，再切换存储位置。";
         string oldFile = _configFile;
         string marker = Path.Combine(baseDirectory, AppPaths.PortableMarker);
         bool wasPortable = File.Exists(marker);
@@ -305,16 +331,9 @@ public sealed class ConfigStore
                     bundled.Add(fileName);
                 }
 
-                exportItems.Add(new LauncherItem
-                {
-                    Id = item.Id,
-                    Name = item.Name,
-                    Kind = item.Kind,
-                    Target = item.Target,
-                    Arguments = item.Arguments,
-                    WorkingDirectory = item.WorkingDirectory,
-                    CustomIconPath = custom
-                });
+                LauncherItem exported = LauncherItemEditor.Copy(item);
+                exported.CustomIconPath = custom;
+                exportItems.Add(exported);
             }
 
             var exportConfig = new AppConfig

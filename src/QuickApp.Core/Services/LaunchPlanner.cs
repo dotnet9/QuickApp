@@ -25,6 +25,8 @@ public static class LaunchPlanner
         }
 
         string target = item.Target.Trim();
+        string? commandDirectory = string.IsNullOrWhiteSpace(item.WorkingDirectory)
+            ? null : LauncherItemEditor.ExpandPath(item.WorkingDirectory);
 
         switch (item.Kind)
         {
@@ -35,19 +37,29 @@ public static class LaunchPlanner
             case ItemKind.Command:
                 if (OperatingSystem.IsWindows())
                 {
-                    // start "" <命令>：立即返回，不留隐藏的 cmd 进程
-                    return new LaunchPlan("cmd.exe", "/c start \"\" " + target, UseShellExecute: false, null);
+                    if (item.UsePowerShell)
+                    {
+                        string encoded = Convert.ToBase64String(System.Text.Encoding.Unicode.GetBytes(target));
+                        return new LaunchPlan("powershell.exe", "-NoLogo -NoProfile "
+                            + (item.RunInTerminal ? "-NoExit " : string.Empty) + "-EncodedCommand " + encoded,
+                            UseShellExecute: item.RunInTerminal, commandDirectory);
+                    }
+
+                    // 按原文交给 CMD：保留内置命令、重定向、管道和带空格的程序路径。
+                    return new LaunchPlan("cmd.exe", "/d /s " + (item.RunInTerminal ? "/k" : "/c") + " \"" + target + "\"",
+                        UseShellExecute: item.RunInTerminal, commandDirectory);
                 }
 
                 // Linux/macOS 没有 cmd.exe；交给系统 shell 执行用户配置的命令。
                 string shellCommand = target.Replace("\\", "\\\\", StringComparison.Ordinal)
                     .Replace("\"", "\\\"", StringComparison.Ordinal);
-                return new LaunchPlan("/bin/sh", "-c \"" + shellCommand + "\"", UseShellExecute: false, null);
+                return new LaunchPlan("/bin/sh", "-c \"" + shellCommand + "\"", UseShellExecute: false, commandDirectory);
 
             default:
+                target = LauncherItemEditor.ExpandPath(target);
                 string? workingDirectory = string.IsNullOrWhiteSpace(item.WorkingDirectory)
                     ? SafeDirectoryOf(target)
-                    : item.WorkingDirectory;
+                    : commandDirectory;
                 return new LaunchPlan(
                     target,
                     item.Arguments ?? string.Empty,

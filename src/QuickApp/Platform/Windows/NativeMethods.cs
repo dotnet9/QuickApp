@@ -171,7 +171,7 @@ internal static unsafe partial class NativeMethods
     [LibraryImport("user32.dll")]
     internal static partial IntPtr DispatchMessageW(ref MSG lpMsg);
 
-    [LibraryImport("user32.dll")]
+    [LibraryImport("user32.dll", EntryPoint = "PostThreadMessageW")]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool PostThreadMessage(int idThread, int msg, IntPtr wParam, IntPtr lParam);
 

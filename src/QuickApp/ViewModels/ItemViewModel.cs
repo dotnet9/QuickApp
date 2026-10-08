@@ -58,10 +58,6 @@ public sealed class ItemViewModel : ViewModelBase
     /// <summary>系统应用行副标题（原型 .search-installed-copy span：「开始菜单 · 应用/网页/命令」）。</summary>
     public string ResultStatus => IsSystemResult ? "开始菜单 · " + KindLabel : string.Empty;
 
-    /// <summary>「未配置」徽章可见性（原型 .search-installed-status 胶囊）。</summary>
-    public bool ShowUnconfiguredBadge => IsSystemResult;
-
-
     public string Id => Model.Id;
 
     public ICommand ActivateCommand { get; }
@@ -98,7 +94,8 @@ public sealed class ItemViewModel : ViewModelBase
 
     public string TargetSummary => ItemQuery.DescribeTarget(Model);
 
-    public string Tooltip => string.IsNullOrWhiteSpace(TargetSummary) ? Name : Name + Environment.NewLine + TargetSummary;
+    public string Tooltip => (string.IsNullOrWhiteSpace(TargetSummary) ? Name : Name + Environment.NewLine + TargetSummary)
+        + (string.IsNullOrWhiteSpace(Model.Hotkey) ? string.Empty : Environment.NewLine + Model.Hotkey);
 
     /// <summary>图标缓存文件的绝对路径。</summary>
     public string? IconFile

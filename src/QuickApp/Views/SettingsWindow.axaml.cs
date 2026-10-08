@@ -35,6 +35,7 @@ public partial class SettingsWindow : Window
         LicenseButton.Click += (_, _) => ShowLicense();
         StorageModeButton.Click += OnToggleStorageMode;
         OpenConfigFolderButton.Click += OnOpenConfigFolder;
+        ReloadConfigButton.Click += (_, _) => { _vm?.ReloadConfig(); _vm?.RefreshFromDock(); RefreshMonitorOptions(); };
         Opened += (_, _) => RefreshMonitorOptions();
         // 打开推荐页签时轻量刷新（服务层 TTL 缓存内不出网）
         SettingsTabs.SelectionChanged += (_, _) =>

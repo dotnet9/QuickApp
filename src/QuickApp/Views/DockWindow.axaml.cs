@@ -49,6 +49,7 @@ public partial class DockWindow : Window, IDockHost
     private bool _isHidden;
     private bool _isMoreMenuOpen;
     private bool _isContextMenuOpen;
+    private bool _isItemDialogOpen;
     private ContextMenu? _contextMenu;
     private Grid? _edgePicker;
     private Border? _dropLine;
@@ -86,7 +87,7 @@ public partial class DockWindow : Window, IDockHost
         _hideTimer.Tick += (_, _) =>
         {
             _hideTimer.Stop();
-            if (_vm is not null && !_dockDragging && !_isRevealHandlePointerOver && !_vm.IsPointerOver && !_vm.IsPinned && !_vm.IsSearchOpen && !_vm.IsEditMode && !_isMoreMenuOpen && !_isContextMenuOpen)
+            if (_vm is not null && !_dockDragging && !_isRevealHandlePointerOver && !_vm.IsPointerOver && !_vm.IsPinned && !_vm.IsSearchOpen && !_vm.IsEditMode && !_isMoreMenuOpen && !_isContextMenuOpen && !_isItemDialogOpen)
             {
                 _vm.IsDockVisible = false;
             }
@@ -202,6 +203,10 @@ public partial class DockWindow : Window, IDockHost
             case nameof(DockViewModel.InstalledGroupTitle):
                 // 关闭搜索/编辑后若鼠标不在 Dock 上，重新进入自动隐藏倒计时
                 ScheduleReposition();
+                if (e.PropertyName == nameof(DockViewModel.IsSearchOpen))
+                {
+                    UpdateScrollChromeLayout();
+                }
                 UpdateScrollChrome();
                 ScheduleAutoHide();
                 if (e.PropertyName == nameof(DockViewModel.IsSearchOpen) && _vm?.IsSearchOpen == true)
@@ -245,7 +250,7 @@ public partial class DockWindow : Window, IDockHost
 
         Vector offset = ItemsScroll.Offset;
 
-        if (_vm.IsVertical)
+        if (_vm.IsSearchOpen || _vm.IsVertical)
         {
             ItemsScroll.Offset = offset.WithY(offset.Y - e.Delta.Y * 48);
         }
@@ -271,7 +276,7 @@ public partial class DockWindow : Window, IDockHost
         Vector offset = ItemsScroll.Offset;
         Size extent = ItemsScroll.Extent;
         Size viewport = ItemsScroll.Viewport;
-        bool vertical = _vm.IsVertical;
+        bool vertical = _vm.IsSearchOpen || _vm.IsVertical;
         bool canScroll = vertical ? extent.Height > viewport.Height + 2 : extent.Width > viewport.Width + 2;
         double maxOffset = canScroll
             ? (vertical ? extent.Height - viewport.Height : extent.Width - viewport.Width)
@@ -295,6 +300,7 @@ public partial class DockWindow : Window, IDockHost
         {
             bool dockedLeft = _vm?.Settings.Edge == DockEdge.Left;
             ScrollIndicator.Width = 2;
+            ScrollIndicator.Height = double.NaN;
             ScrollIndicator.HorizontalAlignment = dockedLeft ? HorizontalAlignment.Right : HorizontalAlignment.Left;
             ScrollIndicator.VerticalAlignment = VerticalAlignment.Stretch;
             ScrollIndicator.Margin = dockedLeft ? new Thickness(0, 18, 5, 18) : new Thickness(5, 18, 0, 18);
@@ -307,6 +313,7 @@ public partial class DockWindow : Window, IDockHost
         else
         {
             ScrollIndicator.Height = 2;
+            ScrollIndicator.Width = double.NaN;
             ScrollIndicator.HorizontalAlignment = HorizontalAlignment.Stretch;
             ScrollIndicator.VerticalAlignment = VerticalAlignment.Bottom;
             ScrollIndicator.Margin = new Thickness(18, 0, 18, 4);
@@ -321,7 +328,7 @@ public partial class DockWindow : Window, IDockHost
     /// <summary>渐隐层的尺寸与朝向随停靠边重算（面板换色时画刷单独更新）。</summary>
     private void UpdateScrollChromeLayout()
     {
-        bool vertical = _vm?.IsVertical ?? false;
+        bool vertical = _vm?.IsSearchOpen == true || _vm?.IsVertical == true;
         const double fadeLength = 22;
 
         if (vertical)
@@ -362,7 +369,7 @@ public partial class DockWindow : Window, IDockHost
         Color from = Color.FromArgb(117, c.R, c.G, c.B);
         Color to = Color.FromArgb(0, c.R, c.G, c.B);
 
-        bool vertical = _vm.IsVertical;
+        bool vertical = _vm.IsSearchOpen || _vm.IsVertical;
         FadeStart.Background = new LinearGradientBrush
         {
             StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
@@ -1263,6 +1270,7 @@ public partial class DockWindow : Window, IDockHost
             ItemViewModel captured = item;
             menu.Items.Add(MenuEntry("运行", Icons.Play, () => _vm.RunCommand.Execute(captured)));
             menu.Items.Add(new Separator());
+            menu.Items.Add(MenuEntry("编辑…", Icons.Pencil, () => Dispatcher.UIThread.Post(() => _ = EditItemAsync(captured))));
             menu.Items.Add(MenuEntry("重命名", Icons.Pencil, () =>
             {
                 _vm.BeginRename(captured);
@@ -1308,6 +1316,8 @@ public partial class DockWindow : Window, IDockHost
     {
         items.Add(MenuTitle("添加"));
         items.Add(MenuEntry("文件…", Icons.Upload, () => _ = AddFilesAsync()));
+        items.Add(MenuEntry("目录…", Icons.Folder, () => _ = AddFoldersAsync()));
+        items.Add(MenuEntry("网址…", Icons.Globe, () => _ = ShowItemEditorAsync(new LauncherItem { Kind = ItemKind.Web })));
         items.Add(MenuEntry("命令行…", Icons.Terminal, () => _ = AddCommandAsync()));
         items.Add(new Separator());
         items.Add(MenuTitle("管理"));
@@ -1974,6 +1984,7 @@ public partial class DockWindow : Window, IDockHost
             || _vm.IsPointerOver
             || _isMoreMenuOpen
             || _isContextMenuOpen
+            || _isItemDialogOpen
             || _vm.Settings.AutoHideDelayMs <= 0)
         {
             return;
@@ -2282,12 +2293,34 @@ public partial class DockWindow : Window, IDockHost
             return;
         }
 
-        (string Name, string Command)? result = await CommandDialogWindow.ShowAsync(this, _vm);
-        if (result is { } entry)
+        await ShowItemEditorAsync(new LauncherItem { Kind = ItemKind.Command, RunInTerminal = OperatingSystem.IsWindows() });
+    }
+
+    private Task EditItemAsync(ItemViewModel item) => ShowItemEditorAsync(item.Model, editing: true);
+
+    private async Task ShowItemEditorAsync(LauncherItem item, bool editing = false)
+    {
+        if (_vm is null) return;
+        _hideTimer.Stop();
+        _isItemDialogOpen = true;
+        try
         {
-            _vm.AddCommand(entry.Name, entry.Command);
+            LauncherItem? result = await ItemDialogWindow.ShowAsync(this, _vm, item, editing);
+            if (result is not null && _vm.SaveItem(result)) ScheduleReposition();
+        }
+        finally { _isItemDialogOpen = false; ScheduleAutoHide(); }
+    }
+
+    private async Task AddFoldersAsync()
+    {
+        if (_vm is null) return;
+        try
+        {
+            var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "选择要添加到 Dock 的目录", AllowMultiple = true });
+            _vm.AddTargets(folders.Select(folder => folder.TryGetLocalPath()).OfType<string>());
             ScheduleReposition();
         }
+        catch (Exception ex) { AppLog.Error("选择目录失败", ex); _vm.Toast("选择目录失败：" + ex.Message); }
     }
 
     private async System.Threading.Tasks.Task AddFilesAsync()

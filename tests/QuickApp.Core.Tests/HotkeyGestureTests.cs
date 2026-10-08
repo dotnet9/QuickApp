@@ -68,7 +68,7 @@ public sealed class ItemQueryCommandTextTests
     {
         var item = new LauncherItem { Kind = ItemKind.Web, Target = "https://dotnet9.com/" };
 
-        Assert.Equal("start https://dotnet9.com/", ItemQuery.ToCommandText(item));
+        Assert.Equal("start \"\" \"https://dotnet9.com/\"", ItemQuery.ToCommandText(item));
     }
 
     [Fact]
@@ -80,14 +80,19 @@ public sealed class ItemQueryCommandTextTests
     }
 
     [Fact]
-    public void Command_and_app_keep_target_verbatim()
+    public void Commands_keep_syntax_and_app_paths_are_quoted()
     {
         var command = new LauncherItem { Kind = ItemKind.Command, Target = "mstsc /v:192.168.1.133" };
         var app = new LauncherItem { Kind = ItemKind.App, Target = @"C:\Tools\demo.exe" };
 
         Assert.Equal("mstsc /v:192.168.1.133", ItemQuery.ToCommandText(command));
-        Assert.Equal(@"C:\Tools\demo.exe", ItemQuery.ToCommandText(app));
+        Assert.Equal("\"C:\\Tools\\demo.exe\"", ItemQuery.ToCommandText(app));
     }
+
+    [Fact]
+    public void Copied_app_command_includes_arguments_after_the_quoted_path()
+        => Assert.Equal("\"C:\\Program Files\\Editor\\editor.exe\" --new-window",
+            ItemQuery.ToCommandText(new LauncherItem { Target = @"C:\Program Files\Editor\editor.exe", Arguments = "--new-window" }));
 
     [Fact]
     public void Empty_target_returns_empty()

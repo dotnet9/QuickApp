@@ -121,7 +121,7 @@
     </DataTemplate>
 
     <!-- 系统应用行（原型 .search-installed-item）：surface 30% 底、padding 5,7、无固定宽；
-         副标题 11px 淡色 + 「未配置」胶囊（10px 强调色 + 50% 描边）；＋ 按钮 30 r9 常态 hover 底。 -->
+         副标题 11px 淡色；右侧只显示 ＋ 按钮，30 r9 常态 hover 底。 -->
     <DataTemplate x:Key="InstalledTemplate" x:DataType="vm:ItemViewModel">
       <Border Background="{DynamicResource QAResultRowBrush}"
               BorderBrush="{DynamicResource QALineBrush}"
@@ -166,14 +166,6 @@
                        TextTrimming="CharacterEllipsis" />
           </StackPanel>
           <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
-            <Border IsVisible="{Binding ShowUnconfiguredBadge}"
-                    BorderBrush="{DynamicResource QAAccentSoftBorderBrush}"
-                    BorderThickness="1"
-                    CornerRadius="999"
-                    Padding="6,2"
-                    HorizontalAlignment="Right">
-              <TextBlock Text="未配置" FontSize="10" Foreground="{DynamicResource QAAccentBrush}" />
-            </Border>
             <Button Theme="{StaticResource LinkButton}"
                     Classes="add-btn"
                     Width="30"
@@ -427,7 +419,7 @@
                               ClipToBounds="False">
                   <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                      <StackPanel Orientation="{Binding ListOrientation}" Spacing="{Binding ListSpacing}" ClipToBounds="False" />
+                      <WrapPanel Orientation="{Binding ListOrientation}" ItemSpacing="{Binding ListSpacing}" LineSpacing="8" MaxWidth="{Binding ListWrapWidth}" ClipToBounds="False" />
                     </ItemsPanelTemplate>
                   </ItemsControl.ItemsPanel>
                 </ItemsControl>

@@ -235,7 +235,8 @@ public static class ItemQuery
 
         try
         {
-            string name = Path.GetFileNameWithoutExtension(item.Target);
+            string path = LauncherItemEditor.ExpandPath(item.Target);
+            string name = Directory.Exists(path) ? new DirectoryInfo(path).Name : Path.GetFileNameWithoutExtension(path);
             return string.IsNullOrWhiteSpace(name) ? item.Target : name;
         }
         catch (ArgumentException)
@@ -285,9 +286,13 @@ public static class ItemQuery
             return string.Empty;
         }
 
-        return item.Kind == ItemKind.Web && !item.Target.StartsWith("start ", StringComparison.OrdinalIgnoreCase)
-            ? "start " + item.Target
-            : item.Target;
+        if (item.Kind == ItemKind.Command) return item.Target;
+        if (item.Kind == ItemKind.Web && item.Target.StartsWith("start ", StringComparison.OrdinalIgnoreCase)) return item.Target;
+        string target = item.Kind == ItemKind.Web ? item.Target : LauncherItemEditor.ExpandPath(item.Target);
+        string quoted = "\"" + target + "\"";
+        return item.Kind == ItemKind.Web || Directory.Exists(target)
+            ? "start \"\" " + quoted
+            : quoted + (string.IsNullOrWhiteSpace(item.Arguments) ? string.Empty : " " + item.Arguments);
     }
 
     /// <summary>把 from 位置的项移动到 to 位置（拖拽排序，纯列表操作）。</summary>

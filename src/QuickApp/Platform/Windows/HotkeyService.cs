@@ -1,193 +1,140 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using Avalonia.Threading;
 using QuickApp.Core.Services;
 
 namespace QuickApp.Platform.Windows;
 
-/// <summary>
-/// 全局热键：专用线程上建一个 message-only 窗口接收 WM_HOTKEY。
-/// 不子类化 Avalonia 主窗口的过程函数，也不占用主线程的消息循环，
-/// 回调经 Dispatcher 切回 UI 线程后触发。
-/// </summary>
+/// <summary>Dock 与条目快捷键共用一个 message-only 窗口和消息线程。</summary>
 public sealed class HotkeyService : IHotkeyService
 {
-    private const int HotkeyId = 1;
-
     private readonly Action<string>? _log;
     private readonly object _gate = new();
     private Thread? _thread;
-    private IntPtr _hwnd;
     private int _nativeThreadId;
-    private bool _disposeRequested;
+    private int _generation;
+    private bool _disposed;
 
     public HotkeyService(Action<string>? log = null) => _log = log;
-
     public string? LastParseError { get; private set; }
 
     public bool TryRegister(string gesture, Action callback, out string? error)
     {
+        LastParseError = HotkeyGesture.TryParse(gesture, out _, out string? parseError) ? null : parseError;
+        IReadOnlyList<string> errors = RegisterBindings(new[] { new HotkeyBinding(gesture, "QuickApp", callback) });
+        error = errors.Count > 0 ? errors[0] : null;
+        return error is null;
+    }
+
+    public IReadOnlyList<string> RegisterBindings(IReadOnlyList<HotkeyBinding> bindings)
+    {
         lock (_gate)
         {
-            if (_thread is not null && _thread.IsAlive)
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            StopThread();
+            var errors = new List<string>();
+            var parsed = new List<(HotkeyBinding Binding, HotkeyGesture Gesture)>();
+            var seen = new HashSet<HotkeyGesture>();
+            foreach (HotkeyBinding binding in bindings)
             {
-                error = "热键已注册，不能重复注册。";
-                return false;
+                if (!HotkeyGesture.TryParse(binding.Gesture, out HotkeyGesture gesture, out string? error))
+                    errors.Add(binding.Name + "：" + error);
+                else if (!seen.Add(gesture)) errors.Add(binding.Name + "：快捷键重复。");
+                else parsed.Add((binding, gesture));
             }
-
-            if (!HotkeyGesture.TryParse(gesture, out HotkeyGesture parsed, out string? parseError))
-            {
-                LastParseError = parseError;
-                error = parseError;
-                return false;
-            }
-
-            LastParseError = null;
-
-            uint modifiers = MapModifiers(parsed.Modifiers);
-            var ready = new ManualResetEventSlim(false);
-            var registered = false;
-            string? registrationError = null;
-
-            _hwnd = IntPtr.Zero;
-            _thread = new Thread(() => MessageLoop(modifiers, (uint)parsed.VirtualKey, callback, ready, value =>
-            {
-                registered = value;
-                registrationError = value ? null : "热键注册失败，可能已被其它程序占用。";
-            }))
-            {
-                IsBackground = true,
-                Name = "QuickApp.Hotkey"
-            };
+            if (parsed.Count == 0) return errors;
+            int generation = _generation;
+            using var ready = new ManualResetEventSlim(false);
+            _thread = new Thread(() => MessageLoop(parsed, errors, ready, generation))
+            { IsBackground = true, Name = "QuickApp.Hotkeys" };
             _thread.Start();
-
-            // 窗口创建与 RegisterHotKey 在热键线程上，等它给出结果（最多 3 秒）
-            ready.Wait(TimeSpan.FromSeconds(3));
-
-            if (!registered)
+            if (!ready.Wait(TimeSpan.FromSeconds(3)))
             {
                 StopThread();
-                error = registrationError ?? "热键窗口创建失败。";
-                return false;
+                return new[] { "快捷键注册超时，请重试。" };
             }
-
-            error = null;
-            return true;
+            return errors.ToArray();
         }
     }
 
-    private uint MapModifiers(HotkeyModifiers modifiers)
+    private void MessageLoop(List<(HotkeyBinding Binding, HotkeyGesture Gesture)> bindings,
+        List<string> errors, ManualResetEventSlim ready, int generation)
     {
-        uint value = 0;
-        if (modifiers.HasFlag(HotkeyModifiers.Alt))
-        {
-            value |= NativeMethods.ModAlt;
-        }
-
-        if (modifiers.HasFlag(HotkeyModifiers.Ctrl))
-        {
-            value |= NativeMethods.ModControl;
-        }
-
-        if (modifiers.HasFlag(HotkeyModifiers.Shift))
-        {
-            value |= NativeMethods.ModShift;
-        }
-
-        if (modifiers.HasFlag(HotkeyModifiers.Win))
-        {
-            value |= NativeMethods.ModWin;
-        }
-
-        return value;
-    }
-
-    private void MessageLoop(uint modifiers, uint virtualKey, Action callback, ManualResetEventSlim ready, Action<bool> report)
-    {
-        _nativeThreadId = NativeMethods.GetCurrentThreadId();
-
-        // 预定义的 STATIC 类 + HWND_MESSAGE 父窗口 = 不显示、不占任务栏的 message-only 窗口
-        IntPtr hwnd = NativeMethods.CreateWindowEx(0, "STATIC", null, 0, 0, 0, 0, 0,
-            NativeMethods.HwndMessage, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
-
-        bool ok = hwnd != IntPtr.Zero && NativeMethods.RegisterHotKey(hwnd, HotkeyId, modifiers, virtualKey);
-        if (ok)
-        {
-            _hwnd = hwnd;
-        }
-
-        report(ok);
-        ready.Set();
-
-        if (!ok)
-        {
-            if (hwnd != IntPtr.Zero)
-            {
-                NativeMethods.DestroyWindow(hwnd);
-            }
-
-            _nativeThreadId = 0;
-            return;
-        }
-
+        IntPtr hwnd = IntPtr.Zero;
+        var registered = new Dictionary<int, HotkeyBinding>();
+        bool initialized = false;
         try
         {
+            _nativeThreadId = NativeMethods.GetCurrentThreadId();
+            hwnd = NativeMethods.CreateWindowEx(0, "STATIC", null, 0, 0, 0, 0, 0,
+                NativeMethods.HwndMessage, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero);
+            for (int i = 0; i < bindings.Count; i++)
+            {
+                var (binding, gesture) = bindings[i];
+                uint modifiers = MapModifiers(gesture.Modifiers) | NativeMethods.ModNoRepeat;
+                if (hwnd != IntPtr.Zero && NativeMethods.RegisterHotKey(hwnd, i + 1, modifiers, (uint)gesture.VirtualKey))
+                    registered[i + 1] = binding;
+                else errors.Add(binding.Name + "（" + binding.Gesture + "）：快捷键已被其他程序占用或注册失败。");
+            }
+            initialized = true;
+            ready.Set();
+            if (registered.Count == 0 || generation != Volatile.Read(ref _generation)) return;
             while (NativeMethods.GetMessageW(out NativeMethods.MSG msg, IntPtr.Zero, 0, 0) > 0)
             {
-                if (msg.message == NativeMethods.WmHotkey && msg.wParam == HotkeyId)
+                if (msg.message == NativeMethods.WmHotkey && registered.TryGetValue((int)msg.wParam, out HotkeyBinding? binding))
                 {
-                    try
+                    Dispatcher.UIThread.Post(() =>
                     {
-                        Dispatcher.UIThread.Post(callback);
-                    }
-                    catch (Exception ex)
-                    {
-                        _log?.Invoke("分发热键回调失败：" + ex.Message);
-                    }
-
-                    continue;
+                        if (!_disposed && generation == Volatile.Read(ref _generation)) binding.Callback();
+                    });
                 }
-
-                NativeMethods.TranslateMessage(ref msg);
-                NativeMethods.DispatchMessageW(ref msg);
+                else
+                {
+                    NativeMethods.TranslateMessage(ref msg);
+                    NativeMethods.DispatchMessageW(ref msg);
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            string error = "注册快捷键失败：" + ex.Message;
+            _log?.Invoke(error);
+            if (!initialized) { errors.Add(error); ready.Set(); }
         }
         finally
         {
-            NativeMethods.UnregisterHotKey(hwnd, HotkeyId);
-            NativeMethods.DestroyWindow(hwnd);
+            foreach (int id in registered.Keys) NativeMethods.UnregisterHotKey(hwnd, id);
+            if (hwnd != IntPtr.Zero) NativeMethods.DestroyWindow(hwnd);
             _nativeThreadId = 0;
         }
     }
 
+    private static uint MapModifiers(HotkeyModifiers modifiers)
+        => ((modifiers & HotkeyModifiers.Ctrl) != 0 ? NativeMethods.ModControl : 0)
+         | ((modifiers & HotkeyModifiers.Alt) != 0 ? NativeMethods.ModAlt : 0)
+         | ((modifiers & HotkeyModifiers.Shift) != 0 ? NativeMethods.ModShift : 0)
+         | ((modifiers & HotkeyModifiers.Win) != 0 ? NativeMethods.ModWin : 0);
+
     private void StopThread()
     {
+        Interlocked.Increment(ref _generation);
         Thread? thread = _thread;
         if (thread is not null && thread.IsAlive)
         {
-            int nativeThreadId = Volatile.Read(ref _nativeThreadId);
-            if (nativeThreadId != 0)
-            {
-                NativeMethods.PostThreadMessage(nativeThreadId, NativeMethods.WmQuit, IntPtr.Zero, IntPtr.Zero);
-            }
-
-            thread.Join(TimeSpan.FromSeconds(1));
+            int id = Volatile.Read(ref _nativeThreadId);
+            if (id != 0) NativeMethods.PostThreadMessage(id, NativeMethods.WmQuit, IntPtr.Zero, IntPtr.Zero);
+            if (!thread.Join(TimeSpan.FromSeconds(3))) throw new InvalidOperationException("快捷键线程未能退出。");
         }
-
         _thread = null;
-        _hwnd = IntPtr.Zero;
     }
 
     public void Dispose()
     {
         lock (_gate)
         {
-            if (_disposeRequested)
-            {
-                return;
-            }
-
-            _disposeRequested = true;
+            if (_disposed) return;
+            _disposed = true;
             StopThread();
         }
     }

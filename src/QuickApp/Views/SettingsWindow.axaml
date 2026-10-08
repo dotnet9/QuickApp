@@ -399,10 +399,12 @@
                     </Grid>
                     <TextBlock Name="StorageModeResultText" Classes="hint" Margin="0,3,0,0" IsVisible="False" />
                     <TextBlock Classes="hint" Margin="0,3,0,0" Text="导入配置会替换当前的快捷项与设置" />
+                    <TextBlock Classes="hint" Text="{Binding ConfigLoadStatus}" TextWrapping="Wrap" IsVisible="{Binding HasConfigLoadError}" Foreground="{Binding DangerBrush}" />
                     <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,10,0,0">
                       <Button Theme="{StaticResource LinkButton}" Name="ImportButton" Content="导入配置" />
                       <Button Theme="{StaticResource LinkButton}" Name="ExportButton" Content="导出配置" />
                       <Button Theme="{StaticResource LinkButton}" Name="OpenConfigFolderButton" Content="打开配置文件夹" />
+                      <Button Theme="{StaticResource LinkButton}" Name="ReloadConfigButton" Content="重新加载配置" />
                     </StackPanel>
                   </StackPanel>
                 </ScrollViewer>
@@ -528,7 +530,7 @@
                     </Grid>
                     <Grid Classes="row" ColumnDefinitions="*,Auto">
                       <TextBlock Classes="row" Text="定位" />
-                      <TextBlock Grid.Column="1" Classes="hint" VerticalAlignment="Center" Text="快速打开应用、网页与命令" />
+                      <TextBlock Grid.Column="1" Classes="hint" VerticalAlignment="Center" Text="快速打开软件、文件、目录、网址与常用命令" TextWrapping="Wrap" />
                     </Grid>
                     <Border Classes="groupsep" />
                     <TextBlock Classes="section" Text="项目信息" />

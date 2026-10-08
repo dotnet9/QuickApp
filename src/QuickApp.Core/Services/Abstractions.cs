@@ -37,12 +37,17 @@ public interface ISingleInstance : IDisposable
 /// <summary>全局热键。实现自带消息窗口，调用方只给键位描述与回调。</summary>
 public interface IHotkeyService : IDisposable
 {
+    /// <summary>替换全部快捷键；Windows 共用一个消息线程，返回未注册成功的原因。</summary>
+    IReadOnlyList<string> RegisterBindings(IReadOnlyList<HotkeyBinding> bindings);
+
     /// <summary>注册热键（如 "Ctrl+Alt+Space"）。成功后按下热键会触发 <paramref name="callback"/>（已在 UI 线程）。</summary>
     bool TryRegister(string gesture, Action callback, out string? error);
 
     /// <summary>解析失败的键位描述；注册成功后为 null。</summary>
     string? LastParseError { get; }
 }
+
+public sealed record HotkeyBinding(string Gesture, string Name, Action Callback, string? Identity = null);
 
 /// <summary>取图标（Windows 实现走 Shell API，缓存到磁盘）。</summary>
 public interface IIconProvider

@@ -186,13 +186,13 @@ public sealed class LaunchPlannerTests
     }
 
     [Fact]
-    public void Command_target_is_wrapped_in_cmd_start()
+    public void Command_target_is_executed_as_written()
     {
         LaunchPlan plan = LaunchPlanner.Create(
             new LauncherItem { Kind = ItemKind.Command, Target = "mstsc /v:192.168.1.133" });
 
         Assert.Equal("cmd.exe", plan.FileName);
-        Assert.Equal("/c start \"\" mstsc /v:192.168.1.133", plan.Arguments);
+        Assert.Equal("/d /s /c \"mstsc /v:192.168.1.133\"", plan.Arguments);
         Assert.False(plan.UseShellExecute);
     }
 
