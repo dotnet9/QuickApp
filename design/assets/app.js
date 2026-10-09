@@ -5,7 +5,7 @@
   const storageKey = 'quickapp-prototype-v1';
   const defaults = {themePref:'system', wall:'auto', style:'glass', label:'icon', tileSize:44, radius:18, alpha:1,
     edge:'top', pinned:false, autoStart:true, edgeReveal:true, autoCollapse:true, checkUpdates:true,
-    autoHide:700, monitor:'display-1', portable:false};
+    autoHide:700, monitor:'display-1', portable:false, edgeOffsetRatio:0};
   let stored;
   try { stored = JSON.parse(localStorage.getItem(storageKey)); } catch (_) { /* 首次运行或存储不可用 */ }
   const st = {...defaults, ...(stored?.settings || {}), dockVisible:true, searchOpen:false, edit:false, exited:false};
@@ -64,7 +64,25 @@
     renderUpdate();
     renderRec();
     syncSettings();
-    requestAnimationFrame(() => QA.updateScrollChrome(list, fades));
+    requestAnimationFrame(() => { positionDock(); QA.updateScrollChrome(list, fades); });
+  }
+  function positionDock() {
+    const dock = $('#dock'), handle = $('#dockHandle'), vertical = ['left', 'right'].includes(st.edge);
+    const width = dock.offsetWidth, height = dock.offsetHeight, workHeight = innerHeight - 40;
+    const ratio = Math.max(-1, Math.min(1, Number(st.edgeOffsetRatio) || 0));
+    const along = Math.max(0, ((vertical ? workHeight - height : innerWidth - width) / 2) * (1 + ratio));
+    const x = vertical ? st.edge === 'left' ? 10 : innerWidth - width - 10 : along;
+    const y = vertical ? along : st.edge === 'top' ? 10 : workHeight - height - 10;
+    Object.assign(dock.style, {left:x + 'px', top:y + 'px', right:'auto', bottom:'auto', margin:'0'});
+    const center = vertical ? y + height / 2 : x + width / 2;
+    Object.assign(handle.style, {left:vertical ? st.edge === 'left' ? '5px' : 'auto' : Math.max(27, Math.min(center, innerWidth - 27)) + 'px',
+      right:st.edge === 'right' ? '5px' : 'auto', top:vertical ? Math.max(27, Math.min(center, innerHeight - 27)) + 'px' : st.edge === 'top' ? '5px' : 'auto',
+      bottom:st.edge === 'bottom' ? '5px' : 'auto'});
+  }
+  function summonSearch() {
+    clearTimeout(hideTimer);
+    if (st.dockVisible && st.searchOpen && !st.pinned) { st.dockVisible = false; refresh(); return; }
+    search(true); $('#searchInput').select();
   }
   function showDock() { clearTimeout(hideTimer); st.exited = false; st.dockVisible = true; refresh(); }
   function setEdge(edge) { st.edge = edge; list.scrollLeft = list.scrollTop = 0; persist(); refresh(); }
@@ -228,7 +246,7 @@
     if (configError) { QA.toast('配置读取失败，请先重新加载配置。'); return; }
     const kinds = {app:0, web:1, cmd:2}, edges = {top:0, bottom:1, left:2, right:3};
     const config = {schemaVersion:1, settings:{theme:st.themePref, style:st.style, showLabels:st.label === 'iconText', edge:edges[st.edge], tileSize:st.tileSize, cornerRadius:st.radius, pinned:st.pinned, checkUpdates:st.checkUpdates,
-      autoStart:st.autoStart, revealOnEdgeTouch:st.edgeReveal, collapseAfterLaunch:st.autoCollapse, autoHideDelayMs:st.autoHide, hotkey:'Ctrl+Alt+Space'},
+      autoStart:st.autoStart, revealOnEdgeTouch:st.edgeReveal, collapseAfterLaunch:st.autoCollapse, autoHideDelayMs:st.autoHide, hotkey:'Ctrl+Alt+Space', edgeOffsetRatio:st.edgeOffsetRatio},
       items:items.map(it => ({id:it.id, name:it.name, kind:kinds[it.type], target:it.target, arguments:it.args || null, workingDirectory:it.cwd || null, hotkey:it.hotkey || null, usePowerShell:it.shell === 'powershell', runInTerminal:!!it.terminal}))};
     const url = URL.createObjectURL(new Blob([JSON.stringify(config, null, 2)], {type:'application/json'}));
     const anchor = h('a', {href:url, download:'QuickApp-config.json'}); anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); QA.toast('已导出配置');
@@ -243,7 +261,8 @@
         const settings = config.settings || {};
         Object.assign(st, defaults, {themePref:settings.theme || 'system', style:settings.style || 'glass', label:settings.showLabels ? 'iconText' : 'icon',
           edge:['top', 'bottom', 'left', 'right'][settings.edge] || 'top', tileSize:settings.tileSize || 44, radius:settings.cornerRadius || 18, pinned:!!settings.pinned, checkUpdates:settings.checkUpdates !== false,
-          autoStart:!!settings.autoStart, edgeReveal:settings.revealOnEdgeTouch !== false, autoCollapse:settings.collapseAfterLaunch !== false, autoHide:settings.autoHideDelayMs ?? 700});
+          autoStart:!!settings.autoStart, edgeReveal:settings.revealOnEdgeTouch !== false, autoCollapse:settings.collapseAfterLaunch !== false, autoHide:settings.autoHideDelayMs ?? 700,
+          edgeOffsetRatio:Math.max(-1, Math.min(1, Number(settings.edgeOffsetRatio) || 0))});
         st.edit = false; st.searchOpen = false; persist(); closeLayer('dialogLayer'); refresh(); QA.toast('已导入 ' + items.length + ' 个快捷项');
       }, true)]);
   }
@@ -325,7 +344,8 @@
   let dockDrag = null;
   $('#dock').addEventListener('pointerdown', e => {
     if (e.button !== 0 || e.target.closest('button,input,select,.dock-item,[data-system]')) return;
-    dockDrag = {x:e.clientX, y:e.clientY, moved:false};
+    const rect = $('#dock').getBoundingClientRect();
+    dockDrag = {x:e.clientX, y:e.clientY, left:rect.left, top:rect.top, width:rect.width, height:rect.height, moved:false};
     $('#dock').setPointerCapture(e.pointerId); clearTimeout(hideTimer);
   });
   $('#dock').addEventListener('pointermove', e => {
@@ -336,9 +356,17 @@
   });
   $('#dock').addEventListener('pointerup', e => {
     if (!dockDrag) return;
-    const moved = dockDrag.moved; dockDrag = null; $('#dock').style.transform = '';
+    const drag = dockDrag; dockDrag = null; $('#dock').style.transform = '';
     if ($('#dock').hasPointerCapture(e.pointerId)) $('#dock').releasePointerCapture(e.pointerId);
-    if (moved) setEdge(Object.entries({top:e.clientY, bottom:innerHeight - e.clientY, left:e.clientX, right:innerWidth - e.clientX}).sort((a,b) => a[1] - b[1])[0][0]);
+    if (drag.moved) {
+      const workHeight = innerHeight - 40;
+      const x = drag.left + e.clientX - drag.x, y = drag.top + e.clientY - drag.y;
+      const centerX = x + drag.width / 2, centerY = y + drag.height / 2;
+      const edge = Object.entries({top:centerY, bottom:workHeight - centerY, left:centerX, right:innerWidth - centerX}).sort((a,b) => a[1] - b[1])[0][0];
+      const vertical = ['left', 'right'].includes(edge), free = vertical ? workHeight - drag.height : innerWidth - drag.width;
+      st.edgeOffsetRatio = free <= 0 ? 0 : Math.max(-1, Math.min(1, ((vertical ? y : x) - free / 2) / (free / 2)));
+      setEdge(edge);
+    }
   });
   $('#dock').addEventListener('pointercancel', () => { dockDrag = null; $('#dock').style.transform = ''; });
   $('#dock').onpointerleave = () => {
@@ -409,7 +437,7 @@
   $('#aboutLicense').onclick = () => dialog('许可证', [h('h3', {text:'MIT License'}), h('p', {text:'Copyright (c) QuickApp contributors'}), h('p', {text:'Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files, to deal in the Software without restriction.'}), h('p', {text:'THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND.'})], [chip('关闭', () => closeLayer('dialogLayer'), true)]);
   $('#aboutCheckUpdate').onclick = () => {
     $('#aboutCheckResult').textContent = '正在检查…'; $('#aboutCheckUpdate').disabled = true;
-    setTimeout(() => { update = {phase:'found', tag:'v0.6.0', progress:0, installer:true}; $('#aboutCheckResult').textContent = '发现新版本 v0.6.0'; $('#aboutCheckUpdate').disabled = false; st.dockVisible = true; renderUpdate(); QA.toast('发现新版本 v0.6.0', {actionLabel:'查看', onAction:() => { closeLayer('settingsLayer'); showDock(); if (['left', 'right'].includes(st.edge)) { popoverOpen = true; renderUpdate(); } }}); }, 500);
+    setTimeout(() => { update = {phase:'found', tag:'v0.8.0', progress:0, installer:true}; $('#aboutCheckResult').textContent = '发现新版本 v0.8.0'; $('#aboutCheckUpdate').disabled = false; st.dockVisible = true; renderUpdate(); QA.toast('发现新版本 v0.8.0', {actionLabel:'查看', onAction:() => { closeLayer('settingsLayer'); showDock(); if (['left', 'right'].includes(st.edge)) { popoverOpen = true; renderUpdate(); } }}); }, 500);
   };
   $('#trayButton').onclick = e => QA.openMenuAtButton([
     {label:st.dockVisible ? '收起 Dock' : '显示 Dock', icon:'grid', action:() => { st.dockVisible = !st.dockVisible; refresh(); }},
@@ -430,7 +458,7 @@
       return;
     }
     if (st.exited) return;
-    if (e.ctrlKey && e.altKey && e.code === 'Space') { e.preventDefault(); st.dockVisible = !(st.dockVisible && !st.pinned); refresh(); return; }
+    if (e.ctrlKey && e.altKey && e.code === 'Space') { e.preventDefault(); summonSearch(); return; }
     const bound = items.find(it => it.hotkey && it.hotkey === gesture(e));
     if (bound && !st.exited) { e.preventDefault(); run(bound); return; }
     if (e.key === 'Escape') { if (popoverOpen) { popoverOpen = false; renderUpdate(); } else if (st.searchOpen) search(false); else if (st.edit) edit(false); else { st.dockVisible = false; refresh(); } return; }
@@ -445,7 +473,8 @@
     }
   });
   document.addEventListener('pointerdown', e => { if (popoverOpen && !e.target.closest('#updatePopover,.update-pill')) { popoverOpen = false; renderUpdate(); } });
-  window.addEventListener('resize', () => { QA.closeMenu(); QA.updateScrollChrome(list, fades); renderUpdate(); });
+  window.addEventListener('resize', () => { QA.closeMenu(); positionDock(); QA.updateScrollChrome(list, fades); renderUpdate(); });
+  new ResizeObserver(() => { positionDock(); QA.updateScrollChrome(list, fades); }).observe($('#dock'));
   $('#clock').textContent = new Date().toLocaleTimeString('zh-CN', {hour:'2-digit', minute:'2-digit'});
   selectTab('general'); refresh();
 })();

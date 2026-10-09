@@ -119,4 +119,4 @@ Core 层保持平台无关并可单测；Windows API 集中在 `src/QuickApp/Pla
 
 修改界面时先同步唯一入口 [`design/index.html`](../design/index.html) 的交互原型，再同步 Avalonia 实现。`design` 只保留这一个 HTML；新增界面必须通过实际 Dock、菜单、右键或设置入口打开，数据和交互状态互通，不能以独立演示页代替产品流程。样式和脚本放在 `design/assets`。
 
-原型用浏览器本地存储保存演示配置；启动系统程序、文件/目录选择、显示器迁移和下载安装用演示状态模拟，配置导入导出使用 JSON。原型不会操作真实 QuickApp 配置或安装软件。提交前运行 `dotnet test QuickApp.slnx --no-restore` 和 `git diff --check`，并从页面入口验证修改涉及的完整操作链路。
+原型用浏览器本地存储保存演示配置；启动系统程序、文件/目录选择、显示器迁移和下载安装用演示状态模拟，配置导入导出使用 JSON。原型不会操作真实 QuickApp 配置或安装软件，也不会切换系统输入法；客户端的 Windows 热键唤起会切到英文输入态。提交前运行 `dotnet test QuickApp.slnx --no-restore` 和 `git diff --check`，并从页面入口验证修改涉及的完整操作链路。

@@ -585,11 +585,14 @@ public partial class DockWindow : Window, IDockHost
         int height = (int)Math.Ceiling(_revealHandleWindow.Height * scaling);
         int inset = (int)Math.Round(5 * scaling, MidpointRounding.AwayFromZero);
         PixelRect bounds = screen.Value.Bounds;
+        PixelRect work = screen.Value.Work;
+        int dockWidth = (int)Math.Ceiling(ClientSize.Width * scaling);
+        int dockHeight = (int)Math.Ceiling(ClientSize.Height * scaling);
         int along = _vm.Settings.Edge switch
         {
             DockEdge.Left or DockEdge.Right =>
-                DockPlacement.EdgeOffsetAlong(_vm.Settings.EdgeOffsetRatio, bounds.Height, height),
-            _ => DockPlacement.EdgeOffsetAlong(_vm.Settings.EdgeOffsetRatio, bounds.Width, width)
+                DockPlacement.HandleOffsetAlong(_vm.Settings.EdgeOffsetRatio, work.Y, work.Height, dockHeight, bounds.Y, bounds.Height, height),
+            _ => DockPlacement.HandleOffsetAlong(_vm.Settings.EdgeOffsetRatio, work.X, work.Width, dockWidth, bounds.X, bounds.Width, width)
         };
         (int x, int y) = DockPlacement.AnchorHandle(
             bounds.X, bounds.Y, bounds.Width, bounds.Height, width, height, _vm.Settings.Edge, inset, along);

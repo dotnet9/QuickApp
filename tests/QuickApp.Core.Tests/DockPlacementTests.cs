@@ -217,4 +217,29 @@ public sealed class DockPlacementTests
     [Fact]
     public void Offset_ratio_clamps_when_the_window_is_dropped_outside()
         => Assert.Equal(1, DockPlacement.OffsetRatio(DockEdge.Top, 5000, 0, DockW, DockH, WorkX, WorkY, WorkW, WorkH));
+
+    [Theory]
+    [InlineData(DockEdge.Top)]
+    [InlineData(DockEdge.Bottom)]
+    [InlineData(DockEdge.Left)]
+    [InlineData(DockEdge.Right)]
+    public void Handle_tracks_the_offset_dock_center_with_a_taskbar_and_negative_monitor_origin(DockEdge edge)
+    {
+        const int screenX = -1920, screenY = -100, screenWidth = 1920, screenHeight = 1080;
+        const int workX = screenX + 40, workY = screenY + 30, workWidth = screenWidth - 40, workHeight = screenHeight - 70;
+        bool vertical = DockPlacement.IsVertical(edge);
+        int handleWidth = vertical ? 24 : 78, handleHeight = vertical ? 78 : 24;
+        foreach (double ratio in new[] { -1.0, -0.6, 0, 0.6, 1 })
+        {
+            int along = DockPlacement.EdgeOffsetAlong(ratio, vertical ? workHeight : workWidth, vertical ? DockH : DockW);
+            (int dockX, int dockY) = DockPlacement.Anchor(workX, workY, workWidth, workHeight, DockW, DockH, edge, alongOffset: along);
+            int handleAlong = DockPlacement.HandleOffsetAlong(ratio,
+                vertical ? workY : workX, vertical ? workHeight : workWidth, vertical ? DockH : DockW,
+                vertical ? screenY : screenX, vertical ? screenHeight : screenWidth, vertical ? handleHeight : handleWidth);
+            (int handleX, int handleY) = DockPlacement.AnchorHandle(screenX, screenY, screenWidth, screenHeight, handleWidth, handleHeight, edge, 5, handleAlong);
+            double dockCenter = vertical ? dockY + DockH / 2.0 : dockX + DockW / 2.0;
+            double handleCenter = vertical ? handleY + handleHeight / 2.0 : handleX + handleWidth / 2.0;
+            Assert.InRange(Math.Abs(dockCenter - handleCenter), 0, 0.5);
+        }
+    }
 }

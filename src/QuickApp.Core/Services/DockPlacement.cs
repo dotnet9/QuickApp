@@ -5,7 +5,7 @@ namespace QuickApp.Core.Services;
 
 /// <summary>
 /// Dock 停靠位置计算（纯数学，物理像素，可单测）。
-/// 上/下边缘水平居中，左/右边缘垂直居中。
+/// 默认沿停靠边居中，拖动后按记忆的比例定位。
 ///
 /// <paramref name="hiddenOffset"/> 的约定：**一个带符号的位移，Anchor 一律加上它**，
 /// 正负号保证窗口被推出自己所在的那条边——上/左为负，下/右为正。
@@ -85,6 +85,16 @@ public static class DockPlacement
         int min = Math.Min(0, free) - baseOffset;
         int max = Math.Max(0, free) - baseOffset;
         return Math.Clamp(along, min, max);
+    }
+
+    /// <summary>把手投影到 Dock 中心，不能用把手自身长度重新解释沿边比例。</summary>
+    public static int HandleOffsetAlong(double ratio, int workStart, int workLength, int dockLength,
+        int screenStart, int screenLength, int handleLength)
+    {
+        int dockStart = workStart + (workLength - dockLength) / 2 + EdgeOffsetAlong(ratio, workLength, dockLength);
+        int handleStart = (int)Math.Round(dockStart + (dockLength - handleLength) / 2.0, MidpointRounding.AwayFromZero);
+        handleStart = Math.Clamp(handleStart, screenStart, screenStart + Math.Max(0, screenLength - handleLength));
+        return handleStart - (screenStart + (screenLength - handleLength) / 2);
     }
 
     /// <summary>
