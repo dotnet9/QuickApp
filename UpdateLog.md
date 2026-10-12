@@ -1,5 +1,11 @@
 # 更新日志
 
+## 0.7.3 (2026-10-12)
+
+- 设置窗口与快捷项编辑窗口迁移到 `CodeWFWindow`：弃用自绘标题栏和关闭按钮，修复 Windows Server 上窗口顶部边框缺失；Dock 悬浮层、Toast 提示与内联小弹窗保持无镶边设计。
+- Avalonia 升至 12.1.4，新增 Semi.Avalonia 与 CodeWF.Avalonia.Controls 依赖，并在免裁清单 `Roots.xml` 同步补充，NativeAOT 不丢失样式与控件元数据。
+- 0.7.2 的安装包与测试均已通过，仅因缺少 `.github/release-notes/v0.7.2.md` 导致创建 GitHub Release 的校验步骤失败；本版本补齐发布说明后重新发版，170 项测试通过。
+
 ## 0.7.1 (2026-10-09)
 
 - 单页原型同步 v0.7.0 的热键唤起搜索、焦点、重复按键和沿边位置记忆，收起、重新展开、刷新与视口变化保持一致。
