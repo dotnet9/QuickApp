@@ -1,5 +1,6 @@
-<Window xmlns="https://github.com/avaloniaui"
+<codewf:CodeWFWindow xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:codewf="https://codewf.com"
         xmlns:vm="clr-namespace:QuickApp.ViewModels"
         x:Class="QuickApp.Views.ItemDialogWindow"
         x:DataType="vm:DockViewModel"
@@ -8,11 +9,13 @@
         SizeToContent="Height"
         CanResize="False"
         ShowInTaskbar="False"
-        WindowDecorations="None"
-        WindowStartupLocation="CenterOwner"
-        Background="Transparent"
-        TransparencyLevelHint="Transparent"
-        TransparencyBackgroundFallback="Transparent">
+        IsMinimizeButtonVisible="False"
+        WindowCornerRadius="14"
+        Background="{Binding SettingsBackgroundBrush}"
+        BorderBrush="{Binding PanelBorderBrush}"
+        BorderThickness="1"
+        TitleBarForeground="{Binding TextBrush}"
+        WindowStartupLocation="CenterOwner">
 
   <Window.Styles>
     <Style Selector="ComboBox">
@@ -35,42 +38,8 @@
   </Window.Styles>
 
   <!-- 与设置窗口同一套卡片：整窗透明、实底圆角卡、自绘标题栏（配色直接绑 DockViewModel 的画刷） -->
-  <Grid Margin="16">
-    <Border Name="Card"
-            Background="{Binding SettingsBackgroundBrush}"
-            BorderBrush="{Binding PanelBorderBrush}"
-            BorderThickness="1"
-            CornerRadius="14">
-      <StackPanel Margin="16,0,16,16">
-
-        <Grid ColumnDefinitions="*,Auto" Margin="-16,0,-16,0" Name="HeaderBar" Cursor="SizeAll">
-          <TextBlock Grid.Column="0"
-                     Name="TitleText"
-                     Text="编辑快捷项"
-                     FontSize="14"
-                     FontWeight="SemiBold"
-                     Margin="16,14,0,14"
-                     VerticalAlignment="Center"
-                     Foreground="{Binding TextBrush}" />
-          <Button Grid.Column="1"
-                  Theme="{StaticResource IconButton}"
-                  Name="CloseButton"
-                  Width="32"
-                  Height="32"
-                  Margin="0,4,4,0"
-                  ToolTip.Tip="关闭">
-            <Path Data="M6,6 L18,18 M18,6 L6,18"
-                  Stroke="{Binding TextDimBrush}"
-                  StrokeThickness="1.75"
-                  StrokeLineCap="Round"
-                  Width="20"
-                  Height="20"
-                  Stretch="Uniform" />
-          </Button>
-        </Grid>
-        <Border Height="1" Background="{Binding PanelBorderBrush}" />
-
-        <ScrollViewer Name="FormScroll" MaxHeight="440" HorizontalScrollBarVisibility="Disabled" Margin="0,10,0,0">
+  <StackPanel Margin="16">
+    <ScrollViewer Name="FormScroll" MaxHeight="440" HorizontalScrollBarVisibility="Disabled" Margin="0,10,0,0">
           <StackPanel Spacing="6" Margin="0,0,4,0">
             <TextBlock Classes="row" Text="类型" Foreground="{Binding TextDimBrush}" />
             <ComboBox Name="KindBox" HorizontalAlignment="Stretch" SelectedIndex="0">
@@ -131,6 +100,4 @@
           </Button>
         </StackPanel>
       </StackPanel>
-    </Border>
-  </Grid>
-</Window>
+</codewf:CodeWFWindow>

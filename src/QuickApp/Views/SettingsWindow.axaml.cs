@@ -6,11 +6,12 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
+using CodeWF.Avalonia.Controls.Controls;
 using QuickApp.ViewModels;
 
 namespace QuickApp.Views;
 
-public partial class SettingsWindow : Window
+public partial class SettingsWindow : CodeWFWindow
 {
     private SettingsViewModel? _vm;
 
@@ -19,8 +20,6 @@ public partial class SettingsWindow : Window
         InitializeComponent();
         ExportButton.Click += OnExportConfig;
         ImportButton.Click += OnImportConfig;
-        CloseButton.Click += (_, _) => Close();
-        HeaderBar.PointerPressed += OnHeaderPressed;
         SettingsTabs.KeyDown += OnSettingsTabsKeyDown;
         KeyDown += (_, e) =>
         {
@@ -58,15 +57,6 @@ public partial class SettingsWindow : Window
             "about" => 4,
             _ => 0
         };
-    }
-
-    /// <summary>自绘标题栏拖动整窗（无系统装饰时用它替代标题栏）。</summary>
-    private void OnHeaderPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
-    {
-        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
-        {
-            BeginMoveDrag(e);
-        }
     }
 
     /// <summary>设置页签按原型支持方向键循环切换。</summary>

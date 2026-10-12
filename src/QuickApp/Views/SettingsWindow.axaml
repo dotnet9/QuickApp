@@ -1,5 +1,6 @@
-<Window xmlns="https://github.com/avaloniaui"
+<codewf:CodeWFWindow xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:codewf="https://codewf.com"
         xmlns:vm="clr-namespace:QuickApp.ViewModels"
         xmlns:icons="clr-namespace:QuickApp.Theme"
         x:Class="QuickApp.Views.SettingsWindow"
@@ -9,11 +10,13 @@
         Height="520"
         CanResize="False"
         ShowInTaskbar="True"
-        WindowDecorations="None"
+        IsMinimizeButtonVisible="False"
+        WindowCornerRadius="14"
         WindowStartupLocation="CenterScreen"
-        Background="Transparent"
-        TransparencyLevelHint="Transparent"
-        TransparencyBackgroundFallback="Transparent">
+        Background="{Binding BackgroundBrush}"
+        BorderBrush="{Binding PanelBorderBrush}"
+        BorderThickness="1"
+        TitleBarForeground="{Binding TextBrush}">
 
   <!--
     与原型 design/index.html 的 .settings-* 逐项对齐：
@@ -182,45 +185,7 @@
     </Style>
   </Window.Styles>
 
-  <!-- 透明边距 10px（浅色桌面减少透出）——原型阴影 18/40 超出该投影区，按比例衰减为 12/28，色值同 0.45/0.35 -->
-  <Grid Margin="10">
-    <Border Background="{Binding BackgroundBrush}"
-            BorderBrush="{Binding PanelBorderBrush}"
-            BorderThickness="1"
-            CornerRadius="14"
-            BoxShadow="0 12 28 0 #66000000, 0 2 6 0 #44000000">
-      <DockPanel>
-        <StackPanel DockPanel.Dock="Top">
-          <Border Name="HeaderBar"
-                  Background="Transparent"
-                  Padding="16,14"
-                  Cursor="SizeAll">
-            <Grid ColumnDefinitions="*,Auto">
-              <TextBlock Grid.Column="0"
-                         Text="设置"
-                         FontSize="14"
-                         FontWeight="SemiBold"
-                         VerticalAlignment="Center"
-                         Foreground="{Binding TextBrush}" />
-              <Button Grid.Column="1"
-                      Theme="{StaticResource IconButton}"
-                      Name="CloseButton"
-                      Width="32"
-                      Height="32"
-                      ToolTip.Tip="关闭">
-                <Path Data="{x:Static icons:Icons.Close}"
-                      Stroke="{Binding TextDimBrush}"
-                      StrokeThickness="1.75"
-                      StrokeLineCap="Round"
-                      Width="20"
-                      Height="20"
-                      Stretch="Uniform" />
-              </Button>
-            </Grid>
-          </Border>
-          <Border Height="1" Background="{Binding PanelBorderBrush}" />
-        </StackPanel>
-
+  <DockPanel>
         <!-- 导航区背景/右缘线画在下层，标签自身透明（原型 .settings-nav） -->
         <Grid>
           <Grid ColumnDefinitions="136,*">
@@ -564,6 +529,4 @@
           </TabControl>
         </Grid>
       </DockPanel>
-    </Border>
-  </Grid>
-</Window>
+</codewf:CodeWFWindow>

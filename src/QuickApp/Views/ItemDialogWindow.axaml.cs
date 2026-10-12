@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
+using CodeWF.Avalonia.Controls.Controls;
 using QuickApp.Core.Models;
 using QuickApp.Core.Services;
 using QuickApp.ViewModels;
@@ -11,7 +12,7 @@ using QuickApp.ViewModels;
 namespace QuickApp.Views;
 
 /// <summary>统一新增与编辑快捷项；所有输入先写草稿，取消不改原配置。</summary>
-public partial class ItemDialogWindow : Window
+public partial class ItemDialogWindow : CodeWFWindow
 {
     private readonly TaskCompletionSource<LauncherItem?> _completion = new();
     private DockViewModel? _dock;
@@ -20,7 +21,6 @@ public partial class ItemDialogWindow : Window
     public ItemDialogWindow()
     {
         InitializeComponent();
-        CloseButton.Click += (_, _) => Close();
         CancelButton.Click += (_, _) => Close();
         SubmitButton.Click += OnSubmit;
         KindBox.SelectionChanged += (_, _) => UpdateFields();
@@ -29,10 +29,6 @@ public partial class ItemDialogWindow : Window
         BrowseFileButton.Click += async (_, _) => await PickFileAsync();
         BrowseFolderButton.Click += async (_, _) => await PickFolderAsync(TargetBox);
         BrowseWorkingDirectoryButton.Click += async (_, _) => await PickFolderAsync(WorkingDirectoryBox);
-        HeaderBar.PointerPressed += (_, e) =>
-        {
-            if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) BeginMoveDrag(e);
-        };
         KeyDown += (_, e) =>
         {
             if (e.Key == Key.Escape) { Close(); e.Handled = true; }
@@ -51,7 +47,7 @@ public partial class ItemDialogWindow : Window
         _dock = dock;
         DataContext = dock;
         _draft = LauncherItemEditor.Copy(item);
-        Title = TitleText.Text = editing ? "编辑快捷项" : "添加快捷项";
+        Title = editing ? "编辑快捷项" : "添加快捷项";
         SubmitText.Text = editing ? "保存" : "添加";
         NameBox.Text = item.Name;
         TargetBox.Text = item.Target;
