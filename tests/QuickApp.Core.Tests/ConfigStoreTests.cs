@@ -70,6 +70,32 @@ public sealed class ConfigStoreTests : IDisposable
     }
 
     [Fact]
+    public void Instance_count_survives_a_round_trip_and_legacy_files_default_to_one()
+    {
+        ConfigStore store = CreateStore();
+        File.WriteAllText(store.ConfigFile, """
+        {
+          "schemaVersion": 1,
+          "settings": {},
+          "items": [
+            { "id": "wechat",  "name": "微信",     "kind": 0, "target": "C:\\Tools\\wechat.exe", "instanceCount": 3 },
+            { "id": "legacy",  "name": "旧配置项", "kind": 0, "target": "C:\\Tools\\legacy.exe" },
+            { "id": "web",     "name": "站点",     "kind": 1, "target": "https://dotnet9.com", "instanceCount": 5 }
+          ]
+        }
+        """);
+
+        AppConfig config = store.Load();
+
+        Assert.Equal(3, config.Items.Find(i => i.Id == "wechat")!.InstanceCount);
+        Assert.Equal(1, config.Items.Find(i => i.Id == "legacy")!.InstanceCount);   // 旧配置没有该字段
+        Assert.Equal(1, config.Items.Find(i => i.Id == "web")!.InstanceCount);      // 只有程序类能用多开
+
+        Assert.True(store.Save(config));
+        Assert.Equal(3, CreateStore().Load().Items.Find(i => i.Id == "wechat")!.InstanceCount);
+    }
+
+    [Fact]
     public void Corrupt_file_falls_back_and_is_quarantined()
     {
         ConfigStore store = CreateStore();

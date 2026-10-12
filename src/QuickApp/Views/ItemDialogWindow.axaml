@@ -56,6 +56,11 @@
             <StackPanel Name="ArgumentsPanel" Spacing="6">
               <TextBlock Classes="row" Text="启动参数（可选）" Foreground="{Binding TextDimBrush}" />
               <TextBox Name="ArgumentsBox" PlaceholderText="例如：--new-window" />
+              <StackPanel Name="InstanceCountPanel" Spacing="6">
+                <TextBlock Classes="row" Text="启动数量" Foreground="{Binding TextDimBrush}" />
+                <TextBox Name="InstanceCountBox" PlaceholderText="1" />
+                <TextBlock Text="大于 1 时一次启动多个实例，适合微信等多开；实际能否多开由程序自身决定。" FontSize="11" Foreground="{Binding TextDimBrush}" TextWrapping="Wrap" />
+              </StackPanel>
             </StackPanel>
             <StackPanel Name="WorkingDirectoryPanel" Spacing="6">
               <TextBlock Classes="row" Text="工作目录（可选）" Foreground="{Binding TextDimBrush}" />

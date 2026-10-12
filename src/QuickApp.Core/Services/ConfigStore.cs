@@ -537,6 +537,10 @@ public sealed class ConfigStore
             item.Name = string.IsNullOrWhiteSpace(item.Name)
                 ? ItemQuery.ResolveDisplayName(item)
                 : item.Name.Trim();
+            // 多开数量：旧配置没有该字段（反序列化为 0），只有程序类保留，其余一律归 1
+            item.InstanceCount = item.Kind == ItemKind.App
+                ? LauncherItemEditor.NormalizeInstanceCount(item.InstanceCount)
+                : 1;
             cleaned.Add(item);
         }
 

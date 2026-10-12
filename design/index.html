@@ -167,6 +167,7 @@
 <label for="name">名称</label><input id="name" placeholder="留空时根据目标生成" >
 <label for="target" id="targetLabel">路径或程序名</label><div class="browse-row"><input id="target"  autocomplete="off"><button type="button" class="chip" id="browse">文件…</button><button type="button" class="chip" id="folder">目录…</button></div>
 <div id="argsRow"><label for="args">启动参数（可选）</label><input id="args" placeholder="例如：--new-window"></div>
+<div id="instancesRow"><label for="instances">启动数量</label><input id="instances" type="number" min="1" max="99" step="1" value="1" placeholder="1"><p class="note">大于 1 时一次启动多个实例，适合微信等多开；实际能否多开由程序自身决定。</p></div>
 <div id="cwdRow"><label for="cwd">工作目录（可选）</label><div class="browse-row"><input id="cwd" placeholder="例如：C:\Work\QuickApp"><button type="button" class="chip" id="browseCwd">选择…</button></div></div>
 <div id="commandOptions" hidden><label for="shell">命令解释器</label><select id="shell"><option value="cmd">CMD</option><option value="powershell">PowerShell</option></select>
 <label class="check-row"><input id="terminal" type="checkbox" checked>在终端运行并保留窗口</label><p class="note">查看输出请使用终端；后台运行适合无需交互的操作。</p></div>

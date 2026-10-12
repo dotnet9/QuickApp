@@ -9,9 +9,13 @@ public sealed record LaunchPlan(
     string FileName,
     string Arguments,
     bool UseShellExecute,
-    string? WorkingDirectory)
+    string? WorkingDirectory,
+    int InstanceCount = 1)
 {
     public static LaunchPlan Empty { get; } = new(string.Empty, string.Empty, false, null);
+
+    /// <summary>多开时逐个启动：每个实例用同一份启动参数，这里只把这一份的实例数归 1。</summary>
+    public LaunchPlan Single() => InstanceCount == 1 ? this : this with { InstanceCount = 1 };
 }
 
 /// <summary>把快捷项翻译成启动参数。</summary>
@@ -64,7 +68,8 @@ public static class LaunchPlanner
                     target,
                     item.Arguments ?? string.Empty,
                     UseShellExecute: true,
-                    workingDirectory);
+                    workingDirectory,
+                    LauncherItemEditor.NormalizeInstanceCount(item.InstanceCount));
         }
     }
 

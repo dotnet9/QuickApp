@@ -52,6 +52,8 @@ public partial class ItemDialogWindow : CodeWFWindow
         NameBox.Text = item.Name;
         TargetBox.Text = item.Target;
         ArgumentsBox.Text = item.Arguments;
+        InstanceCountBox.Text = LauncherItemEditor.NormalizeInstanceCount(item.InstanceCount)
+            .ToString(System.Globalization.CultureInfo.InvariantCulture);
         WorkingDirectoryBox.Text = item.WorkingDirectory;
         HotkeyBox.Text = item.Hotkey;
         ShellBox.SelectedIndex = item.UsePowerShell ? 1 : 0;
@@ -84,7 +86,8 @@ public partial class ItemDialogWindow : CodeWFWindow
         bool app = kind == ItemKind.App, command = kind == ItemKind.Command;
         TargetLabel.Text = command ? "命令" : kind == ItemKind.Web ? "网址" : "路径或程序名";
         TargetBox.PlaceholderText = command ? "例如：git status" : kind == ItemKind.Web ? "例如：https://dotnet9.com" : @"例如：C:\Work 或 explorer.exe";
-        ArgumentsPanel.IsVisible = BrowseFileButton.IsVisible = BrowseFolderButton.IsVisible = app;
+        ArgumentsPanel.IsVisible = InstanceCountPanel.IsVisible =
+            BrowseFileButton.IsVisible = BrowseFolderButton.IsVisible = app;
         WorkingDirectoryPanel.IsVisible = kind != ItemKind.Web;
         CommandOptions.IsVisible = command && OperatingSystem.IsWindows();
         PlatformNote.IsVisible = command && !OperatingSystem.IsWindows();
@@ -134,6 +137,9 @@ public partial class ItemDialogWindow : CodeWFWindow
         draft.Name = NameBox.Text ?? string.Empty;
         draft.Target = TargetBox.Text ?? string.Empty;
         draft.Arguments = ArgumentsBox.Text;
+        string? countError = LauncherItemEditor.TryParseInstanceCount(InstanceCountBox.Text, out int instanceCount);
+        if (countError is not null) { ShowError(countError); return; }
+        draft.InstanceCount = instanceCount;
         draft.WorkingDirectory = WorkingDirectoryBox.Text;
         draft.Hotkey = HotkeyBox.Text;
         draft.UsePowerShell = ShellBox.SelectedIndex == 1;

@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const {$, $$, h} = QA;
-  const storageKey = 'quickapp-prototype-v1';
+  const storageKey = 'quickapp-prototype-v2';
   const defaults = {themePref:'system', wall:'auto', style:'glass', label:'icon', tileSize:44, radius:18, alpha:1,
     edge:'top', pinned:false, autoStart:true, edgeReveal:true, autoCollapse:true, checkUpdates:true,
     autoHide:700, monitor:'display-1', portable:false, edgeOffsetRatio:0};
@@ -95,7 +95,7 @@
   function run(it) {
     if (!it) return;
     if (st.edit) { QA.toast('编辑中，点击「完成」后运行'); return; }
-    QA.toast('正在' + (it.type === 'cmd' ? '执行：' : '打开：') + it.name);
+    QA.toast('正在' + (it.type === 'cmd' ? '执行：' : '打开：') + it.name + (it.instances > 1 ? ' × ' + it.instances : ''));
     if (st.autoCollapse && !st.pinned) { st.dockVisible = false; refresh(); }
   }
   function remove(it) {
@@ -185,15 +185,16 @@
     return name.replace(/\.(exe|lnk|app|bat|cmd)$/i, '') || target;
   }
   function openEditor(it, type = 'app') {
-    draft = it ? {...it} : {id:null, type, name:'', target:'', args:'', cwd:'', hotkey:'', shell:'cmd', terminal:type === 'cmd'};
+    draft = it ? {...it} : {id:null, type, name:'', target:'', args:'', instances:1, cwd:'', hotkey:'', shell:'cmd', terminal:type === 'cmd'};
     $('#editorTitle').textContent = it ? '编辑快捷项' : '添加快捷项'; $('#save').textContent = it ? '保存' : '添加';
     for (const key of ['name', 'target', 'args', 'cwd', 'hotkey']) $('#' + key).value = draft[key] || '';
+    $('#instances').value = draft.instances || 1;
     $('#kind').value = draft.type; $('#shell').value = draft.shell || 'cmd'; $('#terminal').checked = !!draft.terminal;
     $('#error').hidden = true; syncEditor(); openLayer('editorLayer'); $('#name').focus();
   }
   function syncEditor() {
     const type = $('#kind').value;
-    $('#argsRow').hidden = $('#browse').hidden = $('#folder').hidden = type !== 'app';
+    $('#argsRow').hidden = $('#instancesRow').hidden = $('#browse').hidden = $('#folder').hidden = type !== 'app';
     $('#cwdRow').hidden = type === 'web'; $('#commandOptions').hidden = type !== 'cmd';
     $('#targetLabel').textContent = type === 'cmd' ? '命令' : type === 'web' ? '网址' : '路径或程序名';
     $('#target').placeholder = type === 'cmd' ? '例如：git status' : type === 'web' ? '例如：https://dotnet9.com' : '例如：C:\\Work 或 explorer.exe';
@@ -207,7 +208,7 @@
     e.preventDefault();
     if (configError) { error('配置读取失败，请先重新加载配置。'); return; }
     const next = {...draft, type:$('#kind').value, target:$('#target').value.trim(), name:$('#name').value.trim(),
-      args:$('#args').value.trim(), cwd:$('#cwd').value.trim(), hotkey:$('#hotkey').value, shell:$('#shell').value, terminal:$('#terminal').checked};
+      args:$('#args').value.trim(), instances:Math.min(99, Math.max(1, Math.round(Number($('#instances').value) || 1))), cwd:$('#cwd').value.trim(), hotkey:$('#hotkey').value, shell:$('#shell').value, terminal:$('#terminal').checked};
     if (!next.target) { error('请填写目标。'); $('#target').focus(); return; }
     if (next.type === 'web') {
       if (!next.target.includes('://')) next.target = 'https://' + next.target;
@@ -215,7 +216,7 @@
       catch (_) { error('请填写有效的 HTTP 或 HTTPS 网址。'); return; }
       next.args = next.cwd = '';
     } else if (next.type === 'app') next.target = next.target.replace(/^"|"$/g, '');
-    if (next.type !== 'app') next.args = '';
+    if (next.type !== 'app') next.args = next.instances = 1;
     if (next.type !== 'cmd') { next.shell = 'cmd'; next.terminal = false; }
     if (next.hotkey === 'Ctrl+Alt+Space') { error('该快捷键已用于唤出 QuickApp。'); return; }
     const conflict = next.hotkey && items.find(it => it.id !== next.id && it.hotkey === next.hotkey);
@@ -247,14 +248,14 @@
     const kinds = {app:0, web:1, cmd:2}, edges = {top:0, bottom:1, left:2, right:3};
     const config = {schemaVersion:1, settings:{theme:st.themePref, style:st.style, showLabels:st.label === 'iconText', edge:edges[st.edge], tileSize:st.tileSize, cornerRadius:st.radius, pinned:st.pinned, checkUpdates:st.checkUpdates,
       autoStart:st.autoStart, revealOnEdgeTouch:st.edgeReveal, collapseAfterLaunch:st.autoCollapse, autoHideDelayMs:st.autoHide, hotkey:'Ctrl+Alt+Space', edgeOffsetRatio:st.edgeOffsetRatio},
-      items:items.map(it => ({id:it.id, name:it.name, kind:kinds[it.type], target:it.target, arguments:it.args || null, workingDirectory:it.cwd || null, hotkey:it.hotkey || null, usePowerShell:it.shell === 'powershell', runInTerminal:!!it.terminal}))};
+      items:items.map(it => ({id:it.id, name:it.name, kind:kinds[it.type], target:it.target, arguments:it.args || null, instanceCount:it.instances || 1, workingDirectory:it.cwd || null, hotkey:it.hotkey || null, usePowerShell:it.shell === 'powershell', runInTerminal:!!it.terminal}))};
     const url = URL.createObjectURL(new Blob([JSON.stringify(config, null, 2)], {type:'application/json'}));
     const anchor = h('a', {href:url, download:'QuickApp-config.json'}); anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); QA.toast('已导出配置');
   }
   function importConfig(config) {
     if (!config || !Array.isArray(config.items) || config.items.some(it => !it || typeof it.target !== 'string')) throw Error('不是有效的 QuickApp 配置文件');
     const imported = config.items.map(it => ({id:it.id || 'i' + crypto.randomUUID(), name:it.name || inferName(it.target, 'app'), type:it.type || ['app', 'web', 'cmd'][it.kind] || 'app', target:it.target,
-      args:it.arguments || '', cwd:it.workingDirectory || '', hotkey:it.hotkey || '', shell:it.usePowerShell ? 'powershell' : 'cmd', terminal:!!it.runInTerminal, icon:it.kind === 2 ? 'terminal' : it.kind === 1 ? 'globe' : 'app'}));
+      args:it.arguments || '', instances:Math.min(99, Math.max(1, Math.round(Number(it.instanceCount) || 1))), cwd:it.workingDirectory || '', hotkey:it.hotkey || '', shell:it.usePowerShell ? 'powershell' : 'cmd', terminal:!!it.runInTerminal, icon:it.kind === 2 ? 'terminal' : it.kind === 1 ? 'globe' : 'app'}));
     dialog('导入配置', [h('p', {text:'导入将替换当前快捷项与设置。当前 ' + items.length + ' 项，导入后 ' + imported.length + ' 项。'})],
       [chip('取消', () => closeLayer('dialogLayer')), chip('导入并替换', () => {
         items = imported; configError = null;

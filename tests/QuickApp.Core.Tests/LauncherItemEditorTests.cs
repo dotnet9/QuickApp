@@ -74,6 +74,55 @@ public sealed class LauncherItemEditorTests
     }
 
     [Fact]
+    public void Instance_count_is_kept_for_apps_and_cleared_for_other_kinds()
+    {
+        var app = new LauncherItem { Kind = ItemKind.App, Target = @"C:\Tools\wechat.exe", InstanceCount = 4 };
+        Assert.Null(LauncherItemEditor.NormalizeAndValidate(app, Array.Empty<LauncherItem>(), "Ctrl+Alt+Space"));
+        Assert.Equal(4, app.InstanceCount);
+
+        // 旧配置没有该字段（反序列化为 0）与手改越界值都兜底到 1 / 上限
+        var legacy = new LauncherItem { Kind = ItemKind.App, Target = @"C:\Tools\wechat.exe", InstanceCount = 0 };
+        Assert.Null(LauncherItemEditor.NormalizeAndValidate(legacy, Array.Empty<LauncherItem>(), "Ctrl+Alt+Space"));
+        Assert.Equal(1, legacy.InstanceCount);
+
+        var tooMany = new LauncherItem { Kind = ItemKind.App, Target = @"C:\Tools\wechat.exe", InstanceCount = 1000 };
+        Assert.Null(LauncherItemEditor.NormalizeAndValidate(tooMany, Array.Empty<LauncherItem>(), "Ctrl+Alt+Space"));
+        Assert.Equal(LauncherItemEditor.MaxInstanceCount, tooMany.InstanceCount);
+
+        var web = new LauncherItem { Kind = ItemKind.Web, Target = "dotnet9.com", InstanceCount = 5 };
+        var command = new LauncherItem { Kind = ItemKind.Command, Target = "echo hi", InstanceCount = 5 };
+        Assert.Null(LauncherItemEditor.NormalizeAndValidate(web, Array.Empty<LauncherItem>(), "Ctrl+Alt+Space"));
+        Assert.Null(LauncherItemEditor.NormalizeAndValidate(command, Array.Empty<LauncherItem>(), "Ctrl+Alt+Space"));
+        Assert.Equal(1, web.InstanceCount);
+        Assert.Equal(1, command.InstanceCount);
+    }
+
+    [Fact]
+    public void Copy_keeps_instance_count()
+        => Assert.Equal(3, LauncherItemEditor.Copy(new LauncherItem { Target = "a.exe", InstanceCount = 3 }).InstanceCount);
+
+    [Theory]
+    [InlineData(null, 1)]
+    [InlineData("", 1)]
+    [InlineData("   ", 1)]
+    [InlineData("3", 3)]
+    [InlineData(" 12 ", 12)]
+    [InlineData("99", 99)]
+    public void Instance_count_text_is_parsed(string? text, int expected)
+    {
+        Assert.Null(LauncherItemEditor.TryParseInstanceCount(text, out int count));
+        Assert.Equal(expected, count);
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("100")]
+    [InlineData("2.5")]
+    [InlineData("两个")]
+    public void Invalid_instance_count_text_is_rejected(string text)
+        => Assert.NotNull(LauncherItemEditor.TryParseInstanceCount(text, out _));
+
+    [Fact]
     public void Folder_name_keeps_dots_and_trailing_separator()
     {
         string folder = Path.Combine(Path.GetTempPath(), "QuickApp.Tests." + Guid.NewGuid().ToString("N"));

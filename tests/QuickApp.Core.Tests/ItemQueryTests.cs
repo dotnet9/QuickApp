@@ -215,6 +215,38 @@ public sealed class LaunchPlannerTests
     [Fact]
     public void Empty_target_yields_empty_plan()
         => Assert.Equal(LaunchPlan.Empty, LaunchPlanner.Create(new LauncherItem { Target = "  " }));
+
+    [Fact]
+    public void App_plan_carries_the_instance_count_and_legacy_items_default_to_one()
+    {
+        LaunchPlan plan = LaunchPlanner.Create(new LauncherItem
+        {
+            Kind = ItemKind.App, Target = @"C:\Tools\wechat.exe", InstanceCount = 3
+        });
+        Assert.Equal(3, plan.InstanceCount);
+        // 旧配置没有该字段，反序列化后是 0，必须仍按 1 次启动
+        Assert.Equal(1, LaunchPlanner.Create(new LauncherItem { Kind = ItemKind.App, Target = @"C:\Tools\wechat.exe" }).InstanceCount);
+        Assert.Equal(1, LaunchPlanner.Create(new LauncherItem { Kind = ItemKind.App, Target = @"C:\Tools\wechat.exe", InstanceCount = 0 }).InstanceCount);
+    }
+
+    [Fact]
+    public void Command_and_web_plans_never_repeat()
+    {
+        Assert.Equal(1, LaunchPlanner.Create(new LauncherItem { Kind = ItemKind.Command, Target = "echo hi", InstanceCount = 3 }).InstanceCount);
+        Assert.Equal(1, LaunchPlanner.Create(new LauncherItem { Kind = ItemKind.Web, Target = "https://dotnet9.com", InstanceCount = 3 }).InstanceCount);
+    }
+
+    [Fact]
+    public void Single_drops_the_repeat_marker_for_one_launch_attempt()
+    {
+        var plan = new LaunchPlan("app.exe", "--fast", true, null, 4);
+        LaunchPlan single = plan.Single();
+
+        Assert.Equal(1, single.InstanceCount);
+        Assert.Equal("app.exe", single.FileName);
+        Assert.Equal("--fast", single.Arguments);
+        Assert.Same(single, single.Single());
+    }
 }
 
 public sealed class VersionUtilTests

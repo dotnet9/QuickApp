@@ -953,7 +953,8 @@ public sealed class DockViewModel : ViewModelBase
 
         vm.IsRunning = true;
         _ = ResetRunningAsync(vm);
-        Toast("正在启动：" + vm.Name);
+        int instances = LauncherItemEditor.NormalizeInstanceCount(vm.Model.InstanceCount);
+        Toast(instances > 1 ? "正在启动 " + instances + " 个：" + vm.Name : "正在启动：" + vm.Name);
 
         if (Settings.CollapseAfterLaunch && !Settings.Pinned)
         {

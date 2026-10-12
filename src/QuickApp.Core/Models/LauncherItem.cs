@@ -17,6 +17,9 @@ public sealed class LauncherItem
     /// <summary>启动参数，仅 <see cref="ItemKind.App"/> 使用。</summary>
     public string? Arguments { get; set; }
 
+    /// <summary>一次启动的实例数：大于 1 时连续启动同一程序（微信等多开），旧配置无此字段即为 1。</summary>
+    public int InstanceCount { get; set; } = 1;
+
     /// <summary>程序或命令执行时的工作目录。</summary>
     public string? WorkingDirectory { get; set; }
 
