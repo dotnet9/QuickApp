@@ -34,7 +34,6 @@
   <ItemGroup>
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Desktop" />
-    <PackageReference Include="Avalonia.Themes.Fluent" />
     <PackageReference Include="CodeWF.Avalonia.Controls" />
     <PackageReference Include="Semi.Avalonia" />
     <PackageReference Include="ReactiveUI" />

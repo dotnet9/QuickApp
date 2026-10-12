@@ -5,7 +5,6 @@
              x:Class="QuickApp.App"
              RequestedThemeVariant="Default">
   <Application.Styles>
-    <FluentTheme />
     <semi:SemiTheme Locale="zh-CN" />
     <codewf:ACSemiTheme />
     <StyleInclude Source="avares://QuickApp/Styles/Common.axaml" />
