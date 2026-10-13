@@ -7,7 +7,10 @@
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
-    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- 不能开 InvariantGlobalization：App.axaml 的 SemiTheme 传 Locale="zh-CN"，
+         SemiTheme 的静态构造会 new CultureInfo("zh-CN")，Invariant 模式直接抛
+         CultureNotFoundException，AOT 版窗口都建不起来（详见 docs/DEVELOPMENT.md） -->
+    <InvariantGlobalization>false</InvariantGlobalization>
     <NeutralLanguage>zh-Hans</NeutralLanguage>
 
     <!-- 版本号单一来源；CI 发布时用 -p:Version=<tag> 覆盖 -->

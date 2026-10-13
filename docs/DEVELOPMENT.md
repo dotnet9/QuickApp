@@ -26,6 +26,8 @@ dotnet test QuickApp.slnx --no-restore
 dotnet run --project src/QuickApp/QuickApp.csproj
 ```
 
+不要开启 `InvariantGlobalization`：`App.axaml` 的 `SemiTheme` 传了 `Locale="zh-CN"`，其静态构造会 `new CultureInfo("zh-CN")`，在 Invariant 模式下直接抛 `CultureNotFoundException`，发布出来的程序连窗口都建不起来（错误只写进 `%LOCALAPPDATA%\QuickApp\logs\app.log`）；`Directory.Build.props` 因此显式设为 `false`。
+
 构建输出在 `artifacts/bin`。Core 层的纯逻辑测试位于 [`tests/QuickApp.Core.Tests`](../tests/QuickApp.Core.Tests)。
 
 ## 发布
