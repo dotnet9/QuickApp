@@ -115,19 +115,33 @@ public sealed class UpdateChecker : IUpdateChecker
                 && cached.Assets is { Length: > 0 }
                 && string.Equals(cached.TagName, tag, StringComparison.OrdinalIgnoreCase))
             {
-                // 没发新版：缓存的 release 直接做版本比较，资产请求也省掉
+                // 没发新版：缓存的 release（含发布说明）直接做版本比较，资产与说明请求都省掉
+                if (!string.IsNullOrWhiteSpace(cached.Body))
+                {
+                    return EvaluateRelease(cached, current);
+                }
+
+                // 旧版缓存只有资产、没有发布说明：只补一次说明，资产继续用缓存
+                cached.Body = await FetchReleaseNotesAsync(tag, cancellationToken).ConfigureAwait(false);
+                if (!string.IsNullOrWhiteSpace(cached.Body))
+                {
+                    TrySaveState(new UpdateCheckState(Etag: null, cached));
+                }
+
                 return EvaluateRelease(cached, current);
             }
 
             GitHubRelease? release = await FetchWebReleaseAsync(tag, cancellationToken).ConfigureAwait(false);
-            if (release is null)
+            release ??= new GitHubRelease
             {
-                // 已确认有新版：保留发布页入口，不因资产端点失败转去消耗 API 配额。
-                return EvaluateRelease(new GitHubRelease
-                {
-                    TagName = tag,
-                    HtmlUrl = $"{_webBase}/{_owner}/{_repo}/releases/tag/{Uri.EscapeDataString(tag)}"
-                }, current);
+                TagName = tag,
+                HtmlUrl = $"{_webBase}/{_owner}/{_repo}/releases/tag/{Uri.EscapeDataString(tag)}"
+            };
+
+            // 资产端点不可用时保留发布页入口（不转去消耗 API 配额），但发布说明另有网页来源，仍要尝试
+            if (string.IsNullOrWhiteSpace(release.Body))
+            {
+                release.Body = await FetchReleaseNotesAsync(tag, cancellationToken).ConfigureAwait(false);
             }
 
             if (release.Assets is { Length: > 0 })
@@ -147,6 +161,143 @@ public sealed class UpdateChecker : IUpdateChecker
             return UpdateCheckResult.Failed(ex.Message);
         }
     }
+
+    /// <summary>
+    /// 发布说明的网页来源：releases.atom 每个版本一个 entry，正文就在 content 里，
+    /// 与资产列表一样走网页端点，不占 GitHub API 配额；说明只作展示，失败不影响更新检查本身。
+    /// </summary>
+    private async Task<string?> FetchReleaseNotesAsync(string tag, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{_webBase}/{_owner}/{_repo}/releases.atom");
+            request.Headers.TryAddWithoutValidation("User-Agent", "QuickApp-UpdateChecker");
+            using HttpResponseMessage response = await _http
+                .SendAsync(request, HttpCompletionOption.ResponseContentRead, cancellationToken)
+                .ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                _log?.Invoke($"发布说明拉取失败：HTTP {(int)response.StatusCode}");
+                return null;
+            }
+
+            string feed = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            string? notes = ParseReleaseNotes(feed, tag);
+            if (string.IsNullOrWhiteSpace(notes))
+            {
+                _log?.Invoke($"发布说明为空（{tag}）");
+            }
+
+            return notes;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _log?.Invoke($"发布说明拉取失败：{ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// 从 releases.atom 抠出指定 tag 的正文：定位该 tag 的入口块（到下一个 entry 为止），
+    /// 解码 content 里的实体并去掉 HTML 标签。保持字符串扫描，不引 HTML/XML 解析器。
+    /// </summary>
+    private static string? ParseReleaseNotes(string feed, string tag)
+    {
+        const string entryMarker = "<entry>";
+        const string linkMarker = "/releases/tag/";
+        string target = Uri.EscapeDataString(tag);
+        int index = 0;
+        while ((index = feed.IndexOf(entryMarker, index, StringComparison.OrdinalIgnoreCase)) >= 0)
+        {
+            int end = feed.IndexOf("</entry>", index, StringComparison.OrdinalIgnoreCase);
+            if (end < 0)
+            {
+                end = feed.Length;
+            }
+
+            string entry = feed[index..end];
+            index = end + 1;
+            int link = entry.IndexOf(linkMarker, StringComparison.Ordinal);
+            if (link < 0 || !entry.AsSpan(link + linkMarker.Length).StartsWith(target, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            int content = entry.IndexOf("<content", StringComparison.OrdinalIgnoreCase);
+            int open = content < 0 ? -1 : entry.IndexOf('>', content);
+            int close = entry.IndexOf("</content>", StringComparison.OrdinalIgnoreCase);
+            if (open < 0 || close <= open)
+            {
+                return null;
+            }
+
+            return ToPlainText(entry[(open + 1)..close]);
+        }
+
+        return null;
+    }
+
+    /// <summary>atom 的 content 是转义后的 HTML：先还原实体，再把块级标签换成换行、其余标签去掉。</summary>
+    private static string ToPlainText(string html)
+    {
+        string decoded = WebUtility.HtmlDecode(html ?? string.Empty);
+        if (decoded.Length == 0)
+        {
+            return string.Empty;
+        }
+
+        var builder = new System.Text.StringBuilder(decoded.Length);
+        int index = 0;
+        while (index < decoded.Length)
+        {
+            int open = decoded.IndexOf('<', index);
+            if (open < 0)
+            {
+                builder.Append(decoded, index, decoded.Length - index);
+                break;
+            }
+
+            builder.Append(decoded, index, open - index);
+            int close = decoded.IndexOf('>', open);
+            if (close < 0)
+            {
+                break;
+            }
+
+            string raw = decoded[(open + 1)..close].Trim();
+            bool closing = raw.StartsWith("/", StringComparison.Ordinal);
+            string name = (closing ? raw[1..] : raw).TrimEnd('/').Trim().ToLowerInvariant();
+            if (name == "li")
+            {
+                // 列表项没有符号，补一个「- 」，读起来与发布页一致
+                builder.Append(closing ? '\n' : "\n- ");
+            }
+            else if (name is "br" or "hr" or "p" or "ul" or "ol" or "pre" or "blockquote"
+                or "h1" or "h2" or "h3" or "h4" or "h5" or "h6")
+            {
+                builder.Append('\n');
+            }
+
+            index = close + 1;
+        }
+
+        var lines = new List<string>();
+        foreach (string line in builder.ToString().Split('\n'))
+        {
+            string trimmed = line.Trim();
+            if (trimmed.Length > 0)
+            {
+                lines.Add(trimmed);
+            }
+        }
+
+        return string.Join(Environment.NewLine, lines).Trim();
+    }
+
 
     /// <summary>releases/latest 的 302 落点就是 /releases/tag/{tag}；只取响应头，不下载页面。</summary>
     private async Task<string?> FetchLatestTagViaRedirectAsync(CancellationToken cancellationToken)

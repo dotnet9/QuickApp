@@ -568,6 +568,133 @@ public sealed class UpdateCheckerTests
         Assert.Equal(0, handler.ApiRequests);
     }
 
+    [Fact]
+    public async Task Legacy_cached_release_without_notes_only_fetches_notes()
+    {
+        string dir = Path.Combine(Path.GetTempPath(), "QuickAppTests", Guid.NewGuid().ToString("N"));
+        string stateFile = Path.Combine(dir, "update-state.json");
+        try
+        {
+            // 旧版（0.8.1 及以前）落盘的缓存只有资产、没有发布说明
+            Directory.CreateDirectory(dir);
+            string legacyState = "{\"etag\":null,\"release\":{\"tag_name\":\"v9.9.9\",\"html_url\":\"https://example.test/dotnet9/QuickApp/releases/tag/v9.9.9\"," +
+                "\"assets\":[{\"name\":\"QuickApp-v9.9.9-win-x64-setup.exe\",\"browser_download_url\":\"https://example.test/dotnet9/QuickApp/releases/download/v9.9.9/QuickApp-v9.9.9-win-x64-setup.exe\"}]}}";
+            File.WriteAllText(stateFile, legacyState);
+
+            var handler = new WebStubHandler(request =>
+            {
+                string url = request.RequestUri!.AbsoluteUri;
+                if (url.EndsWith("/releases/latest", StringComparison.Ordinal))
+                {
+                    return LatestRedirect();
+                }
+
+                if (url.EndsWith("/releases.atom", StringComparison.Ordinal))
+                {
+                    return AtomFeed("v9.9.9", "<p>补齐的发布说明</p>");
+                }
+
+                throw new InvalidOperationException("资产端点不该被请求：" + url);
+            });
+
+            UpdateCheckResult result = await CreateWebChecker(handler, stateFile: stateFile).CheckAsync(new Version(0, 1, 0));
+
+            Assert.True(result.Succeeded);
+            Assert.Equal("v9.9.9", result.Update!.Tag);
+            Assert.Equal("补齐的发布说明", result.Update.Notes);
+            Assert.Equal("QuickApp-v9.9.9-win-x64-setup.exe", result.Update.AssetName);   // 资产继续来自缓存
+            Assert.Equal(1, handler.AtomRequests);
+            Assert.Equal(0, handler.AssetRequests);
+            Assert.Equal(0, handler.ApiRequests);
+            // 说明已写回缓存：第二次检查连 atom 都不用请求
+            Assert.Contains("\"body\"", File.ReadAllText(stateFile));
+            var secondHandler = new WebStubHandler(request => request.RequestUri!.AbsoluteUri.EndsWith("/releases/latest", StringComparison.Ordinal)
+                ? LatestRedirect()
+                : throw new InvalidOperationException("缓存已完整，不该再请求：" + request.RequestUri));
+            UpdateCheckResult second = await CreateWebChecker(secondHandler, stateFile: stateFile).CheckAsync(new Version(0, 1, 0));
+            Assert.Equal("补齐的发布说明", second.Update!.Notes);
+            Assert.Equal(0, secondHandler.AtomRequests);
+            Assert.Equal(0, secondHandler.AssetRequests);
+            Assert.Equal(0, secondHandler.ApiRequests);
+        }
+        finally
+        {
+            if (Directory.Exists(dir))
+            {
+                Directory.Delete(dir, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Web_release_notes_come_from_atom_feed_without_api()
+    {
+        var handler = new WebStubHandler(request =>
+        {
+            string url = request.RequestUri!.AbsoluteUri;
+            if (url.EndsWith("/releases/latest", StringComparison.Ordinal))
+            {
+                return LatestRedirect();
+            }
+
+            if (url.EndsWith("/releases.atom", StringComparison.Ordinal))
+            {
+                return AtomFeed("v9.9.9", "<h2>应用多开</h2><ul><li>可填写启动数量</li><li>旧配置即为 1</li></ul>", "QuickApp v9.9.9");
+            }
+
+            return Html("<a href=\"/dotnet9/QuickApp/releases/download/v9.9.9/QuickApp-v9.9.9-win-x64-setup.exe\">setup</a>");
+        });
+        var checker = CreateWebChecker(handler);
+
+        UpdateCheckResult result = await checker.CheckAsync(new Version(0, 1, 0));
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("v9.9.9", result.Update!.Tag);
+        Assert.Equal(0, handler.ApiRequests);              // 说明走网页端点，绝不消耗 API 配额
+        Assert.Equal(1, handler.AtomRequests);
+        Assert.Equal("应用多开" + Environment.NewLine + "- 可填写启动数量" + Environment.NewLine + "- 旧配置即为 1", result.Update.Notes);
+    }
+
+    [Fact]
+    public async Task Notes_survive_asset_failure_and_stay_empty_without_a_matching_entry()
+    {
+        var withNotes = new WebStubHandler(request =>
+        {
+            string url = request.RequestUri!.AbsoluteUri;
+            if (url.EndsWith("/releases/latest", StringComparison.Ordinal))
+            {
+                return LatestRedirect();
+            }
+
+            if (url.EndsWith("/releases.atom", StringComparison.Ordinal))
+            {
+                return AtomFeed("v9.9.9", "<p>说明仍要能拿到</p>");
+            }
+
+            return new HttpResponseMessage(HttpStatusCode.InternalServerError);   // 资产端点挂了
+        });
+
+        UpdateCheckResult result = await CreateWebChecker(withNotes).CheckAsync(new Version(0, 1, 0));
+
+        Assert.True(result.Succeeded);
+        Assert.Null(result.Update!.AssetUrl);
+        Assert.Equal("说明仍要能拿到", result.Update.Notes);
+        Assert.Equal(1, withNotes.AtomRequests);
+        Assert.Equal(0, withNotes.ApiRequests);
+
+        var otherTag = new WebStubHandler(request => request.RequestUri!.AbsoluteUri.EndsWith("/releases/latest", StringComparison.Ordinal)
+            ? LatestRedirect()
+            : request.RequestUri!.AbsoluteUri.EndsWith("/releases.atom", StringComparison.Ordinal)
+                ? AtomFeed("v1.0.0", "<p>别的版本</p>")
+                : Html("<a href=\"/dotnet9/QuickApp/releases/download/v9.9.9/QuickApp-v9.9.9-win-x64-setup.exe\">setup</a>"));
+
+        UpdateCheckResult withoutNotes = await CreateWebChecker(otherTag).CheckAsync(new Version(0, 1, 0));
+
+        Assert.True(withoutNotes.Succeeded);
+        Assert.True(string.IsNullOrEmpty(withoutNotes.Update!.Notes));
+        Assert.Equal("QuickApp-v9.9.9-win-x64-setup.exe", withoutNotes.Update.AssetName);
+    }
+
     private static UpdateChecker CreateWebChecker(WebStubHandler handler, string? stateFile = null, bool allowApiFallback = false)
         => new(new HttpClient(handler), "dotnet9", "QuickApp",
             apiBase: "https://api.example.test",
@@ -597,6 +724,22 @@ public sealed class UpdateCheckerTests
 
     private static HttpResponseMessage Json(string json)
         => new(HttpStatusCode.OK) { Content = new StringContent(json) };
+
+    /// <summary>releases.atom：content 是转义后的 HTML，与 GitHub 实际返回一致。</summary>
+    private static HttpResponseMessage AtomFeed(string tag, string htmlBody, string? title = null)
+    {
+        string encoded = System.Net.WebUtility.HtmlEncode(htmlBody);
+        string feed = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" +
+            "<feed xmlns=\"http://www.w3.org/2005/Atom\">" +
+            "<entry>" +
+            "<id>tag:github.com,2008:Repository/1/" + tag + "</id>" +
+            "<link rel=\"alternate\" type=\"text/html\" href=\"https://example.test/dotnet9/QuickApp/releases/tag/" + tag + "\"/>" +
+            "<title>" + (title ?? tag) + "</title>" +
+            "<content type=\"html\">" + encoded + "</content>" +
+            "</entry>" +
+            "</feed>";
+        return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(feed) };
+    }
 
     private static HttpResponseMessage Html(string html)
         => new(HttpStatusCode.OK) { Content = new StringContent(html) };
@@ -683,6 +826,8 @@ public sealed class UpdateCheckerTests
 
         public int AssetRequests { get; private set; }
 
+        public int AtomRequests { get; private set; }
+
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             Requests++;
@@ -695,6 +840,11 @@ public sealed class UpdateCheckerTests
             if (url.Contains("/expanded_assets/", StringComparison.Ordinal))
             {
                 AssetRequests++;
+            }
+
+            if (url.EndsWith("/releases.atom", StringComparison.Ordinal))
+            {
+                AtomRequests++;
             }
 
             HttpResponseMessage response = _responder(request);
