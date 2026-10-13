@@ -67,6 +67,11 @@ public partial class App : Application
         _dock.SettingsRequested += (_, _) => ShowSettings();
         _dock.AboutRequested += (_, _) => ShowSettings("about");
 
+        // 检查到新版本时弹出版本说明卡片（已安装版本 / 最新版本 / 更新说明 + 安装、取消）：
+        // 设置窗口开着就以它为父窗口，否则挂在 Dock 上，卡片始终居中于发起方的窗口。
+        viewModel.UpdateNotesRequested += () => Dispatcher.UIThread.Post(
+            () => UpdateNotesWindow.ShowFor((Window?)_settings ?? _dock, viewModel));
+
         _singleInstance.Listen(() => _dock.ActivateFromExternal());
 
         RegisterGlobalHotkey(viewModel);

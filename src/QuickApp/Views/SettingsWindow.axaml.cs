@@ -39,7 +39,12 @@ public partial class SettingsWindow : CodeWFWindow
         // 打开推荐页签时轻量刷新（服务层 TTL 缓存内不出网）
         SettingsTabs.SelectionChanged += (_, _) =>
         {
-            if (SettingsTabs.SelectedIndex == 3)
+            if (SettingsTabs.SelectedIndex == 4)
+            {
+                // 关于页：同步「查看新版本」入口（周期检查在后台发现新版本时这里才拿得到最新状态）
+                _vm?.RefreshFromDock();
+            }
+            else if (SettingsTabs.SelectedIndex == 3)
             {
                 _vm?.RefreshRecommendedApps();
             }

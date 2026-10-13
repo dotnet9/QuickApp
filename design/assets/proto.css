@@ -403,6 +403,10 @@ html[data-edit="true"] .dock-tools{
   animation:popIn 150ms var(--ease-out);
 }
 .modal-card.small{width:380px}
+/* 版本说明卡片：已安装版本 / 最新版本 / 更新说明正文 */
+.update-notes-version{color:var(--accent);font-weight:600}
+.update-notes-text{margin:0;max-height:260px;overflow:auto;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--hover);
+  font-family:inherit;font-size:11.5px;line-height:1.6;color:var(--text);white-space:pre-wrap;word-break:break-word}
 .modal-head{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:inherit}
 .modal-head h2{margin:0;font-size:14px;font-weight:600}
 .modal-head .icon-btn{margin-left:auto}

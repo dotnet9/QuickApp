@@ -514,7 +514,11 @@
                     <Border Classes="groupsep" />
                     <Grid Classes="row" ColumnDefinitions="*,Auto">
                       <TextBlock Classes="row" Text="检查更新" />
-                      <Button Grid.Column="1" Theme="{StaticResource LinkButton}" Content="立即检查" Command="{Binding CheckUpdateCommand}" />
+                      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                        <Button Theme="{StaticResource LinkButton}" Name="UpdateDetailsButton" Content="查看新版本"
+                                IsVisible="{Binding HasUpdate}" Command="{Binding ShowUpdateNotesCommand}" />
+                        <Button Theme="{StaticResource LinkButton}" Content="立即检查" Command="{Binding CheckUpdateCommand}" />
+                      </StackPanel>
                     </Grid>
                     <TextBlock Classes="hint" Margin="0,3,0,0"
                                Text="{Binding CheckResult}"

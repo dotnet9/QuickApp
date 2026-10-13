@@ -438,8 +438,21 @@
   $('#aboutLicense').onclick = () => dialog('许可证', [h('h3', {text:'MIT License'}), h('p', {text:'Copyright (c) QuickApp contributors'}), h('p', {text:'Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files, to deal in the Software without restriction.'}), h('p', {text:'THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND.'})], [chip('关闭', () => closeLayer('dialogLayer'), true)]);
   $('#aboutCheckUpdate').onclick = () => {
     $('#aboutCheckResult').textContent = '正在检查…'; $('#aboutCheckUpdate').disabled = true;
-    setTimeout(() => { update = {phase:'found', tag:'v0.8.0', progress:0, installer:true}; $('#aboutCheckResult').textContent = '发现新版本 v0.8.0'; $('#aboutCheckUpdate').disabled = false; st.dockVisible = true; renderUpdate(); QA.toast('发现新版本 v0.8.0', {actionLabel:'查看', onAction:() => { closeLayer('settingsLayer'); showDock(); if (['left', 'right'].includes(st.edge)) { popoverOpen = true; renderUpdate(); } }}); }, 500);
+    setTimeout(() => { update = {phase:'found', tag:'v0.8.0', progress:0, installer:true, notes:'## 应用多开（启动数量）\n\n- 程序 / 文件 / 目录条目可填写「启动数量」，一次点击连续启动多个实例。\n- 旧配置没有该字段即为 1，导入导出与存储模式切换一并保留。\n- 在「关于」检查到新版本时直接弹出版本说明。'}; $('#aboutCheckResult').textContent = '发现新版本 v0.8.0'; $('#aboutCheckUpdate').disabled = false; closeLayer('settingsLayer'); openUpdateNotes(); }, 500);
   };
+  /* 版本说明卡片：已安装版本 / 最新版本 / 更新说明；按钮在 下载 → 安装 之间切换 */
+  function openUpdateNotes() {
+    const notes = h('div', {class:'stack'},
+      h('div', {class:'row'}, h('span', {class:'row-label', text:'已安装版本'}), h('span', {class:'spacer'}), h('span', {class:'row-note', text:'v0.7.3'})),
+      h('div', {class:'row'}, h('span', {class:'row-label', text:'最新版本'}), h('span', {class:'spacer'}), h('span', {class:'row-note update-notes-version', text:update.tag})),
+      h('label', {text:'更新说明'}), h('pre', {class:'update-notes-text', text:update.notes}));
+    const install = chip(update.phase === 'ready' ? '安装' : '下载', () => {
+      if (update.phase === 'ready') { updateActions.install(); closeLayer('dialogLayer'); return; }
+      // 下载完成后卡片原地变成「安装」，与客户端一致
+      update.phase = 'ready'; openUpdateNotes(); showDock(); renderUpdate();
+    }, true);
+    dialog('发现新版本', [notes], [chip('取消', () => { closeLayer('dialogLayer'); updateActions.dismiss(); }), install]);
+  }
   $('#trayButton').onclick = e => QA.openMenuAtButton([
     {label:st.dockVisible ? '收起 Dock' : '显示 Dock', icon:'grid', action:() => { st.dockVisible = !st.dockVisible; refresh(); }},
     {label:'开机启动', icon:'power', note:st.autoStart ? '✓' : '', action:() => { st.autoStart = !st.autoStart; persist(); refresh(); }},

@@ -124,6 +124,7 @@ public sealed class DockViewModel : ViewModelBase
         CancelUpdateDownloadCommand = ReactiveCommand.Create(CancelUpdateDownload);
         InstallUpdateCommand = ReactiveCommand.Create(InstallDownloadedUpdate);
         DismissUpdateCommand = ReactiveCommand.Create(DismissUpdate);
+        ShowUpdateNotesCommand = ReactiveCommand.Create(RequestUpdateNotes);
 
         LoadItems();
         // 图标库残留的孤儿（上次会话删除/导入覆盖）此时清掉；会话内不删，保证「移除可撤销」
@@ -334,6 +335,16 @@ public sealed class DockViewModel : ViewModelBase
 
     public string UpdateResultText => _updateResultText;
 
+    /// <summary>已安装版本（设置 · 关于的版本行与更新说明对话框共用）。</summary>
+    public string CurrentVersionText => VersionText;
+
+    /// <summary>更新说明对话框的请求：视图弹出，Dock 与设置窗口都走这一个入口。</summary>
+    public event Action? UpdateNotesRequested;
+
+    /// <summary>通知视图弹出更新说明（已检查结束、确认有新版本时）。</summary>
+    public void RequestUpdateNotes() => UpdateNotesRequested?.Invoke();
+
+
     public bool IsDownloadingUpdate => _isDownloadingUpdate;
 
     public bool IsUpdateReady => !string.IsNullOrWhiteSpace(_downloadedUpdatePath) &&
@@ -394,6 +405,9 @@ public sealed class DockViewModel : ViewModelBase
 
     /// <summary>版本号（更新卡片右上角徽标）。</summary>
     public string UpdateTag => _pendingUpdate?.Tag ?? string.Empty;
+
+    /// <summary>新版本的更新说明正文（GitHub Release 正文原文，App 内不做 Markdown 渲染）。</summary>
+    public string UpdateNotesText => _pendingUpdate?.Notes ?? string.Empty;
 
     /// <summary>更新条左侧图形：就绪转成功对勾，下载中为下箭头，其余为发布箭头。</summary>
     public Geometry UpdateIconGlyph => IsUpdateReady ? Icons.Check : _isDownloadingUpdate ? Icons.Download : Icons.Upload;
@@ -744,6 +758,9 @@ public sealed class DockViewModel : ViewModelBase
     public ICommand InstallUpdateCommand { get; }
 
     public ICommand DismissUpdateCommand { get; }
+
+    /// <summary>打开更新说明对话框（发现新版本的 Toast 动作、Dock 更新条与设置已够用）。</summary>
+    public ICommand ShowUpdateNotesCommand { get; }
 
     // ---------------- 数据 ----------------
 
@@ -1489,7 +1506,7 @@ public sealed class DockViewModel : ViewModelBase
             RaiseDownloadStateChanged();
             _updateResultText = UpdateText;
             this.RaisePropertyChanged(nameof(UpdateResultText));
-            Toast("发现新版本 " + info.Tag);
+            Toast("发现新版本 " + info.Tag + " · 点「查看」看更新说明", "查看", ShowUpdateNotesCommand, 10000);
         }
         catch (Exception ex)
         {
