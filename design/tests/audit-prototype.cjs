@@ -3,6 +3,9 @@ const path = require('node:path');
 const fs = require('node:fs');
 const { pathToFileURL } = require('node:url');
 (async()=>{
+  const productVersion=fs.readFileSync(path.resolve(__dirname,'../../Directory.Build.props'),'utf8').match(/<VersionPrefix\b[^>]*>(\d+\.\d+\.\d+)<\/VersionPrefix>/)?.[1];
+  if(!productVersion)throw new Error('Product version is missing');
+  const nextVersion=productVersion.split('.').map(Number);nextVersion[2]++;
   const output=path.resolve(process.env.QUICKAPP_AUDIT_OUTPUT||'artifacts/prototype-verification');fs.mkdirSync(output,{recursive:true});
   const browser=await chromium.launch({headless:true,...(process.env.CI?{}:{channel:'msedge'})});
   const page=await browser.newPage({viewport:{width:1280,height:900},deviceScaleFactor:1});
@@ -65,17 +68,27 @@ const { pathToFileURL } = require('node:url');
       if(!(await page.locator('[data-panel="'+tab+'"]').isVisible()))throw new Error('Empty route '+tab);
       await page.locator('.settings-card').screenshot({path:path.join(output,`settings-${tab}-${language}.png`),animations:'disabled'});routes++;
     }
+    await page.locator('[data-tab="data"]').click();
+    await page.locator('.settings-card').evaluate(element=>element.style.height='540px');
+    const minimumActions=await page.locator('#btnImport,#btnExport,#btnOpenConfig,#btnReloadConfig,#switchStorage').evaluateAll(buttons=>buttons.every(button=>{const rect=button.getBoundingClientRect(),frame=button.closest('.settings-card').getBoundingClientRect();return rect.left>=frame.left&&rect.right<=frame.right&&rect.top>=frame.top&&rect.bottom<=frame.bottom;}));
+    if(!minimumActions)throw new Error('Minimum data page clips a configuration action');
+    if(await page.locator('.settings-nav').evaluate(element=>element.getBoundingClientRect().width)!==156)throw new Error('Navigation width differs from the native window');
+    await page.locator('#btnReloadConfig').click();
+    await page.locator('.settings-card').screenshot({path:path.join(output,'minimum-data-'+language+'.png'),animations:'disabled'});routes++;
+    await page.locator('.settings-card').evaluate(element=>element.style.height='');
   }
   await page.locator('[data-tab="appearance"]').click();await setMode('system');
   await page.locator('#settingsClose').click();await page.locator('#btnMenu').click();
   await page.getByRole('menuitem',{name:'About',exact:true}).click();
   if(!(await page.locator('#aboutLayer').isVisible()))throw new Error('Independent about entry is missing');
+  if(!(await page.locator('.standalone-about-info').textContent()).includes('v'+productVersion))throw new Error('Prototype and product versions differ');
   if(!(await page.locator('.standalone-about-info').textContent()).includes('2026-10-15 00:00:00'))throw new Error('About build-time sample differs');
   if(!(await page.locator('.standalone-about [data-window-action="minimize"]').isDisabled()) || !(await page.locator('.standalone-about [data-window-action="maximize"]').isDisabled()))throw new Error('About minimize and maximize must match the disabled native capabilities');
   await page.locator('.standalone-about [data-window-action="minimize"]').evaluate(button=>button.click());
   if(await page.locator('.standalone-about').evaluate(element=>element.classList.contains('is-minimized')))throw new Error('Disabled About caption buttons must not change the layout');
   await page.locator('.standalone-about').screenshot({path:path.join(output,'standalone-about.png'),animations:'disabled'});routes++;
   await page.locator('#standaloneCheckUpdate').click();await page.locator('#dialogLayer').waitFor({state:'visible'});
+  if(!(await page.locator('#dialogLayer .modal-card').textContent()).includes('v'+nextVersion.join('.')))throw new Error('Controlled update must be newer than the product version');
   await page.locator('#dialogLayer .modal-card').screenshot({path:path.join(output,'release-notes.png'),animations:'disabled'});routes++;
   if(dependencies.length)throw new Error('Unexpected external dependency: '+dependencies.join(', '));
   if(errors.length)throw new Error(errors.join('\n'));

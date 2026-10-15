@@ -413,7 +413,7 @@ html[data-edit="true"] .dock-tools{
 .modal-body{padding:6px 16px 16px}
 .settings-card{width:700px;max-width:94vw;overflow:hidden}
 .settings-layout{display:flex;min-height:430px;max-height:calc(86vh - 58px)}
-.settings-nav{width:136px;flex:0 0 auto;padding:8px 0;background:var(--hover);border-right:1px solid var(--line);display:flex;flex-direction:column;gap:2px}
+.settings-nav{width:156px;flex:0 0 auto;padding:8px 0;background:var(--hover);border-right:1px solid var(--line);display:flex;flex-direction:column;gap:2px}
 .settings-tab{
   position:relative;display:flex;align-items:center;width:100%;height:38px;padding:0 18px;
   color:var(--text-dim);font-size:13px;text-align:left;border-radius:0;transition:background 140ms linear,color 140ms linear;
