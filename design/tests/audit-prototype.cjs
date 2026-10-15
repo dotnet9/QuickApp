@@ -12,8 +12,9 @@ const { pathToFileURL } = require('node:url');
   const dependencies=[];page.on('request',request=>{if(!request.url().startsWith('data:')&&request.url()!==pathToFileURL(entry).href)dependencies.push(request.url());});
   await page.goto(pathToFileURL(entry).href);
   await page.locator('#btnMenu').click();await page.getByRole('menuitem',{name:'设置',exact:true}).click();
-  const frame=await page.locator('.settings-card').evaluate(element=>({border:parseFloat(getComputedStyle(element).borderTopWidth),title:element.querySelector('.modal-head').getBoundingClientRect().height,buttons:element.querySelector('.window-controls').children.length}));
-  if(frame.border<1||Math.abs(frame.title-32)>1||frame.buttons!==3)throw new Error('Desktop settings frame is incomplete: '+JSON.stringify(frame));
+  // 入场动画会缩放渲染边界，设计尺寸应检查布局值。
+  const frame=await page.locator('.settings-card').evaluate(element=>({border:parseFloat(getComputedStyle(element).borderTopWidth),title:parseFloat(getComputedStyle(element.querySelector('.modal-head')).height),buttons:element.querySelector('.window-controls').children.length}));
+  if(frame.border<1||frame.title!==32||frame.buttons!==3)throw new Error('Desktop settings frame is incomplete: '+JSON.stringify(frame));
   await page.locator('.settings-card [data-window-action="maximize"]').click();
   if(!(await page.locator('.settings-card').evaluate(element=>element.classList.contains('is-maximized'))))throw new Error('Window maximize control is inactive');
   await page.locator('.settings-card [data-window-action="maximize"]').click();
