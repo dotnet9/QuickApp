@@ -1,6 +1,6 @@
 # QuickApp 发布流程
 
-版本唯一来源为根目录 `Directory.Build.props` 的 `VersionPrefix`，当前为 `0.9.4`，附注标签为 `v0.9.4`。精选说明维护在 `.github/release-notes/v0.9.4.md`，标签附注复用该文件。
+版本唯一来源为根目录 `Directory.Build.props` 的 `VersionPrefix`，当前为 `0.9.5`，附注标签为 `v0.9.5`。精选说明维护在 `.github/release-notes/v0.9.5.md`，标签附注复用该文件。
 
 ## 本机验证
 
@@ -10,10 +10,10 @@ pwsh scripts/sync_localization_keys.ps1 -Check
 pwsh scripts/build_prototype.ps1 -Check
 pwsh scripts/tests/release_installers_test.ps1
 dotnet run --project scripts/ui-verification/UiVerification.csproj -c Release -- artifacts/ui-managed
-pwsh scripts/publish.ps1 -RuntimeIdentifier win-x64 -Version 0.9.4
+pwsh scripts/publish.ps1 -RuntimeIdentifier win-x64 -Version 0.9.5
 $process = Start-Process ./artifacts/publish/win-x64/net10.0-windows/QuickApp/QuickApp.exe -ArgumentList '--selfcheck' -WindowStyle Hidden -Wait -PassThru
 if ($process.ExitCode -ne 0) { throw 'NativeAOT runtime verification failed.' }
-dotnet publish scripts/ui-verification/UiVerification.csproj -c Release -r win-x64 --self-contained true -m:1 -p:Version=0.9.4 -p:PublishAot=true -p:PublishTrimmed=true -p:IlcGenerateCompleteTypeMetadata=true -p:IlcTrimMetadata=false -p:IlcSingleThreaded=true -o artifacts/ui-native/win-x64
+dotnet publish scripts/ui-verification/UiVerification.csproj -c Release -r win-x64 --self-contained true -m:1 -p:Version=0.9.5 -p:PublishAot=true -p:PublishTrimmed=true -p:IlcGenerateCompleteTypeMetadata=true -p:IlcTrimMetadata=false -p:IlcSingleThreaded=true -o artifacts/ui-native/win-x64
 & ./artifacts/ui-native/win-x64/UiVerification.exe artifacts/ui-evidence/win-x64
 ```
 
@@ -25,8 +25,8 @@ dotnet publish scripts/ui-verification/UiVerification.csproj -c Release -r win-x
 
 ```powershell
 git push origin main
-git tag -a v0.9.4 -F .github/release-notes/v0.9.4.md
-git push origin v0.9.4
+git tag -a v0.9.5 -F .github/release-notes/v0.9.5.md
+git push origin v0.9.5
 ```
 
 本机开发可使用 `temp_nugets` 环境变量目录中的包验证，正式引用保持公开 NuGet 版本，不提交本地源、环境配置或跨仓库项目引用。
@@ -37,10 +37,10 @@ git push origin v0.9.4
 
 | RID | 精确安装包名称 |
 | --- | --- |
-| win-x64 | `QuickApp-v0.9.4-win-x64-setup.exe` |
-| linux-x64 | `QuickApp-v0.9.4-linux-x64.deb` |
-| linux-arm64 | `QuickApp-v0.9.4-linux-arm64.deb` |
-| osx-x64 | `QuickApp-v0.9.4-osx-x64.dmg` |
-| osx-arm64 | `QuickApp-v0.9.4-osx-arm64.dmg` |
+| win-x64 | `QuickApp-v0.9.5-win-x64-setup.exe` |
+| linux-x64 | `QuickApp-v0.9.5-linux-x64.deb` |
+| linux-arm64 | `QuickApp-v0.9.5-linux-arm64.deb` |
+| osx-x64 | `QuickApp-v0.9.5-osx-x64.dmg` |
+| osx-arm64 | `QuickApp-v0.9.5-osx-arm64.dmg` |
 
 每个安装包必须非空且有对应 `.sha256`；创建 Release 前重新计算真实文件摘要，并严格校验本产品、完整版本、五个 RID 与十项文件，拒绝额外文件。13 个受控正反场景进入普通 CI 和 Release。发布后核对全部工作流、中文说明、十项资产及校验文件；不能把推送成功当作发布成功。

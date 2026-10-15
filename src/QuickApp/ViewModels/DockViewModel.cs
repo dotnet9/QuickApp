@@ -1408,6 +1408,18 @@ public sealed class DockViewModel : ViewModelBase
         }
     }
 
+    /// <summary>全局切语同步应用偏好，设置窗口未打开时也能正确保存。</summary>
+    protected override void OnCultureChanged()
+    {
+        var cultureName = CodeWF.Toolkit.Lang.I18nManager.Instance.Culture?.Name;
+        if (_config is not null && (cultureName is "zh-CN" or "en-US") && Settings.Language != cultureName)
+        {
+            Settings.Language = cultureName;
+            Save();
+        }
+        base.OnCultureChanged();
+    }
+
     public void Save()
     {
         if (_store.Save(_config)) HotkeyBindingsChanged?.Invoke();

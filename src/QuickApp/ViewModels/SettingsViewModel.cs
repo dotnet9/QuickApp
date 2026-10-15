@@ -131,6 +131,13 @@ public sealed class SettingsViewModel : ViewModelBase
             this.RaisePropertyChanged();
         }
     }
+    /// <summary>已打开的设置页随全局语言刷新配色名称和语言选择。</summary>
+    protected override void OnCultureChanged()
+    {
+        if (_dock is not null) RebuildPaletteOptions();
+        base.OnCultureChanged();
+    }
+
     private void RebuildPaletteOptions()
     {
         _rebuildingPaletteOptions = true;

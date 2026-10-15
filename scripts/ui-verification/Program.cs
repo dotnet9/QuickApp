@@ -44,6 +44,20 @@ var tray=new TrayViewModel(model,()=>{},()=>{});
 var traySettings=new NativeMenuItem { Header=tray.SettingsText };
 tray.PropertyChanged+=(_,e)=>{if(string.IsNullOrEmpty(e.PropertyName)||e.PropertyName==nameof(tray.SettingsText))traySettings.Header=tray.SettingsText;};
 Check(vm.PaletteOptions.Count==8 && vm.LanguageOptions.Count==2,"Eight palettes and two languages");
+// 保持同一个实际语言菜单打开，验证全局切语与重选原语言均能同步保存。
+var sharedLanguageButton=settings.GetVisualDescendants().OfType<Button>().Single(button=>button.Flyout is MenuFlyout);
+var sharedLanguageMenu=(MenuFlyout)sharedLanguageButton.Flyout!;
+foreach(var culture in new[]{"en-US","zh-CN","en-US","zh-CN"})
+{
+    sharedLanguageMenu.ShowAt(sharedLanguageButton);Pump();
+    Task.Run(()=>I18nManager.Instance.Culture=CultureInfo.GetCultureInfo(culture)).GetAwaiter().GetResult();Pump();
+    Check(vm.SelectedLanguage?.Key==culture && store.Load().Settings.Language==culture,"External global culture synchronizes the open language menu and saved preference");
+    Check(vm.PaletteOptions.Single(option=>option.Key=="DotNet").Text==AppText.Get(Language.DotNetPalette),"Existing palette labels follow external global culture changes");
+    var returnCulture=culture=="en-US"?"zh-CN":"en-US";
+    vm.LanguageOptions.Single(option=>option.Key==returnCulture).SelectCommand!.Execute(null);Pump();
+    Check(I18nManager.Instance.Culture?.Name==returnCulture && vm.SelectedLanguage?.Key==returnCulture && store.Load().Settings.Language==returnCulture,"The same open language menu can switch back after an external change");
+    sharedLanguageMenu.Hide();Pump();
+}
 var paletteSelector=settings.GetVisualDescendants().OfType<ListBox>().Single(control=>control.Classes.Contains("title-palettes"));
 Check(paletteSelector.Items.Count==8,"Title bar exposes all eight palette dots");
 var themeToggle=settings.GetVisualDescendants().OfType<ThemeToggleButton>().Single();
@@ -155,6 +169,8 @@ model.DownloadUpdateCommand.Execute(null);Pump();Check(model.IsDownloadingUpdate
 model.CancelUpdateDownloadCommand.Execute(null);Pump();Check(!model.IsDownloadingUpdate && !model.IsUpdateReady,"Cancellation returns to a retryable state");
 Check(File.Exists(store.ConfigFile),"Isolated settings remain intact");
 about.Close();settings.Close();
+I18nManager.Instance.Culture=CultureInfo.GetCultureInfo("en-US");Pump();
+Check(store.Load().Settings.Language=="en-US","Global culture still persists after the settings window closes");
 Console.WriteLine($"PASS: {count} assertions; screenshots in {output}");
 
 void Check(bool condition,string label){if(!condition)throw new InvalidOperationException(label);count++;}
