@@ -17,7 +17,7 @@ QuickApp 是一个跨平台的系统快捷启动器，用常驻 Dock 统一打�
 | :---: | :---: |
 | ![](docs/media/appearance-dotnet.png) | ![](docs/media/about-en.png) |
 
-三态明暗模式与八套配色独立保存，包含 .NET 紫、极光、余烬；语言切换覆盖已打开的窗口、下拉框和托盘文案。更新检查、下载、SHA-256 校验与安装统一使用 CodeWF.Toolkit。逐项验证和已知边界见 [界面验证记录](docs/UI-VERIFICATION.md)。
+标题栏直接展示八个配色点、Ursa 三态主题按钮和语言菜单，包含 .NET 紫、极光、余烬；模式与配色独立保存。语言切换覆盖已打开的窗口、主题提示、下拉框和托盘文案。更新检查、下载、SHA-256 校验与安装统一使用 CodeWF.Toolkit。逐项验证和已知边界见 [界面验证记录](docs/UI-VERIFICATION.md)。
 
 | 四边停靠 · 悬停放大 · 点击启动 | 拼音搜索 · 系统应用 · 加入 Dock |
 | :---: | :---: |
