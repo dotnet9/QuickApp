@@ -1,5 +1,10 @@
 # 更新日志
 
+## 0.9.2 (2026-10-15)
+
+- macOS 应用包将国际化 JSON 等资源放入 `Contents/Resources`，修复签名失败，搬移后再次自检。
+- Windows CI 显式等待 GUI 程序并读取进程退出码，避免将空的 `$LASTEXITCODE` 误判为自检失败。
+
 ## 0.9.1 (2026-10-15)
 
 - 修复单文件原型嵌入 SVG 时受 Git 换行转换影响的问题，Windows/Linux 检出生成一致。

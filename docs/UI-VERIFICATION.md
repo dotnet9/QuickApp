@@ -1,4 +1,4 @@
-# QuickApp 0.9.1 界面验证
+# QuickApp 0.9.2 界面验证
 
 本轮在 Windows x64 使用正式 `scripts/publish.ps1` 发布 NativeAOT，并在 Avalonia Headless + Skia 中运行实际窗口。测试隔离配置、下载目录和安装服务，不修改用户快捷项、不真实安装软件。
 
@@ -11,6 +11,7 @@
 - 单文件原型复制到空目录后验收 44 个状态，禁止外部资源请求，并断言无脚本错误；覆盖中英、八色、浅深、五设置页、关于和版本说明。
 - T4 生成结果与 JSON 资源一致；宿主输出 JSON，仅使用一个 Toolkit 国际化管理器。
 - 内嵌 SVG 先规范化为 UTF-8/LF，再编码为 Base64；分别使用 LF 和 CRLF 源文件验证产物一致，避免全新 Windows 检出后原型检查失败。
+- macOS 的宿主 JSON 放入 `Contents/Resources/I18n`，应用兼容该标准路径，打包时在搬移后再次自检；Windows 使用显式进程等待读取 GUI 自检的实际退出码。
 
 ## 原型与实现对照
 
