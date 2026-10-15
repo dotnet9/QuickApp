@@ -2036,6 +2036,8 @@ window.QA = (function(){
       const next=translate(source.get(node));last.set(node,next);if(node.nodeValue!==next)node.nodeValue=next;
     }
     for(const element of document.querySelectorAll('[placeholder],[title],[aria-label]')){
+      // 这些标题栏入口由状态资源直接赋值，不能再次套用首次捕获的属性文案。
+      if(element.matches('[data-window-action],#qaTheme,#qaLanguage,#qaPalette button'))continue;
       for(const attr of ['placeholder','title','aria-label'])if(element.hasAttribute(attr)){
         const key='source'+attr.replace('-','');element.dataset[key]||=element.getAttribute(attr);
         const next=translate(element.dataset[key]);if(element.getAttribute(attr)!==next)element.setAttribute(attr,next);
@@ -2050,7 +2052,7 @@ window.QA = (function(){
     localStorage.setItem('quickapp-appearance',JSON.stringify({language,palette}));
     document.getElementById('qaPalette').innerHTML=Object.keys(paletteNames).map(key=>`<button class="palette-dot" role="option" data-palette="${key}" aria-selected="${key===palette}" title="${t(paletteNames[key])}" aria-label="${t(paletteNames[key])}"><i style="background:${QUICKAPP_PALETTES[key][root.dataset.theme==='light'?'light':'dark'].StudioAccentColor}"></i></button>`).join('');
     const mode=QUICKAPP_THEME.get(),toggle=document.getElementById('qaTheme');toggle.dataset.mode=mode;toggle.textContent=mode==='light'?'☀':mode==='dark'?'☾':'◐';toggle.title=t(mode==='light'?'LightTheme':mode==='dark'?'DarkTheme':'SystemTheme');toggle.setAttribute('aria-label',toggle.title);
-    document.getElementById('qaLanguage').title=t('InterfaceLanguage');
+    const languageButton=document.getElementById('qaLanguage');languageButton.title=t('InterfaceLanguage');languageButton.setAttribute('aria-label',languageButton.title);
     localize();
   }
   document.getElementById('qaPalette').onclick=event=>{const button=event.target.closest('[data-palette]');if(button){palette=button.dataset.palette;apply();}};

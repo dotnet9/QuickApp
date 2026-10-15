@@ -6,8 +6,17 @@ const { pathToFileURL } = require('node:url');
   const output=path.resolve(process.env.QUICKAPP_AUDIT_OUTPUT||'artifacts/prototype-verification');fs.mkdirSync(output,{recursive:true});
   const browser=await chromium.launch({headless:true,...(process.env.CI?{}:{channel:'msedge'})});
   const page=await browser.newPage({viewport:{width:1280,height:900},deviceScaleFactor:1});
-  const setLanguage=async value=>{await page.locator('#qaLanguage').click();await page.locator('#qaLanguageMenu [data-language="'+value+'"]').click();};
-  const setMode=async value=>{for(let index=0;index<3;index++){if(await page.locator('#qaTheme').getAttribute('data-mode')===value)return;await page.locator('#qaTheme').click();}if(await page.locator('#qaTheme').getAttribute('data-mode')!==value)throw Error('Theme cycle failed');};
+  async function checkAppearanceLanguage(language){
+    const matches=await page.evaluate(expected=>{
+      const keys={Default:'DefaultPalette',Desert:'DesertPalette',Aquatic:'AquaticPalette',Dusk:'DuskPalette',NightSky:'NightSkyPalette',DotNet:'DotNetPalette',Aurora:'AuroraPalette',Ember:'EmberPalette'};
+      const words=QUICKAPP_RESOURCES[expected].QuickApp.Text,mode=document.getElementById('qaTheme'),languageButton=document.getElementById('qaLanguage');
+      const modeKey=mode.dataset.mode==='light'?'LightTheme':mode.dataset.mode==='dark'?'DarkTheme':'SystemTheme';
+      return document.documentElement.lang===expected && mode.title===words[modeKey] && mode.getAttribute('aria-label')===mode.title && languageButton.title===words.InterfaceLanguage && languageButton.getAttribute('aria-label')===languageButton.title && [...document.querySelectorAll('#qaPalette button[data-palette]')].every(button=>button.title===words[keys[button.dataset.palette]] && button.getAttribute('aria-label')===button.title);
+    },language);
+    if(!matches)throw Error('Title-bar language, tooltips and accessibility labels did not switch immediately: '+language);
+  }
+  const setLanguage=async value=>{await page.locator('#qaLanguage').click();await page.locator('#qaLanguageMenu [data-language="'+value+'"]').click();await checkAppearanceLanguage(value);};
+  const setMode=async value=>{for(let index=0;index<3;index++){if(await page.locator('#qaTheme').getAttribute('data-mode')===value){await checkAppearanceLanguage(await page.locator('html').getAttribute('lang'));return;}await page.locator('#qaTheme').click();}if(await page.locator('#qaTheme').getAttribute('data-mode')!==value)throw Error('Theme cycle failed');await checkAppearanceLanguage(await page.locator('html').getAttribute('lang'));};
   const setPalette=async value=>{await page.locator('button[data-palette="'+value+'"]').click();};
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
   const isolated=path.join(output,'standalone');fs.mkdirSync(isolated,{recursive:true});
@@ -24,6 +33,7 @@ const { pathToFileURL } = require('node:url');
   let routes=0;
   for(const language of ['zh-CN','en-US']){
     await page.locator('[data-tab="appearance"]').click();await setLanguage(language);
+    await setMode('system');
     for(const palette of ['Default','Desert','Aquatic','Dusk','NightSky','DotNet','Aurora','Ember']){
       await setPalette(palette);
       for(const mode of ['light','dark']){
