@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Collections.Generic;
@@ -22,6 +22,7 @@ namespace QuickApp;
 
 public partial class App : Application
 {
+    public static CodeWF.Avalonia.Controls.Themes.StudioThemeController ThemeController { get; private set; } = null!;
     private ServiceProvider? _services;
     private ISingleInstance? _singleInstance;
     private IHotkeyService? _hotkey;
@@ -29,10 +30,41 @@ public partial class App : Application
     private string? _hotkeyError;
     private DockWindow? _dock;
     private SettingsWindow? _settings;
+    private AboutWindow? _about;
     private TrayIcon? _tray;
     private TrayViewModel? _trayViewModel;
 
-    public override void Initialize() => AvaloniaXamlLoader.Load(this);
+    public override void Initialize()
+    {
+        AppText.Initialize();
+        AvaloniaXamlLoader.Load(this);
+        ThemeController = new CodeWF.Avalonia.Controls.Themes.StudioThemeController(this);
+        ActualThemeVariantChanged += (_, _) => RefreshThemeAliases();
+        RefreshThemeAliases();
+        CodeWF.Toolkit.Lang.I18nManager.Instance.CultureChanged += (_, _) =>
+        {
+            foreach (var theme in Styles.OfType<Semi.Avalonia.SemiTheme>())
+                theme.Locale = CodeWF.Toolkit.Lang.I18nManager.Instance.Culture;
+        };
+    }
+
+    private void RefreshThemeAliases()
+    {
+        foreach (var (alias, token) in new[]
+        {
+            ("QATextBrush", "StudioText"), ("QATextDimBrush", "StudioMuted"), ("QALineBrush", "StudioBorder"),
+            ("QAHoverBrush", "StudioRaised"), ("QAActiveBrush", "StudioRaised"), ("QAMenuHoverBrush", "StudioRaised"),
+            ("QAMenuBrush", "StudioSurface"), ("QAAccentBrush", "StudioAccent"), ("QAAccentInkBrush", "ButtonSolidForeground"),
+            ("QADangerBrush", "SemiColorDanger"), ("QARemoveBgBrush", "StudioSurface"), ("QATileShadowBrush", "StudioBorder"),
+            ("QAResultRowBrush", "StudioRaised"), ("QAAccentSoftBorderBrush", "StudioBorder"),
+            ("MenuFlyoutBackground", "StudioSurface"), ("MenuFlyoutBorderBrush", "StudioBorder"),
+            ("MenuItemBackground", "StudioSurface"), ("MenuItemBackgroundPointerOver", "StudioRaised"),
+            ("MenuItemBackgroundPressed", "StudioRaised"), ("MenuItemForeground", "StudioText"),
+            ("MenuItemForegroundPointerOver", "StudioText"), ("ComboBoxDropDownBackground", "StudioSurface"),
+            ("ComboBoxDropDownBorderBrush", "StudioBorder")
+        })
+            if (TryGetResource(token, ActualThemeVariant, out var value)) Resources[alias] = value;
+    }
 
     public override void OnFrameworkInitializationCompleted()
     {
@@ -65,7 +97,7 @@ public partial class App : Application
         _dock.Attach(viewModel);
         _dock.Icon = appIcon;
         _dock.SettingsRequested += (_, _) => ShowSettings();
-        _dock.AboutRequested += (_, _) => ShowSettings("about");
+        _dock.AboutRequested += (_, _) => ShowAbout();
 
         // 检查到新版本时弹出版本说明卡片（已安装版本 / 最新版本 / 更新说明 + 安装、取消）：
         // 设置窗口开着就以它为父窗口，否则挂在 Dock 上，卡片始终居中于发起方的窗口。
@@ -90,7 +122,7 @@ public partial class App : Application
 
         if (viewModel.HasConfigLoadError)
         {
-            viewModel.Toast("配置读取失败，原数据未覆盖，请在设置的数据页重新加载。", "重试",
+            viewModel.Toast(AppText.Get(Language.StartupConfigError), AppText.Get(Language.Retry),
                 ReactiveCommand.Create(() => viewModel.ReloadConfig()), 10000);
         }
 
@@ -112,22 +144,21 @@ public partial class App : Application
         services.AddSingleton<IAutoStartService>(_ => PlatformServices.CreateAutoStartService(AppLog.Info));
         services.AddSingleton<IInstalledAppProvider>(_ => PlatformServices.CreateInstalledAppProvider(AppLog.Info));
         services.AddSingleton<IIconProvider>(_ => PlatformServices.CreateIconProvider(AppPaths.IconCacheDirectory(), AppLog.Info));
-        services.AddSingleton<IUpdateChecker>(_ => new UpdateChecker(
-            new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(12) },
-            owner: "dotnet9",
-            repo: "QuickApp",
-            log: AppLog.Info,
-            preferInstaller: !AppPaths.IsPortable(AppContext.BaseDirectory),
-            stateFile: AppPaths.UpdateStateFile(AppContext.BaseDirectory)));
-        services.AddSingleton<IUpdateDownloader>(_ => new UpdateDownloader(
-            new HttpClient { Timeout = TimeSpan.FromMinutes(10) }));
+        services.AddSingleton<IUpdateService>(_ => new UpdateService(new UpdateServiceOptions
+        {
+            Owner = "dotnet9", Repository = "QuickApp", ProductName = "QuickApp",
+            PreferInstaller = !AppPaths.IsPortable(AppContext.BaseDirectory),
+            StateFile = AppPaths.UpdateStateFile(AppContext.BaseDirectory), Log = AppLog.Info
+        }));
+        services.AddSingleton(_ => new UpdateDownloader(new HttpClient { Timeout = TimeSpan.FromMinutes(10) },
+            new UpdateServiceOptions { Repository = "QuickApp", ProductName = "QuickApp" }));
         services.AddSingleton(sp => new DockViewModel(
             sp.GetRequiredService<ConfigStore>(),
             sp.GetRequiredService<ILauncher>(),
             sp.GetRequiredService<IIconProvider>(),
             sp.GetRequiredService<IInstalledAppProvider>(),
-            sp.GetRequiredService<IUpdateChecker>(),
-            sp.GetRequiredService<IUpdateDownloader>(),
+            sp.GetRequiredService<IUpdateService>(),
+            sp.GetRequiredService<UpdateDownloader>(),
             sp.GetRequiredService<IAutoStartService>(),
             appName: "QuickApp"));
 
@@ -188,7 +219,7 @@ public partial class App : Application
         {
             var bindings = new List<HotkeyBinding>
             {
-                new(viewModel.Settings.Hotkey, "唤出 QuickApp", () => ToggleDockFromHotkey(viewModel))
+                new(viewModel.Settings.Hotkey, AppText.Get(Language.WakeQuickApp), () => ToggleDockFromHotkey(viewModel))
             };
             bindings.AddRange(viewModel.CreateItemHotkeyBindings());
             string signature = string.Join("\n", bindings.Select(binding => binding.Gesture + "\0" + binding.Name + "\0" + binding.Identity));
@@ -197,9 +228,9 @@ public partial class App : Application
             IReadOnlyList<string> errors = _hotkey.RegisterBindings(bindings);
             _hotkeySignature = errors.Count == 0 ? signature : null;
             _hotkeyError = errors.Count > 0 ? errors[0] : null;
-            foreach (string error in errors) AppLog.Info("全局热键注册失败：" + error);
+            foreach (string error in errors) AppLog.Info(AppText.Get(Language.HotkeyRegisterFailedPrefix) + error);
             if (errors.Count > 0 && notify) Dispatcher.UIThread.Post(() => viewModel.Toast(errors[0]));
-            if (errors.Count == 0) AppLog.Info("已注册 " + bindings.Count + " 个全局快捷键");
+            if (errors.Count == 0) AppLog.Info(AppText.Get(Language.RegisteredPrefix) + bindings.Count + AppText.Get(Language.GlobalShortcutCountSuffix));
         }
         catch (Exception ex)
         {
@@ -237,13 +268,15 @@ public partial class App : Application
             var toggle = new NativeMenuItem { Header = _trayViewModel.ToggleDockText, Command = _trayViewModel.ToggleDockCommand };
             var autoStart = new NativeMenuItem { Header = _trayViewModel.AutoStartText, Command = _trayViewModel.ToggleAutoStartCommand };
             var pin = new NativeMenuItem { Header = _trayViewModel.PinText, Command = _trayViewModel.TogglePinCommand };
-            var settings = new NativeMenuItem { Header = "设置", Command = _trayViewModel.ShowSettingsCommand };
-            var exit = new NativeMenuItem { Header = "退出", Command = _trayViewModel.ExitCommand };
+            var settings = new NativeMenuItem { Header = _trayViewModel.SettingsText, Command = _trayViewModel.ShowSettingsCommand };
+            var exit = new NativeMenuItem { Header = _trayViewModel.ExitText, Command = _trayViewModel.ExitCommand };
 
             // 文案随视图模型属性刷新（Dock 显隐/钉住/开机启动也可能在托盘之外变化）
             _trayViewModel.ObservableForProperty(t => t.ToggleDockText).Subscribe(x => toggle.Header = x.Value);
             _trayViewModel.ObservableForProperty(t => t.AutoStartText).Subscribe(x => autoStart.Header = x.Value);
             _trayViewModel.ObservableForProperty(t => t.PinText).Subscribe(x => pin.Header = x.Value);
+            _trayViewModel.ObservableForProperty(t => t.SettingsText).Subscribe(x => settings.Header = x.Value);
+            _trayViewModel.ObservableForProperty(t => t.ExitText).Subscribe(x => exit.Header = x.Value);
 
             var menu = new NativeMenu
             {
@@ -262,7 +295,7 @@ public partial class App : Application
             _tray = new TrayIcon
             {
                 Icon = appIcon,
-                ToolTipText = "QuickApp 快捷应用",
+                ToolTipText = AppText.Get(Language.ProductName),
                 Menu = menu,
                 IsVisible = true
             };
@@ -345,6 +378,16 @@ public partial class App : Application
         bitmap.Save(stream);
         stream.Position = 0;
         return new WindowIcon(stream);
+    }
+
+    private void ShowAbout()
+    {
+        if (_services is null) return;
+        if (_about is not null) { _about.Activate(); return; }
+        _about = new AboutWindow { DataContext = new SettingsViewModel(_services.GetRequiredService<DockViewModel>()), Icon = CreateAppIcon() };
+        _about.Closed += (_, _) => _about = null;
+        if (_settings is { IsVisible: true }) _about.ShowDialog(_settings);
+        else if (_dock is not null) _about.ShowDialog(_dock);
     }
 
     private void ShowSettings(string? tab = null)

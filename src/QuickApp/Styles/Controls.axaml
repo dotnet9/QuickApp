@@ -1,4 +1,4 @@
-<ResourceDictionary xmlns="https://github.com/avaloniaui"
+﻿<ResourceDictionary xmlns="https://github.com/avaloniaui"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
   <!--
@@ -14,60 +14,7 @@
   <!-- 原型浮层（菜单/气泡）圆角 10~11，Fluent 用 OverlayCornerRadius 统一控制弹层 -->
   <CornerRadius x:Key="OverlayCornerRadius">10</CornerRadius>
 
-  <ResourceDictionary.ThemeDictionaries>
-    <ResourceDictionary x:Key="Dark">
-      <SolidColorBrush x:Key="QATextBrush" Color="#EEF1F6" />
-      <SolidColorBrush x:Key="QATextDimBrush" Color="#9AA4B3" />
-      <SolidColorBrush x:Key="QALineBrush" Color="#1FFFFFFF" />
-      <SolidColorBrush x:Key="QAHoverBrush" Color="#1AFFFFFF" />
-      <SolidColorBrush x:Key="QAActiveBrush" Color="#29FFFFFF" />
-      <SolidColorBrush x:Key="QAMenuHoverBrush" Color="#14FFFFFF" />
-      <SolidColorBrush x:Key="QAMenuBrush" Color="#FA181B21" />
-      <SolidColorBrush x:Key="QAAccentBrush" Color="#5AA2FF" />
-      <SolidColorBrush x:Key="QAAccentInkBrush" Color="#08111F" />
-      <SolidColorBrush x:Key="QADangerBrush" Color="#FF6B6B" />
-      <SolidColorBrush x:Key="QARemoveBgBrush" Color="#CC0B0E13" />
-      <SolidColorBrush x:Key="QATileShadowBrush" Color="#47000000" />
-      <!-- Fluent 菜单资源的原型覆盖：菜单底/悬停对应 menu-bg / menu-hover token -->
-      <SolidColorBrush x:Key="MenuFlyoutBackground" Color="#FA181B21" />
-      <SolidColorBrush x:Key="MenuFlyoutBorderBrush" Color="#1FFFFFFF" />
-      <SolidColorBrush x:Key="QAResultRowBrush" Color="#4D1A1D24" />
-      <SolidColorBrush x:Key="QAAccentSoftBorderBrush" Color="#805AA2FF" />
-      <SolidColorBrush x:Key="MenuItemBackground" Color="#00181818" />
-      <SolidColorBrush x:Key="MenuItemBackgroundPointerOver" Color="#14FFFFFF" />
-      <SolidColorBrush x:Key="MenuItemBackgroundPressed" Color="#1FFFFFFF" />
-      <SolidColorBrush x:Key="MenuItemForeground" Color="#EEF1F6" />
-      <SolidColorBrush x:Key="MenuItemForegroundPointerOver" Color="#EEF1F6" />
-      <!-- ComboBox 下拉弹层跟随主题（原生默认浅底浅字不可读） -->
-      <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#FA181B21" />
-      <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#1FFFFFFF" />
-    </ResourceDictionary>
-    <ResourceDictionary x:Key="Light">
-      <SolidColorBrush x:Key="QATextBrush" Color="#111826" />
-      <SolidColorBrush x:Key="QATextDimBrush" Color="#5C6675" />
-      <SolidColorBrush x:Key="QALineBrush" Color="#1F111826" />
-      <SolidColorBrush x:Key="QAHoverBrush" Color="#0F111826" />
-      <SolidColorBrush x:Key="QAActiveBrush" Color="#1F111826" />
-      <SolidColorBrush x:Key="QAMenuHoverBrush" Color="#0F111826" />
-      <SolidColorBrush x:Key="QAMenuBrush" Color="#FDFFFFFF" />
-      <SolidColorBrush x:Key="QAAccentBrush" Color="#2563EB" />
-      <SolidColorBrush x:Key="QAAccentInkBrush" Color="#FFFFFF" />
-      <SolidColorBrush x:Key="QADangerBrush" Color="#D92D20" />
-      <SolidColorBrush x:Key="QARemoveBgBrush" Color="#CCFFFFFF" />
-      <SolidColorBrush x:Key="QATileShadowBrush" Color="#26111826" />
-      <SolidColorBrush x:Key="MenuFlyoutBackground" Color="#FDFFFFFF" />
-      <SolidColorBrush x:Key="MenuFlyoutBorderBrush" Color="#1F111826" />
-      <SolidColorBrush x:Key="QAResultRowBrush" Color="#4DFFFFFF" />
-      <SolidColorBrush x:Key="QAAccentSoftBorderBrush" Color="#802563EB" />
-      <SolidColorBrush x:Key="MenuItemBackground" Color="#00FFFFFF" />
-      <SolidColorBrush x:Key="MenuItemBackgroundPointerOver" Color="#0F111826" />
-      <SolidColorBrush x:Key="MenuItemBackgroundPressed" Color="#1F111826" />
-      <SolidColorBrush x:Key="MenuItemForeground" Color="#111826" />
-      <SolidColorBrush x:Key="MenuItemForegroundPointerOver" Color="#111826" />
-      <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#FDFFFFFF" />
-      <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#1F111826" />
-    </ResourceDictionary>
-  </ResourceDictionary.ThemeDictionaries>
+
 
   <!-- Dock 上的一个图标 -->
   <ControlTheme x:Key="TileButton" TargetType="Button">

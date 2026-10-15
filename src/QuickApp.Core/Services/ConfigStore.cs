@@ -37,7 +37,7 @@ public sealed class ConfigStore
             string text = File.ReadAllText(_configFile);
             if (string.IsNullOrWhiteSpace(text))
             {
-                throw new System.Text.Json.JsonException("配置文件为空。");
+                throw new System.Text.Json.JsonException(AppText.Get(Language.ConfigEmpty));
             }
 
             AppConfig? config = System.Text.Json.JsonSerializer.Deserialize(
@@ -45,7 +45,7 @@ public sealed class ConfigStore
 
             if (config is null)
             {
-                throw new System.Text.Json.JsonException("配置内容不是有效的对象。");
+                throw new System.Text.Json.JsonException(AppText.Get(Language.ConfigInvalidObject));
             }
 
             AppConfig normalized = Normalize(config);
@@ -80,11 +80,11 @@ public sealed class ConfigStore
         AppConfig defaults = CreateDefault();
         if (File.Exists(_configFile + ".broken"))
         {
-            LastLoadError = "配置文件缺失，原内容保留在 " + _configFile + ".broken，请恢复有效配置或导入备份。";
+            LastLoadError = AppText.Get(Language.BrokenConfigPrefix) + _configFile + AppText.Get(Language.BrokenConfigSuffix);
             _log?.Invoke(LastLoadError);
             return defaults;
         }
-        if (!Save(defaults)) LastLoadError = "无法创建配置文件，请检查目录权限后重试。";
+        if (!Save(defaults)) LastLoadError = AppText.Get(Language.CreateConfigFailed);
         return defaults;
     }
 
@@ -92,7 +92,7 @@ public sealed class ConfigStore
     {
         if (LastLoadError is not null && !overwriteAfterLoadFailure)
         {
-            _log?.Invoke("配置读取尚未恢复，取消保存以保护已有数据。" );
+            _log?.Invoke(AppText.Get(Language.SaveBlocked) );
             return false;
         }
         try
@@ -147,7 +147,7 @@ public sealed class ConfigStore
     /// </summary>
     public string? SwitchStorageMode(bool toPortable, string baseDirectory, AppConfig? config = null)
     {
-        if (LastLoadError is not null) return "配置读取失败，请先重新加载或导入有效配置，再切换存储位置。";
+        if (LastLoadError is not null) return AppText.Get(Language.StorageSwitchBlocked);
         string oldFile = _configFile;
         string marker = Path.Combine(baseDirectory, AppPaths.PortableMarker);
         bool wasPortable = File.Exists(marker);
@@ -239,7 +239,7 @@ public sealed class ConfigStore
         {
             if (string.IsNullOrWhiteSpace(sourcePath) || !File.Exists(sourcePath))
             {
-                error = "图片不存在";
+                error = AppText.Get(Language.ImageMissing);
                 return null;
             }
 

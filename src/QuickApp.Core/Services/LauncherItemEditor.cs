@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -24,14 +24,14 @@ public static class LauncherItemEditor
     public static string? NormalizeAndValidate(LauncherItem draft, IReadOnlyList<LauncherItem> existing, string dockHotkey)
     {
         draft.Target = draft.Target.Trim();
-        if (draft.Target.Length == 0) return "请填写目标。";
-        if (!Enum.IsDefined(draft.Kind)) return "请选择有效的快捷项类型。";
+        if (draft.Target.Length == 0) return AppText.Get(Language.TargetRequired);
+        if (!Enum.IsDefined(draft.Kind)) return AppText.Get(Language.InvalidItemKind);
         if (draft.Kind == ItemKind.Web)
         {
             if (!draft.Target.Contains("://", StringComparison.Ordinal)) draft.Target = "https://" + draft.Target;
             if (!Uri.TryCreate(draft.Target, UriKind.Absolute, out Uri? uri)
                 || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps)
-                || string.IsNullOrWhiteSpace(uri.Host)) return "请填写有效的 HTTP 或 HTTPS 网址。";
+                || string.IsNullOrWhiteSpace(uri.Host)) return AppText.Get(Language.InvalidUrl);
             draft.Arguments = draft.WorkingDirectory = null;
             draft.InstanceCount = 1;
         }
@@ -52,7 +52,7 @@ public static class LauncherItemEditor
         if (draft.WorkingDirectory is not null)
         {
             draft.WorkingDirectory = ExpandPath(draft.WorkingDirectory);
-            if (!Directory.Exists(draft.WorkingDirectory)) return "工作目录不存在，请选择有效目录。";
+            if (!Directory.Exists(draft.WorkingDirectory)) return AppText.Get(Language.InvalidWorkingDirectory);
         }
         draft.Name = ItemQuery.ResolveDisplayName(draft);
         draft.Hotkey = EmptyToNull(draft.Hotkey);
@@ -60,11 +60,11 @@ public static class LauncherItemEditor
         {
             if (!HotkeyGesture.TryParse(draft.Hotkey, out HotkeyGesture parsed, out string? error)) return error;
             if (HotkeyGesture.TryParse(dockHotkey, out HotkeyGesture dock, out _) && parsed == dock)
-                return "该快捷键已用于唤出 QuickApp。";
+                return AppText.Get(Language.ReservedHotkey);
             foreach (LauncherItem item in existing)
             {
                 if (item.Id != draft.Id && HotkeyGesture.TryParse(item.Hotkey ?? string.Empty, out HotkeyGesture other, out _) && parsed == other)
-                    return "该快捷键已用于「" + item.Name + "」。";
+                    return AppText.Get(Language.UsedHotkeyPrefix) + item.Name + "」。";
             }
         }
         return null;
@@ -87,7 +87,7 @@ public static class LauncherItemEditor
         if (!int.TryParse(text.Trim(), NumberStyles.None, CultureInfo.InvariantCulture, out int parsed)
             || parsed < 1 || parsed > MaxInstanceCount)
         {
-            return "启动数量请填写 1 到 " + MaxInstanceCount + " 之间的整数。";
+            return AppText.Get(Language.InstanceRangePrefix) + MaxInstanceCount + AppText.Get(Language.InstanceRangeSuffix);
         }
 
         count = parsed;

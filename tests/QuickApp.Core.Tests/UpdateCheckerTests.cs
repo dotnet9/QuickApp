@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -351,14 +351,14 @@ public sealed class UpdateCheckerTests
     [Theory]
     [InlineData("linux-x64", "QuickApp-v9.9.9-linux-x64.deb")]
     [InlineData("linux-arm64", "QuickApp-v9.9.9-linux-arm64.deb")]
-    [InlineData("osx-x64", "QuickApp-v9.9.9-osx-x64.pkg")]
-    [InlineData("osx-arm64", "QuickApp-v9.9.9-osx-arm64.pkg")]
+    [InlineData("osx-x64", "QuickApp-v9.9.9-osx-x64.dmg")]
+    [InlineData("osx-arm64", "QuickApp-v9.9.9-osx-arm64.dmg")]
     public async Task Selects_native_asset_for_requested_platform(string rid, string expectedName)
     {
         string json = $"{{\"tag_name\":\"v9.9.9\",\"assets\":[" +
             $"{{\"name\":\"{expectedName}\",\"browser_download_url\":\"https://example.test/native\"}}," +
             $"{{\"name\":\"{expectedName}.sha256\",\"browser_download_url\":\"https://example.test/native.sha256\"}}," +
-            $"{{\"name\":\"QuickApp-v9.9.9-{rid}.dmg\",\"browser_download_url\":\"https://example.test/dmg\"}}]}}";
+            $"{{\"name\":\"QuickApp-v9.9.9-{rid}.pkg\",\"browser_download_url\":\"https://example.test/dmg\"}}]}}";
         var checker = new UpdateChecker(
             new HttpClient(new StubHandler(json)),
             owner: "dotnet9",

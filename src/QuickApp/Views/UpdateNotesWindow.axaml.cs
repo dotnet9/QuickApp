@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -51,7 +51,7 @@ public partial class UpdateNotesWindow : CodeWFWindow
         _vm = dock;
         DataContext = dock;
         NotesText.Text = string.IsNullOrWhiteSpace(dock.UpdateNotesText)
-            ? "该版本没有提供更新说明，可点「打开发布页」查看。"
+            ? AppText.Get(Language.NoReleaseNotes)
             : dock.UpdateNotesText;
         dock.PropertyChanged += OnDockPropertyChanged;
         UpdateState();
@@ -59,7 +59,7 @@ public partial class UpdateNotesWindow : CodeWFWindow
 
     private void OnDockPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(DockViewModel.IsDownloadingUpdate)
+        if (string.IsNullOrEmpty(e.PropertyName) || e.PropertyName is nameof(DockViewModel.IsDownloadingUpdate)
             or nameof(DockViewModel.IsUpdateReady)
             or nameof(DockViewModel.DownloadProgress)
             or nameof(DockViewModel.DownloadProgressText)
@@ -93,7 +93,7 @@ public partial class UpdateNotesWindow : CodeWFWindow
         bool downloading = _vm.IsDownloadingUpdate;
         bool canDownload = _vm.CanDownloadUpdate;
 
-        InstallButton.Content = ready ? _vm.UpdateInstallButtonText : unsupported ? "打开发布页" : "下载";
+        InstallButton.Content = ready ? _vm.UpdateInstallButtonText : unsupported ? AppText.Get(Language.OpenReleasePage) : AppText.Get(Language.Download);
         InstallButton.IsEnabled = !downloading && (ready || canDownload || unsupported);
         InstallBar.IsVisible = downloading || _vm.DownloadProgress > 0 || ready;
         DownloadBar.IsVisible = !ready;

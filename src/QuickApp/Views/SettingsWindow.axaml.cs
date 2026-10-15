@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -101,12 +101,12 @@ public partial class SettingsWindow : CodeWFWindow
         {
             IStorageFile? file = await StorageProvider.SaveFilePickerAsync(new FilePickerSaveOptions
             {
-                Title = "导出 QuickApp 配置",
+                Title = AppText.Get(Language.ExportTitle),
                 SuggestedFileName = "quickapp-config",
                 DefaultExtension = "qa",
                 FileTypeChoices = new[]
                 {
-                    new FilePickerFileType("QuickApp 配置") { Patterns = new[] { "*.qa" } }
+                    new FilePickerFileType(AppText.Get(Language.ConfigFileType)) { Patterns = new[] { "*.qa" } }
                 }
             });
 
@@ -138,11 +138,11 @@ public partial class SettingsWindow : CodeWFWindow
         {
             IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
-                Title = "导入 QuickApp 配置",
+                Title = AppText.Get(Language.ImportTitle),
                 AllowMultiple = false,
                 FileTypeFilter = new[]
                 {
-                    new FilePickerFileType("QuickApp 配置") { Patterns = new[] { "*.qa" } },
+                    new FilePickerFileType(AppText.Get(Language.ConfigFileType)) { Patterns = new[] { "*.qa" } },
                     FilePickerFileTypes.All
                 }
             });
@@ -188,8 +188,8 @@ public partial class SettingsWindow : CodeWFWindow
         for (int i = 0; i < screens.All.Count; i++)
         {
             var bounds = screens.All[i].Bounds;
-            string position = i == primaryIndex ? "主显示器" : RelativeMonitorPosition(bounds, primaryBounds);
-            options.Add(new MonitorOption(i, "显示器 " + (i + 1) + " · " + position));
+            string position = i == primaryIndex ? AppText.Get(Language.PrimaryMonitor) : RelativeMonitorPosition(bounds, primaryBounds);
+            options.Add(new MonitorOption(i, AppText.Get(Language.MonitorPrefix) + (i + 1) + " · " + position));
         }
 
         _vm.SetMonitorOptions(options, primaryIndex);
@@ -197,16 +197,16 @@ public partial class SettingsWindow : CodeWFWindow
 
     private static string RelativeMonitorPosition(Avalonia.PixelRect bounds, Avalonia.PixelRect primary)
     {
-        if (bounds.Right <= primary.X) return "左侧";
-        if (bounds.X >= primary.Right) return "右侧";
-        if (bounds.Bottom <= primary.Y) return "上方";
-        if (bounds.Y >= primary.Bottom) return "下方";
+        if (bounds.Right <= primary.X) return AppText.Get(Language.LeftEdge);
+        if (bounds.X >= primary.Right) return AppText.Get(Language.RightEdge);
+        if (bounds.Bottom <= primary.Y) return AppText.Get(Language.TopEdge);
+        if (bounds.Y >= primary.Bottom) return AppText.Get(Language.BottomEdge);
 
         int offsetX = (bounds.X + bounds.Width / 2) - (primary.X + primary.Width / 2);
         int offsetY = (bounds.Y + bounds.Height / 2) - (primary.Y + primary.Height / 2);
         return Math.Abs(offsetX) >= Math.Abs(offsetY)
-            ? (offsetX < 0 ? "左侧" : "右侧")
-            : (offsetY < 0 ? "上方" : "下方");
+            ? (offsetX < 0 ? AppText.Get(Language.LeftEdge) : AppText.Get(Language.RightEdge))
+            : (offsetY < 0 ? AppText.Get(Language.TopEdge) : AppText.Get(Language.BottomEdge));
     }
 
     private async Task<bool> ConfirmImportAsync()
@@ -219,7 +219,7 @@ public partial class SettingsWindow : CodeWFWindow
         var completion = new TaskCompletionSource<bool>();
         var dialog = new Window
         {
-            Title = "替换快捷配置？",
+            Title = AppText.Get(Language.ConfirmReplace),
             // The prototype card is 380px wide. The transparent 14px outer
             // margin belongs to the window, so the host window is 408px.
             Width = 408,
@@ -242,8 +242,8 @@ public partial class SettingsWindow : CodeWFWindow
             }
         };
 
-        var cancel = new Button { Content = "取消", MinWidth = 76, Padding = new Avalonia.Thickness(12, 6) };
-        var confirm = new Button { Content = "替换当前配置", MinWidth = 110, Padding = new Avalonia.Thickness(12, 6) };
+        var cancel = new Button { Content = AppText.Get(Language.Cancel), MinWidth = 76, Padding = new Avalonia.Thickness(12, 6) };
+        var confirm = new Button { Content = AppText.Get(Language.ReplaceConfig), MinWidth = 110, Padding = new Avalonia.Thickness(12, 6) };
         cancel.Click += (_, _) =>
         {
             completion.TrySetResult(false);
@@ -271,7 +271,7 @@ public partial class SettingsWindow : CodeWFWindow
             {
                 new TextBlock
                 {
-                    Text = "导入将替换当前 " + _vm.ItemCount + " 个快捷项及设置。",
+                    Text = AppText.Get(Language.ImportReplacesPrefix) + _vm.ItemCount + AppText.Get(Language.ImportReplacesSuffix),
                     FontSize = 11.5,
                     Foreground = _vm.TextDimBrush,
                     TextWrapping = TextWrapping.Wrap
@@ -286,7 +286,7 @@ public partial class SettingsWindow : CodeWFWindow
             BorderThickness = new Avalonia.Thickness(0, 0, 0, 1),
             Child = new TextBlock
             {
-                Text = "替换快捷配置？",
+                Text = AppText.Get(Language.ConfirmReplace),
                 FontSize = 14,
                 FontWeight = FontWeight.SemiBold,
                 Foreground = _vm.TextBrush
@@ -372,7 +372,7 @@ public partial class SettingsWindow : CodeWFWindow
         }
         catch (Exception ex)
         {
-            AppLog.Error("打开链接失败：" + url, ex);
+            AppLog.Error(AppText.Get(Language.OpenUrlFailedPrefix) + url, ex);
         }
     }
 
@@ -381,7 +381,7 @@ public partial class SettingsWindow : CodeWFWindow
     {
         var dialog = new Window
         {
-            Title = "许可证",
+            Title = AppText.Get(Language.License),
             Width = 408,
             SizeToContent = SizeToContent.Height,
             CanResize = false,
@@ -401,7 +401,7 @@ public partial class SettingsWindow : CodeWFWindow
             }
         };
 
-        var close = new Button { Content = "知道了", HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right };
+        var close = new Button { Content = AppText.Get(Language.GotIt), HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right };
         if (this.TryFindResource("LinkButton", Avalonia.Styling.ThemeVariant.Default, out var linkTheme)
             && linkTheme is Avalonia.Styling.ControlTheme theme)
         {
@@ -412,14 +412,14 @@ public partial class SettingsWindow : CodeWFWindow
         var content = new StackPanel { Spacing = 10 };
         content.Children.Add(new TextBlock
         {
-            Text = "许可证",
+            Text = AppText.Get(Language.License),
             FontSize = 14,
             FontWeight = FontWeight.SemiBold,
             Foreground = _vm?.TextBrush ?? Brushes.White
         });
         content.Children.Add(new TextBlock
         {
-            Text = "QuickApp 以 MIT 许可证发布。你可以自由使用、修改和分发本软件，但请保留原始版权声明。",
+            Text = AppText.Get(Language.LicenseDescription),
             FontSize = 12,
             TextWrapping = TextWrapping.Wrap,
             Foreground = _vm?.TextDimBrush ?? Brushes.Gray

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -45,8 +45,8 @@ public sealed class DockViewModel : ViewModelBase
     private readonly ILauncher _launcher;
     private readonly IIconProvider _icons;
     private readonly IInstalledAppProvider _installedAppProvider;
-    private readonly IUpdateChecker _updates;
-    private readonly IUpdateDownloader _updateDownloader;
+    private readonly IUpdateService _updates;
+    private readonly UpdateDownloader _updateDownloader;
     private readonly IAutoStartService _autoStart;
     private readonly AppConfig _config;
     private readonly List<ItemViewModel> _allItems = new();
@@ -77,7 +77,8 @@ public sealed class DockViewModel : ViewModelBase
     private const int UpdateCheckIntervalHours = 12;
     private DateTime _lastUpdateCheckAt = DateTime.MinValue;
     private int _toastToken;
-    private string _updateResultText = "尚未检查";
+    private string? _updateError;
+    private bool _hasChecked;
     private bool _isDownloadingUpdate;
     private double _downloadProgress;
     private string? _downloadedUpdatePath;
@@ -88,8 +89,8 @@ public sealed class DockViewModel : ViewModelBase
         ILauncher launcher,
         IIconProvider icons,
         IInstalledAppProvider installedAppProvider,
-        IUpdateChecker updates,
-        IUpdateDownloader updateDownloader,
+        IUpdateService updates,
+        UpdateDownloader updateDownloader,
         IAutoStartService autoStart,
         string appName)
     {
@@ -102,6 +103,9 @@ public sealed class DockViewModel : ViewModelBase
         _autoStart = autoStart;
         AppName = appName;
         _config = store.Load();
+        AppText.Initialize();
+        CodeWF.Toolkit.Lang.I18nManager.Instance.Culture = System.Globalization.CultureInfo.GetCultureInfo(
+            Settings.Language is "en-US" ? "en-US" : "zh-CN");
 
         RunCommand = ReactiveCommand.Create<ItemViewModel>(RunItem);
         RemoveCommand = ReactiveCommand.Create<ItemViewModel>(RemoveItem);
@@ -122,7 +126,7 @@ public sealed class DockViewModel : ViewModelBase
         OpenUpdateCommand = ReactiveCommand.Create(OpenUpdatePage);
         DownloadUpdateCommand = ReactiveCommand.CreateFromTask(DownloadUpdateAsync);
         CancelUpdateDownloadCommand = ReactiveCommand.Create(CancelUpdateDownload);
-        InstallUpdateCommand = ReactiveCommand.Create(InstallDownloadedUpdate);
+        InstallUpdateCommand = ReactiveCommand.CreateFromTask(InstallDownloadedUpdateAsync);
         DismissUpdateCommand = ReactiveCommand.Create(DismissUpdate);
         ShowUpdateNotesCommand = ReactiveCommand.Create(RequestUpdateNotes);
 
@@ -162,7 +166,7 @@ public sealed class DockViewModel : ViewModelBase
     public string AppName { get; }
 
     public string VersionText =>
-        "v" + (System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "0.1.0");
+        "v" + (UpdateVersion.Display(typeof(DockViewModel).Assembly));
 
     public ObservableCollection<ItemViewModel> Items { get; } = new();
 
@@ -218,7 +222,7 @@ public sealed class DockViewModel : ViewModelBase
 
     public bool ShowLabels => Settings.ShowLabels;
 
-    public string EdgeLabel => DockPlacement.Label(Settings.Edge) + "边缘";
+    public string EdgeLabel => DockPlacement.Label(Settings.Edge) + AppText.Get(Language.Edge);
 
     public bool IsPinned
     {
@@ -238,7 +242,7 @@ public sealed class DockViewModel : ViewModelBase
 
             this.RaisePropertyChanged();
             Save();
-            Toast(value ? "已钉住" : "已取消钉住");
+            Toast(value ? AppText.Get(Language.Pinned) : AppText.Get(Language.Unpinned));
         }
     }
 
@@ -331,9 +335,9 @@ public sealed class DockViewModel : ViewModelBase
 
     public bool UpdateAvailable => _pendingUpdate is not null;
 
-    public string UpdateText => _pendingUpdate is null ? string.Empty : "发现新版本 " + _pendingUpdate.Tag;
+    public string UpdateText => _pendingUpdate is null ? string.Empty : AppText.Get(Language.NewVersionPrefix) + _pendingUpdate.Tag;
 
-    public string UpdateResultText => _updateResultText;
+    public string UpdateResultText => IsCheckingUpdate ? AppText.Get(Language.CheckUpdates) : _updateError is not null ? AppText.Get(Language.UpdateErrorPrefix) + _updateError : !_hasChecked ? AppText.Get(Language.NotChecked) : _pendingUpdate is not null ? UpdateText : AppText.Get(Language.CurrentVersionPrefix) + VersionText;
 
     /// <summary>已安装版本（设置 · 关于的版本行与更新说明对话框共用）。</summary>
     public string CurrentVersionText => VersionText;
@@ -365,10 +369,10 @@ public sealed class DockViewModel : ViewModelBase
     public double DownloadProgress => _downloadProgress;
 
     public string DownloadProgressText => _isDownloadingUpdate
-        ? _downloadProgress > 0 ? $"下载中 {_downloadProgress:0}%" : "正在准备下载…"
-        : IsUpdateReady ? "下载完成" : string.Empty;
+        ? _downloadProgress > 0 ? AppText.Format(Language.DownloadProgress, _downloadProgress) : AppText.Get(Language.PreparingDownload)
+        : IsUpdateReady ? AppText.Get(Language.DownloadComplete) : string.Empty;
 
-    public string UpdateInstallButtonText => IsWindowsInstallerAsset ? "安装" : "打开安装包";
+    public string UpdateInstallButtonText => IsWindowsInstallerAsset ? AppText.Get(Language.Install) : AppText.Get(Language.OpenPackage);
 
     private bool IsWindowsInstallerAsset =>
         OperatingSystem.IsWindows() &&
@@ -387,13 +391,13 @@ public sealed class DockViewModel : ViewModelBase
             if (_isDownloadingUpdate)
             {
                 return _downloadProgress > 0
-                    ? $"正在下载 {_pendingUpdate.Tag} · {_downloadProgress:0}%"
-                    : $"正在下载 {_pendingUpdate.Tag}";
+                    ? AppText.Format(Language.DownloadingVersionProgress, _pendingUpdate.Tag, _downloadProgress)
+                    : AppText.Format(Language.DownloadingVersion, _pendingUpdate.Tag);
             }
 
             if (IsUpdateReady)
             {
-                return $"{_pendingUpdate.Tag} 下载完成";
+                return AppText.Format(Language.VersionDownloaded, _pendingUpdate.Tag);
             }
 
             return UpdateText;
@@ -401,7 +405,7 @@ public sealed class DockViewModel : ViewModelBase
     }
 
     /// <summary>次要说明：安装包信息不可用时提供发布页入口，空串隐藏。</summary>
-    public string UpdateNoteText => NeedsUpdatePage ? "暂无法获取当前系统的安装包" : string.Empty;
+    public string UpdateNoteText => NeedsUpdatePage ? AppText.Get(Language.NoPlatformPackage) : string.Empty;
 
     /// <summary>版本号（更新卡片右上角徽标）。</summary>
     public string UpdateTag => _pendingUpdate?.Tag ?? string.Empty;
@@ -470,7 +474,7 @@ public sealed class DockViewModel : ViewModelBase
 
     public string? ValidateItemDraft(LauncherItem draft)
     {
-        if (HasConfigLoadError) return "配置读取失败，请先在设置的数据页重新加载配置。";
+        if (HasConfigLoadError) return AppText.Get(Language.ConfigReloadRequired);
         string? error = LauncherItemEditor.NormalizeAndValidate(draft, _config.Items, Settings.Hotkey);
         if (error is not null) return error;
         LauncherItem? old = _config.Items.FirstOrDefault(item => item.Id == draft.Id);
@@ -495,12 +499,12 @@ public sealed class DockViewModel : ViewModelBase
         }
         else { saved.Id = "i" + Guid.NewGuid().ToString("N")[..8]; items.Add(saved); }
         var config = new AppConfig { SchemaVersion = _config.SchemaVersion, Settings = Settings, Items = items };
-        if (!_store.Save(config)) { Toast("保存失败，请检查配置目录权限。" ); return false; }
+        if (!_store.Save(config)) { Toast(AppText.Get(Language.SaveFailed) ); return false; }
         _config.Items = items;
         RebuildItems();
         SyncRecommendedCardsAfterDockChange();
         HotkeyBindingsChanged?.Invoke();
-        Toast(index >= 0 ? "已更新：" + saved.Name : "已添加：" + saved.Name);
+        Toast(index >= 0 ? AppText.Get(Language.UpdatedPrefix) + saved.Name : AppText.Get(Language.AddedPrefix) + saved.Name);
         return true;
     }
 
@@ -510,7 +514,7 @@ public sealed class DockViewModel : ViewModelBase
         this.RaisePropertyChanged(nameof(ConfigLoadError));
         this.RaisePropertyChanged(nameof(HasConfigLoadError));
         this.RaisePropertyChanged(nameof(EmptyStateText));
-        if (HasConfigLoadError) { Toast("读取配置失败：" + ConfigLoadError); return false; }
+        if (HasConfigLoadError) { Toast(AppText.Get(Language.ReadFailedPrefix) + ConfigLoadError); return false; }
         _config.Items = loaded.Items;
         _config.Settings = loaded.Settings;
         _config.SchemaVersion = loaded.SchemaVersion;
@@ -521,17 +525,17 @@ public sealed class DockViewModel : ViewModelBase
         _host?.MonitorSelectionChanged();
         _host?.AutoHideDelayChanged();
         HotkeyBindingsChanged?.Invoke();
-        Toast("已重新加载 " + loaded.Items.Count + " 个快捷项");
+        Toast(AppText.Get(Language.ReloadedPrefix) + loaded.Items.Count + AppText.Get(Language.ShortcutCountSuffix));
         return true;
     }
 
     /// <summary>存储模式说明（安装版 = %LOCALAPPDATA%，便携版 = 程序目录）。</summary>
     public string StorageModeText => AppPaths.IsPortable(AppContext.BaseDirectory)
-        ? "便携版 · 配置随程序目录"
-        : "安装版 · 配置在 %LOCALAPPDATA%\\QuickApp";
+        ? AppText.Get(Language.PortableStorage)
+        : AppText.Get(Language.InstalledStorage);
 
     /// <summary>切换到另一模式的按钮文案。</summary>
-    public string StorageModeSwitchText => AppPaths.IsPortable(AppContext.BaseDirectory) ? "切换为安装版" : "切换为便携版";
+    public string StorageModeSwitchText => AppPaths.IsPortable(AppContext.BaseDirectory) ? AppText.Get(Language.SwitchToInstalled) : AppText.Get(Language.SwitchToPortable);
 
     /// <summary>切换存储模式的结果说明（设置页展示）。</summary>
     public string? StorageModeResult
@@ -543,7 +547,7 @@ public sealed class DockViewModel : ViewModelBase
     public void ToggleStorageMode()
     {
         string? error = _store.SwitchStorageMode(!AppPaths.IsPortable(AppContext.BaseDirectory), AppContext.BaseDirectory, _config);
-        StorageModeResult = error is null ? "已切换并迁移配置，立即生效" : "切换失败：" + error;
+        StorageModeResult = error is null ? AppText.Get(Language.StorageMigrated) : AppText.Get(Language.SwitchFailedPrefix) + error;
         Toast(StorageModeResult);
         this.RaisePropertyChanged(nameof(StorageModeText));
         this.RaisePropertyChanged(nameof(StorageModeSwitchText));
@@ -617,7 +621,10 @@ public sealed class DockViewModel : ViewModelBase
     public bool IsCheckingUpdate
     {
         get => _isCheckingUpdate;
-        private set => Set(ref _isCheckingUpdate, value);
+        private set
+        {
+            if (Set(ref _isCheckingUpdate, value)) this.RaisePropertyChanged(nameof(UpdateResultText));
+        }
     }
 
     // ---------------- 搜索 ----------------
@@ -661,27 +668,27 @@ public sealed class DockViewModel : ViewModelBase
 
     public bool IsSearchGrouped => IsSearchOpen && SearchQuery.Trim().Length > 0;
 
-    public string ConfiguredGroupTitle => "已配置";
+    public string ConfiguredGroupTitle => AppText.Get(Language.Configured);
 
     public int ConfiguredGroupCount => Items.Count;
 
     public bool HasConfiguredResults => IsSearchOpen && Items.Count > 0;
 
-    public string InstalledGroupTitle => "系统应用";
+    public string InstalledGroupTitle => AppText.Get(Language.SystemApps);
 
     public int InstalledGroupCount => InstalledItems.Count;
 
     public bool HasInstalledResults => IsSearchGrouped && InstalledItems.Count > 0;
 
     public string CountText => IsSearchGrouped
-        ? (Items.Count + InstalledItems.Count) + " 个结果"
+        ? (Items.Count + InstalledItems.Count) + AppText.Get(Language.ResultsSuffix)
         : Items.Count + " / " + _allItems.Count;
 
     public bool IsSearchEmpty => Items.Count == 0 && InstalledItems.Count == 0 && IsSearchGrouped;
 
-    public string EmptyStateText => HasConfigLoadError ? "配置读取失败 · 设置中可重试" : IsSearchGrouped
-        ? "没有匹配「" + SearchQuery.Trim() + "」的项目"
-        : IsEditMode ? "右键空白处添加应用" : "空空如也";
+    public string EmptyStateText => HasConfigLoadError ? AppText.Get(Language.ConfigErrorHint) : IsSearchGrouped
+        ? AppText.Get(Language.NoMatchPrefix) + SearchQuery.Trim() + AppText.Get(Language.NoMatchSuffix)
+        : IsEditMode ? AppText.Get(Language.EmptyHint) : AppText.Get(Language.Empty);
 
     /// <summary>Dock 一个项都没有（与「搜索无结果」区分开，给出添加引导）。</summary>
     public bool IsDockEmpty => Items.Count == 0 && !IsSearchGrouped;
@@ -958,20 +965,20 @@ public sealed class DockViewModel : ViewModelBase
 
         if (IsEditMode)
         {
-            Toast("编辑模式下不运行 · 点「完成」退出");
+            Toast(AppText.Get(Language.EditModeHint));
             return;
         }
 
         if (!_launcher.TryStart(vm.Model, out string? error))
         {
-            Toast("启动失败：" + error);
+            Toast(AppText.Get(Language.LaunchFailedPrefix) + error);
             return;
         }
 
         vm.IsRunning = true;
         _ = ResetRunningAsync(vm);
         int instances = LauncherItemEditor.NormalizeInstanceCount(vm.Model.InstanceCount);
-        Toast(instances > 1 ? "正在启动 " + instances + " 个：" + vm.Name : "正在启动：" + vm.Name);
+        Toast(instances > 1 ? AppText.Get(Language.LaunchingPrefix) + instances + AppText.Get(Language.InstancesSuffix) + vm.Name : AppText.Get(Language.LaunchingItemPrefix) + vm.Name);
 
         if (Settings.CollapseAfterLaunch && !Settings.Pinned)
         {
@@ -990,7 +997,7 @@ public sealed class DockViewModel : ViewModelBase
         string target = NormalizeTarget(vm.Model.Target);
         if (_config.Items.Any(item => string.Equals(NormalizeTarget(item.Target), target, StringComparison.OrdinalIgnoreCase)))
         {
-            Toast(vm.Name + " 已在自定义配置中");
+            Toast(vm.Name + AppText.Get(Language.AlreadyConfiguredSuffix));
             return;
         }
 
@@ -1031,7 +1038,7 @@ public sealed class DockViewModel : ViewModelBase
         SyncRecommendedCardsAfterDockChange(vm.Model.RecommendedId);
         RefreshFilter();
         Save();
-        Toast("已移除 " + vm.Name, "撤销", UndoRemoveCommand, 5000);
+        Toast(AppText.Get(Language.RemovedPrefix) + vm.Name, AppText.Get(Language.Undo), UndoRemoveCommand, 5000);
     }
 
     /// <summary>Dock 条目增删/导入后，把推荐卡片的「已加入 Dock」状态对齐现实。</summary>
@@ -1055,7 +1062,7 @@ public sealed class DockViewModel : ViewModelBase
     {
         if (_config.Items.Count == 0)
         {
-            Toast("列表已经是空的");
+            Toast(AppText.Get(Language.AlreadyEmpty));
             return;
         }
 
@@ -1067,7 +1074,7 @@ public sealed class DockViewModel : ViewModelBase
         _allItems.Clear();
         RefreshFilter();
         Save();
-        Toast("已清空 " + count + " 项", "撤销", UndoRemoveCommand, 5000);
+        Toast(AppText.Get(Language.ClearedPrefix) + count + AppText.Get(Language.ItemsSuffix), AppText.Get(Language.Undo), UndoRemoveCommand, 5000);
     }
 
     /// <summary>撤销单项移除或清空列表，按原顺序恢复。</summary>
@@ -1092,13 +1099,13 @@ public sealed class DockViewModel : ViewModelBase
         RefreshFilter();
         SyncRecommendedCardsAfterDockChange();
         Save();
-        Toast("已恢复");
+        Toast(AppText.Get(Language.Restored));
     }
 
     /// <summary>添加目标（设置里选择文件，或将来的拖入）。</summary>
     public void AddTargets(IEnumerable<string> paths)
     {
-        if (HasConfigLoadError) { Toast("配置读取失败，请先重新加载配置。" ); return; }
+        if (HasConfigLoadError) { Toast(AppText.Get(Language.ReloadConfigRequired) ); return; }
         var items = new List<LauncherItem>(_config.Items);
         int added = 0;
         foreach (string path in paths)
@@ -1128,10 +1135,10 @@ public sealed class DockViewModel : ViewModelBase
         }
 
         var config = new AppConfig { SchemaVersion = _config.SchemaVersion, Settings = Settings, Items = items };
-        if (!_store.Save(config)) { Toast("保存失败，请检查配置目录权限。"); return; }
+        if (!_store.Save(config)) { Toast(AppText.Get(Language.SaveFailed)); return; }
         _config.Items = items;
         RebuildItems();
-        Toast("已添加 " + added + " 项");
+        Toast(AppText.Get(Language.AddedCountPrefix) + added + AppText.Get(Language.ItemsSuffix));
     }
 
     /// <summary>网址 → Web；其余交给 Shell 打开（.lnk 也能直接启动，不必解析目标）。</summary>
@@ -1177,15 +1184,15 @@ public sealed class DockViewModel : ViewModelBase
         ItemVisualRequested?.Invoke(item);
         Save();
         Toast(stored is null
-            ? "已更换 " + item.Name + " 的图标（复制失败，仍引用原图：" + copyError + "）"
-            : "已更换 " + item.Name + " 的图标");
+            ? AppText.Get(Language.ChangedPrefix) + item.Name + AppText.Get(Language.IconCopyFailedSuffix) + copyError + "）"
+            : AppText.Get(Language.ChangedPrefix) + item.Name + AppText.Get(Language.IconSuffix));
     }
 
     // ---------------- 导入 / 导出 ----------------
 
     public bool ExportConfigTo(string filePath)
     {
-        if (HasConfigLoadError) { Toast("配置读取失败，请先重新加载配置。"); return false; }
+        if (HasConfigLoadError) { Toast(AppText.Get(Language.ReloadConfigRequired)); return false; }
         return _store.Export(_config, filePath);
     }
 
@@ -1195,13 +1202,13 @@ public sealed class DockViewModel : ViewModelBase
         AppConfig? imported = _store.Import(filePath);
         if (imported is null)
         {
-            Toast("导入失败：不是有效的 QuickApp 配置文件");
+            Toast(AppText.Get(Language.InvalidImport));
             return false;
         }
 
         if (!_store.Save(imported, overwriteAfterLoadFailure: true))
         {
-            Toast("保存导入配置失败，请检查目录权限。" );
+            Toast(AppText.Get(Language.ImportSaveFailed) );
             return false;
         }
 
@@ -1231,7 +1238,7 @@ public sealed class DockViewModel : ViewModelBase
         HotkeyBindingsChanged?.Invoke();
         // 带进来的图标刚解包到本地图标库，此时清掉被整个替换掉的旧配置残留
         _store.CleanupOrphanedIcons(_config.Items);
-        Toast("已导入 " + _config.Items.Count + " 项");
+        Toast(AppText.Get(Language.ImportedPrefix) + _config.Items.Count + AppText.Get(Language.ItemsSuffix));
         return true;
     }
 
@@ -1252,7 +1259,7 @@ public sealed class DockViewModel : ViewModelBase
         this.RaisePropertyChanged(nameof(ShowUpdateBar));
         this.RaisePropertyChanged(nameof(ShowUpdatePill));
         _host?.ApplyEdge(edge);
-        Toast("已停靠到" + EdgeLabel);
+        Toast(AppText.Get(Language.DockedPrefix) + EdgeLabel);
     }
 
     public void SelectMonitorIndex(int index)
@@ -1265,7 +1272,7 @@ public sealed class DockViewModel : ViewModelBase
         Settings.MonitorIndex = index;
         Save();
         _host?.MonitorSelectionChanged();
-        Toast("已移动到显示器 " + (index + 1));
+        Toast(AppText.Get(Language.MovedMonitorPrefix) + (index + 1));
     }
 
     public void AutoHideDelayChanged() => _host?.AutoHideDelayChanged();
@@ -1279,11 +1286,11 @@ public sealed class DockViewModel : ViewModelBase
         {
             Settings.AutoStart = target;
             Save();
-            Toast(target ? "已开启开机启动" : "已关闭开机启动");
+            Toast(target ? AppText.Get(Language.AutoStartEnabled) : AppText.Get(Language.AutoStartDisabled));
         }
         else
         {
-            Toast(error ?? "设置开机启动失败");
+            Toast(error ?? AppText.Get(Language.AutoStartFailed));
         }
 
         this.RaisePropertyChanged(nameof(AutoStartEnabled));
@@ -1337,21 +1344,16 @@ public sealed class DockViewModel : ViewModelBase
 
     private void RefreshPalette()
     {
-        bool dark = Settings.Theme switch
+        var controller = App.ThemeController;
+        controller.Mode = Settings.Theme switch
         {
-            "light" => false,
-            "system" => IsSystemDark(),
-            _ => true
+            "light" => CodeWF.Avalonia.Controls.Themes.StudioThemeMode.Light,
+            "dark" => CodeWF.Avalonia.Controls.Themes.StudioThemeMode.Dark,
+            _ => CodeWF.Avalonia.Controls.Themes.StudioThemeMode.System
         };
-
-        // Fluent 控件的浅/深由「应用主题变体」决定，必须跟着我们的设置走：
-        // 否则系统是浅色主题时，勾选框/滑块/下拉会被渲染成浅色控件压在深色面板上（设置窗口看着就是两套风格）。
-        // 跟随系统时设回 Default——若钉死成具体深/浅，ActualThemeVariant 会被覆盖，
-        // 之后操作系统深浅切换将不再触发 ActualThemeVariantChanged（跟随就失效了）。
-        ApplyThemeVariant(Settings.Theme == "system" ? null : dark);
-
-        Palette palette = (dark ? Palette.Dark : Palette.Light)
-            .WithOpacity(GlassAlpha, flat: Settings.Style == "flat");
+        controller.Palette = Enum.TryParse<CodeWF.Avalonia.Controls.Themes.StudioPalette>(Settings.Palette, out var selected)
+            && Enum.IsDefined(selected) ? selected : CodeWF.Avalonia.Controls.Themes.StudioPalette.DotNet;
+        Palette palette = Palette.FromApplication().WithOpacity(GlassAlpha, flat: Settings.Style == "flat");
 
         Color opaque = Color.FromArgb(255, palette.Panel.R, palette.Panel.G, palette.Panel.B);
         PanelBrush = PaletteBrushes.Panel(palette);
@@ -1379,28 +1381,6 @@ public sealed class DockViewModel : ViewModelBase
         }
     }
 
-    /// <summary>把 Avalonia 的主题变体同步成我们选定的深浅，保证 Fluent 控件与自绘面板同一套配色。</summary>
-    private static void ApplyThemeVariant(bool? dark)
-    {
-        try
-        {
-            if (Avalonia.Application.Current is { } app)
-            {
-                // null = 跟随系统：RequestedThemeVariant 设回 Default，ActualThemeVariant 透传系统值
-                app.RequestedThemeVariant = dark switch
-                {
-                    null => Avalonia.Styling.ThemeVariant.Default,
-                    true => Avalonia.Styling.ThemeVariant.Dark,
-                    false => Avalonia.Styling.ThemeVariant.Light
-                };
-            }
-        }
-        catch (Exception ex)
-        {
-            AppLog.Error("切换应用主题变体失败", ex);
-        }
-    }
-
     /// <summary>窗口透明级别不可用时毛玻璃退化成高不透明度纯色（对应原型 @supports 回退）。</summary>
     public void SetGlassDegraded(bool degraded)
     {
@@ -1420,7 +1400,7 @@ public sealed class DockViewModel : ViewModelBase
     {
         try
         {
-            return Avalonia.Application.Current?.ActualThemeVariant == Avalonia.Styling.ThemeVariant.Dark;
+            return Avalonia.Application.Current?.ActualThemeVariant.InheritVariant == Avalonia.Styling.ThemeVariant.Dark;
         }
         catch
         {
@@ -1445,31 +1425,32 @@ public sealed class DockViewModel : ViewModelBase
         // 手动检查防抖：短时间重复点击不重复请求（限流恢复期间尤其不该放大流量）
         if (!silent && DateTime.UtcNow - _lastUpdateCheckAt < TimeSpan.FromSeconds(15))
         {
-            Toast("刚刚检查过更新");
+            Toast(AppText.Get(Language.JustChecked));
             return;
         }
 
         IsCheckingUpdate = true;
         try
         {
-            Version current = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version ?? new Version(0, 1, 0);
+            Version current = UpdateVersion.Current(typeof(DockViewModel).Assembly);
             UpdateCheckResult result = await _updates.CheckAsync(current).ConfigureAwait(true);
             _lastUpdateCheckAt = DateTime.UtcNow;
 
             if (!result.Succeeded)
             {
-                _updateResultText = string.IsNullOrWhiteSpace(result.Error)
-                    ? "检查更新失败，请稍后重试"
-                    : "检查更新失败：" + result.Error;
+                _updateError = result.Error ?? AppText.Get(Language.UpdateCheckFailed);
+                _hasChecked = true;
                 this.RaisePropertyChanged(nameof(UpdateResultText));
                 if (!silent)
                 {
-                    Toast(_updateResultText);
+                    Toast(UpdateResultText);
                 }
 
                 return;
             }
 
+            _updateError = null;
+            _hasChecked = true;
             UpdateInfo? info = result.Update;
 
             if (info is null)
@@ -1484,11 +1465,10 @@ public sealed class DockViewModel : ViewModelBase
                 this.RaisePropertyChanged(nameof(ShowUpdateBar));
                 this.RaisePropertyChanged(nameof(ShowUpdatePill));
                 RaiseDownloadStateChanged();
-                _updateResultText = "已是最新版本 " + VersionText;
                 this.RaisePropertyChanged(nameof(UpdateResultText));
                 if (!silent)
                 {
-                    Toast(_updateResultText);
+                    Toast(UpdateResultText);
                 }
 
                 return;
@@ -1504,9 +1484,8 @@ public sealed class DockViewModel : ViewModelBase
             this.RaisePropertyChanged(nameof(ShowUpdateBar));
             this.RaisePropertyChanged(nameof(ShowUpdatePill));
             RaiseDownloadStateChanged();
-            _updateResultText = UpdateText;
             this.RaisePropertyChanged(nameof(UpdateResultText));
-            Toast("发现新版本 " + info.Tag + " · 点「查看」看更新说明", "查看", ShowUpdateNotesCommand, 10000);
+            Toast(AppText.Get(Language.NewVersionPrefix) + info.Tag + AppText.Get(Language.ViewUpdateHintSuffix), AppText.Get(Language.View), ShowUpdateNotesCommand, 10000);
         }
         catch (Exception ex)
         {
@@ -1576,25 +1555,25 @@ public sealed class DockViewModel : ViewModelBase
             {
                 _downloadProgress = value.Percentage ?? _downloadProgress;
                 RaiseDownloadStateChanged();
-                Toast("正在下载更新 · " + _downloadProgress.ToString("0") + "%", "取消", CancelUpdateDownloadCommand, 5000, _downloadProgress);
+                Toast(AppText.Get(Language.DownloadingPrefix) + _downloadProgress.ToString("0") + "%", AppText.Get(Language.Cancel), CancelUpdateDownloadCommand, 5000, _downloadProgress);
             });
-            UpdateDownloadResult result = await _updateDownloader.DownloadAsync(
+            UpdateDownloadResult result = await _updates.DownloadAsync(
                 _pendingUpdate,
                 progress,
                 _downloadCancellation.Token).ConfigureAwait(true);
 
             _downloadedUpdatePath = result.FilePath;
             _downloadProgress = 100;
-            Toast("下载完成，请点击" + UpdateInstallButtonText);
+            Toast(AppText.Get(Language.DownloadReadyPrefix) + UpdateInstallButtonText);
         }
         catch (OperationCanceledException)
         {
-            Toast("已取消下载");
+            Toast(AppText.Get(Language.DownloadCanceled));
         }
         catch (Exception ex)
         {
             AppLog.Error("下载更新失败", ex);
-            Toast("下载失败，请重试");
+            Toast(AppText.Get(Language.DownloadFailed));
         }
         finally
         {
@@ -1607,36 +1586,25 @@ public sealed class DockViewModel : ViewModelBase
 
     private void CancelUpdateDownload() => _downloadCancellation?.Cancel();
 
-    private void InstallDownloadedUpdate()
+    private async Task InstallDownloadedUpdateAsync()
     {
         string? path = _downloadedUpdatePath;
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
         {
             ClearDownloadedUpdate(cancel: false);
-            Toast("安装包不存在，请重新下载");
+            Toast(AppText.Get(Language.PackageMissing));
             return;
         }
-
         try
         {
-            if (IsWindowsInstallerAsset)
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = path,
-                    UseShellExecute = true
-                });
-                _host?.Exit();
-            }
-            else
-            {
-                _host?.OpenUrl(path);
-            }
+            var result = await _updates.InstallAsync(new UpdateDownloadResult(path, Path.GetFileName(path), new FileInfo(path).Length));
+            Toast(result.Message);
+            if (result.ShouldExitApplication) _host?.Exit();
         }
         catch (Exception ex)
         {
-            AppLog.Error("打开安装包失败", ex);
-            Toast("打开安装包失败");
+            AppLog.Error(AppText.Get(Language.OpenPackageFailed), ex);
+            Toast(AppText.Get(Language.OpenPackageFailed));
         }
     }
 
@@ -1885,7 +1853,7 @@ public sealed class DockViewModel : ViewModelBase
         string value = item.EditingName.Trim();
         if (value.Length == 0)
         {
-            Toast("名称不能为空，已保留原名");
+            Toast(AppText.Get(Language.NameRequired));
             return;
         }
 
@@ -1896,7 +1864,7 @@ public sealed class DockViewModel : ViewModelBase
 
         item.Name = value;
         Save();
-        Toast("已重命名为 " + value);
+        Toast(AppText.Get(Language.RenamedPrefix) + value);
     }
 
     // ---------------- 拖动排序 ----------------
@@ -1927,7 +1895,7 @@ public sealed class DockViewModel : ViewModelBase
         ApplySort();
         RefreshFilter();
         Save();
-        Toast("顺序已保存");
+        Toast(AppText.Get(Language.OrderSaved));
     }
 
     private void DismissUpdate()

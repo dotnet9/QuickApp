@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
@@ -19,7 +19,7 @@ public sealed class UpdateDownloaderTests
         new Random(42).NextBytes(payload);
         string fileName = "QuickApp-test-" + Guid.NewGuid().ToString("N") + ".deb";
         var progress = new List<UpdateDownloadProgress>();
-        var downloader = new UpdateDownloader(new HttpClient(new StubHandler(payload)));
+        var downloader = new UpdateDownloader(new HttpClient(new StubHandler(payload)), new UpdateServiceOptions { Repository = "QuickApp", ProductName = "QuickApp" });
 
         UpdateDownloadResult result = await downloader.DownloadAsync(
             new UpdateInfo(
@@ -53,7 +53,7 @@ public sealed class UpdateDownloaderTests
     [Fact]
     public async Task Rejects_http_failure()
     {
-        var downloader = new UpdateDownloader(new HttpClient(new StubHandler(Array.Empty<byte>(), HttpStatusCode.ServiceUnavailable)));
+        var downloader = new UpdateDownloader(new HttpClient(new StubHandler(Array.Empty<byte>(), HttpStatusCode.ServiceUnavailable)), new UpdateServiceOptions { Repository = "QuickApp", ProductName = "QuickApp" });
 
         await Assert.ThrowsAsync<HttpRequestException>(() => downloader.DownloadAsync(
             new UpdateInfo(
@@ -71,7 +71,7 @@ public sealed class UpdateDownloaderTests
     public async Task Rejects_asset_when_checksum_does_not_match()
     {
         byte[] payload = { 1, 2, 3, 4 };
-        var downloader = new UpdateDownloader(new HttpClient(new MismatchedChecksumHandler(payload)));
+        var downloader = new UpdateDownloader(new HttpClient(new MismatchedChecksumHandler(payload)), new UpdateServiceOptions { Repository = "QuickApp", ProductName = "QuickApp" });
 
         await Assert.ThrowsAsync<System.IO.InvalidDataException>(() => downloader.DownloadAsync(
             new UpdateInfo(

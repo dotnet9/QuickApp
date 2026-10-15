@@ -1,4 +1,4 @@
-namespace QuickApp.Core.Models;
+﻿namespace QuickApp.Core.Models;
 
 /// <summary>应用设置。全部可持久化，字段名即配置文件字段名（camelCase）。</summary>
 public sealed class AppSettings
@@ -8,6 +8,12 @@ public sealed class AppSettings
 
     /// <summary>dark | light | system。</summary>
     public string Theme { get; set; } = "system";
+
+    /// <summary>共享主题色，与深浅模式分别保存。</summary>
+    public string Palette { get; set; } = "DotNet";
+
+    /// <summary>宿主语言资源的文化名称。</summary>
+    public string Language { get; set; } = "zh-CN";
 
     /// <summary>glass | flat。</summary>
     public string Style { get; set; } = "glass";

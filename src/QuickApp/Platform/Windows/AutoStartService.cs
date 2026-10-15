@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Globalization;
 using QuickApp.Core.Services;
 
@@ -36,7 +36,7 @@ public sealed class AutoStartService : IAutoStartService
         error = null;
         if (!OpenRunKey(NativeMethods.KeySetValue | NativeMethods.KeyQueryValue, out IntPtr key))
         {
-            error = "无法打开注册表 Run 键（可能被安全软件拦截）。";
+            error = AppText.Get(Language.RunKeyUnavailable);
             return false;
         }
 
@@ -47,7 +47,7 @@ public sealed class AutoStartService : IAutoStartService
                 int deleted = NativeMethods.RegDeleteValue(key, appName);
                 if (deleted != NativeMethods.ErrorSuccess && deleted != NativeMethods.ErrorFileNotFound)
                 {
-                    error = "删除开机启动项失败，错误码 " + deleted.ToString(CultureInfo.InvariantCulture);
+                    error = AppText.Get(Language.DeleteAutoStartFailedPrefix) + deleted.ToString(CultureInfo.InvariantCulture);
                     return false;
                 }
 
@@ -61,7 +61,7 @@ public sealed class AutoStartService : IAutoStartService
 
             if (written != NativeMethods.ErrorSuccess)
             {
-                error = "写入开机启动项失败，错误码 " + written.ToString(CultureInfo.InvariantCulture);
+                error = AppText.Get(Language.WriteAutoStartFailedPrefix) + written.ToString(CultureInfo.InvariantCulture);
                 return false;
             }
 

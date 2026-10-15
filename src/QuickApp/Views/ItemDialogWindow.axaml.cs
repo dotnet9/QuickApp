@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -17,10 +17,12 @@ public partial class ItemDialogWindow : CodeWFWindow
     private readonly TaskCompletionSource<LauncherItem?> _completion = new();
     private DockViewModel? _dock;
     private LauncherItem _draft = new();
+    private bool _editing;
 
     public ItemDialogWindow()
     {
         InitializeComponent();
+        RefreshKindOptions();
         CancelButton.Click += (_, _) => Close();
         SubmitButton.Click += OnSubmit;
         KindBox.SelectionChanged += (_, _) => UpdateFields();
@@ -40,15 +42,17 @@ public partial class ItemDialogWindow : CodeWFWindow
             if (e.Key == Key.Enter) { TargetBox.Focus(); e.Handled = true; }
         };
         Opened += (_, _) => NameBox.Focus();
+        CodeWF.Toolkit.Lang.I18nManager.Instance.CultureChanged += OnCultureChanged;
     }
 
     public void Attach(DockViewModel dock, LauncherItem item, bool editing)
     {
         _dock = dock;
+        _editing = editing;
         DataContext = dock;
         _draft = LauncherItemEditor.Copy(item);
-        Title = editing ? "编辑快捷项" : "添加快捷项";
-        SubmitText.Text = editing ? "保存" : "添加";
+        Title = editing ? AppText.Get(Language.EditItem) : AppText.Get(Language.AddItem);
+        SubmitText.Text = editing ? AppText.Get(Language.Save) : AppText.Get(Language.Add);
         NameBox.Text = item.Name;
         TargetBox.Text = item.Target;
         ArgumentsBox.Text = item.Arguments;
@@ -60,8 +64,20 @@ public partial class ItemDialogWindow : CodeWFWindow
         TerminalBox.IsChecked = item.RunInTerminal;
         KindBox.SelectedIndex = (int)item.Kind;
         HotkeyBox.IsEnabled = ClearHotkeyButton.IsEnabled = OperatingSystem.IsWindows();
-        if (!OperatingSystem.IsWindows()) HotkeyNote.Text = "当前平台暂不支持全局快捷键；已有配置会保留。";
+        if (!OperatingSystem.IsWindows()) HotkeyNote.Text = AppText.Get(Language.UnsupportedHotkey);
+        RefreshKindOptions();
         UpdateFields();
+    }
+
+    /// <summary>重建选项文本并保留类型，避免下拉框的选中内容缓存旧语言。</summary>
+    private void RefreshKindOptions()
+    {
+        var selected = Math.Max(0, KindBox.SelectedIndex);
+        KindBox.ItemsSource = new[]
+        {
+            AppText.Get(Language.ProgramFileFolder), AppText.Get(Language.Url), AppText.Get(Language.Command)
+        };
+        KindBox.SelectedIndex = selected;
     }
 
     public static async Task<LauncherItem?> ShowAsync(Window owner, DockViewModel dock, LauncherItem item, bool editing = false)
@@ -76,16 +92,26 @@ public partial class ItemDialogWindow : CodeWFWindow
 
     protected override void OnClosed(EventArgs e)
     {
+        CodeWF.Toolkit.Lang.I18nManager.Instance.CultureChanged -= OnCultureChanged;
         _completion.TrySetResult(null);
         base.OnClosed(e);
+    }
+
+    private void OnCultureChanged(object? sender, EventArgs e)
+    {
+        Title = AppText.Get(_editing ? Language.EditItem : Language.AddItem);
+        SubmitText.Text = AppText.Get(_editing ? Language.Save : Language.Add);
+        if (!OperatingSystem.IsWindows()) HotkeyNote.Text = AppText.Get(Language.UnsupportedHotkey);
+        RefreshKindOptions();
+        UpdateFields();
     }
 
     private void UpdateFields()
     {
         ItemKind kind = (ItemKind)Math.Max(0, KindBox.SelectedIndex);
         bool app = kind == ItemKind.App, command = kind == ItemKind.Command;
-        TargetLabel.Text = command ? "命令" : kind == ItemKind.Web ? "网址" : "路径或程序名";
-        TargetBox.PlaceholderText = command ? "例如：git status" : kind == ItemKind.Web ? "例如：https://dotnet9.com" : @"例如：C:\Work 或 explorer.exe";
+        TargetLabel.Text = command ? AppText.Get(Language.Command) : kind == ItemKind.Web ? AppText.Get(Language.Url) : AppText.Get(Language.Target);
+        TargetBox.PlaceholderText = command ? AppText.Get(Language.CommandExample) : kind == ItemKind.Web ? AppText.Get(Language.UrlExample) : AppText.Get(Language.TargetExample);
         ArgumentsPanel.IsVisible = InstanceCountPanel.IsVisible =
             BrowseFileButton.IsVisible = BrowseFolderButton.IsVisible = app;
         WorkingDirectoryPanel.IsVisible = kind != ItemKind.Web;
@@ -99,7 +125,7 @@ public partial class ItemDialogWindow : CodeWFWindow
         if (e.Key == Key.Escape) { Close(); return; }
         if (e.KeyModifiers == KeyModifiers.None && e.Key is Key.Back or Key.Delete) { HotkeyBox.Text = string.Empty; return; }
         if (e.Key is Key.LeftCtrl or Key.RightCtrl or Key.LeftAlt or Key.RightAlt or Key.LeftShift or Key.RightShift or Key.LWin or Key.RWin) return;
-        if (e.KeyModifiers == KeyModifiers.None) { ShowError("快捷键需要 Ctrl、Alt、Shift 或 Win 修饰键。"); return; }
+        if (e.KeyModifiers == KeyModifiers.None) { ShowError(AppText.Get(Language.HotkeyModifiersRequired)); return; }
         string key = e.Key is >= Key.D0 and <= Key.D9 ? ((int)e.Key - (int)Key.D0).ToString() : e.Key.ToString();
         string gesture = (e.KeyModifiers.HasFlag(KeyModifiers.Control) ? "Ctrl+" : string.Empty)
             + (e.KeyModifiers.HasFlag(KeyModifiers.Alt) ? "Alt+" : string.Empty)
@@ -114,20 +140,20 @@ public partial class ItemDialogWindow : CodeWFWindow
     {
         try
         {
-            var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions { Title = "选择程序或文件" });
+            var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions { Title = AppText.Get(Language.SelectProgram) });
             if (files.Count > 0) TargetBox.Text = files[0].TryGetLocalPath();
         }
-        catch (Exception ex) { ShowError("选择文件失败：" + ex.Message); }
+        catch (Exception ex) { ShowError(AppText.Get(Language.SelectFileFailedPrefix) + ex.Message); }
     }
 
     private async Task PickFolderAsync(TextBox destination)
     {
         try
         {
-            var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "选择目录" });
+            var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = AppText.Get(Language.SelectFolder) });
             if (folders.Count > 0) destination.Text = folders[0].TryGetLocalPath();
         }
-        catch (Exception ex) { ShowError("选择目录失败：" + ex.Message); }
+        catch (Exception ex) { ShowError(AppText.Get(Language.SelectFolderFailedPrefix) + ex.Message); }
     }
 
     private void OnSubmit(object? sender, RoutedEventArgs e)

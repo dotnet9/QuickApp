@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Diagnostics;
 using QuickApp.Core.Models;
 
@@ -16,7 +16,7 @@ public sealed class ProcessLauncher : ILauncher
         LaunchPlan plan = LaunchPlanner.Create(item);
         if (string.IsNullOrWhiteSpace(plan.FileName))
         {
-            error = "该项目没有可执行的目标。";
+            error = AppText.Get(Language.EmptyLaunchTarget);
             return false;
         }
 

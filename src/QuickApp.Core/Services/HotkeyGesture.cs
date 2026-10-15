@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Globalization;
 
 namespace QuickApp.Core.Services;
@@ -28,14 +28,14 @@ public readonly record struct HotkeyGesture(HotkeyModifiers Modifiers, int Virtu
 
         if (string.IsNullOrWhiteSpace(gesture))
         {
-            error = "热键描述为空。";
+            error = AppText.Get(Language.EmptyHotkey);
             return false;
         }
 
         string[] tokens = gesture.Split('+', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         if (tokens.Length < 2)
         {
-            error = "热键至少要有一个修饰键（Ctrl/Alt/Shift/Win）加一个键。";
+            error = AppText.Get(Language.HotkeyRequiresModifier);
             return false;
         }
 
@@ -57,14 +57,14 @@ public readonly record struct HotkeyGesture(HotkeyModifiers Modifiers, int Virtu
                     modifiers |= HotkeyModifiers.Win;
                     break;
                 default:
-                    error = "「" + tokens[i] + "」不是修饰键，修饰键只支持 Ctrl/Alt/Shift/Win。";
+                    error = "「" + tokens[i] + AppText.Get(Language.InvalidModifierSuffix);
                     return false;
             }
         }
 
         if (!TryMapKey(tokens[^1], out int virtualKey))
         {
-            error = "无法识别的键名：" + tokens[^1] + "。";
+            error = AppText.Get(Language.UnknownKeyPrefix) + tokens[^1] + "。";
             return false;
         }
 

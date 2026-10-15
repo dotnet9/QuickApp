@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Reactive;
 using System.Windows.Input;
 using ReactiveUI;
@@ -49,9 +49,13 @@ public sealed class TrayViewModel : ViewModelBase
 
     public ICommand ExitCommand { get; }
 
-    public string ToggleDockText => _dock.IsDockVisible ? "隐藏" : "显示";
+    public string SettingsText => AppText.Get(Language.Settings);
 
-    public string AutoStartText => "开机启动（" + (_dock.Settings.AutoStart ? "开" : "关") + "）";
+    public string ExitText => AppText.Get(Language.Exit);
 
-    public string PinText => "钉住（" + (_dock.IsPinned ? "开" : "关") + "）";
+    public string ToggleDockText => _dock.IsDockVisible ? AppText.Get(Language.Hide) : AppText.Get(Language.Show);
+
+    public string AutoStartText => AppText.Format(Language.TrayAutoStart, _dock.Settings.AutoStart ? AppText.Get(Language.On) : AppText.Get(Language.Off));
+
+    public string PinText => AppText.Format(Language.TrayPin, _dock.IsPinned ? AppText.Get(Language.On) : AppText.Get(Language.Off));
 }

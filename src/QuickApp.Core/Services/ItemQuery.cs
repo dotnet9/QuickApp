@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
@@ -205,9 +205,9 @@ public static class ItemQuery
 
     public static string KindLabel(ItemKind kind) => kind switch
     {
-        ItemKind.Web => "网页",
-        ItemKind.Command => "命令",
-        _ => "应用"
+        ItemKind.Web => AppText.Get(Language.Web),
+        ItemKind.Command => AppText.Get(Language.Command),
+        _ => AppText.Get(Language.Application)
     };
 
     /// <summary>名称为空时从目标推断：文件名去扩展名，网址取主机名。</summary>
@@ -215,7 +215,7 @@ public static class ItemQuery
     {
         if (item is null || string.IsNullOrWhiteSpace(item.Target))
         {
-            return "未命名";
+            return AppText.Get(Language.Untitled);
         }
 
         if (!string.IsNullOrWhiteSpace(item.Name))

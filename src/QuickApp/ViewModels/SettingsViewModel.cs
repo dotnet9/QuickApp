@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -11,6 +11,7 @@ using ReactiveUI;
 namespace QuickApp.ViewModels;
 
 public sealed record MonitorOption(int Index, string Label);
+public sealed record AppearanceOption(string Key, string Text, IBrush Swatch);
 
 /// <summary>
 /// 设置窗口的视图模型：每个 setter 直接改 Dock 的设置并即时生效，关闭窗口时统一存盘。
@@ -19,10 +20,12 @@ public sealed class SettingsViewModel : ViewModelBase
 {
     private readonly DockViewModel _dock;
     private int _primaryMonitorIndex;
+    private bool _rebuildingPaletteOptions;
 
     public SettingsViewModel(DockViewModel dock)
     {
         _dock = dock;
+        RebuildPaletteOptions();
         CheckUpdateCommand = ReactiveCommand.CreateFromTask(async () =>
         {
             await _dock.CheckUpdateAsync();
@@ -76,6 +79,64 @@ public sealed class SettingsViewModel : ViewModelBase
             ApplyChange(palette: false, size: true);
         });
     }
+
+    public ObservableCollection<AppearanceOption> PaletteOptions { get; } = new();
+    public ObservableCollection<AppearanceOption> LanguageOptions { get; } = new()
+    {
+        new("zh-CN", AppText.Get(Language.ChineseLanguage), Brushes.Transparent), new("en-US", "English", Brushes.Transparent)
+    };
+    public AppearanceOption? SelectedPalette
+    {
+        get => PaletteOptions.FirstOrDefault(option => option.Key == Settings.Palette);
+        set
+        {
+            if (_rebuildingPaletteOptions || value is null || value.Key == Settings.Palette) return;
+            Settings.Palette = value.Key;
+            ApplyChange(palette: true, size: false);
+            _dock.Save();
+            this.RaisePropertyChanged();
+        }
+    }
+    public AppearanceOption? SelectedLanguage
+    {
+        get => LanguageOptions.FirstOrDefault(option => option.Key == Settings.Language);
+        set
+        {
+            if (value is null || value.Key == Settings.Language) return;
+            Settings.Language = value.Key;
+            CodeWF.Toolkit.Lang.I18nManager.Instance.Culture = System.Globalization.CultureInfo.GetCultureInfo(value.Key);
+            RebuildPaletteOptions();
+            _dock.Save();
+            this.RaisePropertyChanged();
+        }
+    }
+    private void RebuildPaletteOptions()
+    {
+        _rebuildingPaletteOptions = true;
+        PaletteOptions.Clear();
+        foreach (var palette in Enum.GetValues<CodeWF.Avalonia.Controls.Themes.StudioPalette>())
+        {
+            Avalonia.Application.Current!.TryGetResource("StudioSwatch" + palette, Avalonia.Application.Current.ActualThemeVariant, out var swatch);
+            var key = palette switch
+            {
+                CodeWF.Avalonia.Controls.Themes.StudioPalette.Default => Language.DefaultPalette,
+                CodeWF.Avalonia.Controls.Themes.StudioPalette.Desert => Language.DesertPalette,
+                CodeWF.Avalonia.Controls.Themes.StudioPalette.Aquatic => Language.AquaticPalette,
+                CodeWF.Avalonia.Controls.Themes.StudioPalette.Dusk => Language.DuskPalette,
+                CodeWF.Avalonia.Controls.Themes.StudioPalette.NightSky => Language.NightSkyPalette,
+                CodeWF.Avalonia.Controls.Themes.StudioPalette.DotNet => Language.DotNetPalette,
+                CodeWF.Avalonia.Controls.Themes.StudioPalette.Aurora => Language.AuroraPalette,
+                _ => Language.EmberPalette
+            };
+            PaletteOptions.Add(new(palette.ToString(), AppText.Get(key), swatch as IBrush ?? Brushes.Transparent));
+        }
+        _rebuildingPaletteOptions = false;
+        this.RaisePropertyChanged(nameof(SelectedPalette));
+    }
+    public string PlatformText => $".NET {Environment.Version.Major} · Avalonia {typeof(Avalonia.Application).Assembly.GetName().Version?.ToString(3)} · {System.Runtime.InteropServices.RuntimeInformation.RuntimeIdentifier}";
+    public string BuildTimeText => CodeWF.Toolkit.Core.Extensions.AssemblyExtensions.CompileTime(typeof(DockViewModel).Assembly)?.ToString("yyyy-MM-dd HH:mm:ss") ?? "—";
+
+    public DockViewModel Dock => _dock;
 
     public ICommand CheckUpdateCommand { get; }
 
@@ -287,7 +348,7 @@ public sealed class SettingsViewModel : ViewModelBase
     }
 
     public string AutoHideDelayText => Settings.AutoHideDelayMs <= 0
-        ? "不自动隐藏"
+        ? AppText.Get(Language.NoAutoHide)
         : $"{Settings.AutoHideDelayMs} ms";
 
     public bool CollapseAfterLaunch
@@ -342,7 +403,7 @@ public sealed class SettingsViewModel : ViewModelBase
 
     public string ConfigFilePath => _dock.ConfigFilePath;
     public bool HasConfigLoadError => _dock.HasConfigLoadError;
-    public string ConfigLoadStatus => "读取配置失败，原数据已保留：" + _dock.ConfigLoadError;
+    public string ConfigLoadStatus => AppText.Get(Language.ConfigPreservedPrefix) + _dock.ConfigLoadError;
     public bool ReloadConfig() => _dock.ReloadConfig();
 
     /// <summary>当前快捷项数量（导入确认摘要用）。</summary>

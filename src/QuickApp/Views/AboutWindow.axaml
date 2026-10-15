@@ -1,0 +1,45 @@
+<codewf:CodeWFWindow xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:codewf="https://codewf.com"
+        xmlns:q="clr-namespace:QuickApp.Core.I18n;assembly=QuickApp.Core"
+        xmlns:vm="clr-namespace:QuickApp.ViewModels"
+        x:Class="QuickApp.Views.AboutWindow" x:DataType="vm:SettingsViewModel"
+        Title="{codewf:I18n {x:Static q:Language.About}}"
+        Width="580" Height="560" MinWidth="520" MinHeight="500"
+        WindowStartupLocation="CenterOwner" CanMinimize="False" CanMaximize="False"
+        Background="{Binding BackgroundBrush}" Foreground="{Binding TextBrush}"
+        TitleBarBackground="{Binding BackgroundBrush}" TitleBarForeground="{Binding TextBrush}">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="28" Spacing="18">
+      <Grid ColumnDefinitions="56,*" ColumnSpacing="16">
+        <Image Width="56" Height="56" Source="avares://QuickApp/Assets/logo.png" />
+        <StackPanel Grid.Column="1" Spacing="5" VerticalAlignment="Center">
+          <TextBlock Text="QuickApp" FontSize="24" FontWeight="SemiBold" />
+          <TextBlock Text="{codewf:I18n {x:Static q:Language.AppDescription}}" Foreground="{Binding TextDimBrush}" />
+        </StackPanel>
+      </Grid>
+      <Grid ColumnDefinitions="110,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="12">
+        <TextBlock Text="{codewf:I18n {x:Static q:Language.Version}}" /><TextBlock Grid.Column="1" Text="{Binding VersionText}" />
+        <TextBlock Grid.Row="1" Text="{codewf:I18n {x:Static q:Language.Platform}}" /><TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding PlatformText}" TextWrapping="Wrap" />
+        <TextBlock Grid.Row="2" Text="{codewf:I18n {x:Static q:Language.BuildTime}}" /><TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding BuildTimeText}" />
+        <TextBlock Grid.Row="3" Text="{codewf:I18n {x:Static q:Language.Author}}" /><TextBlock Grid.Row="3" Grid.Column="1" Text="{codewf:I18n {x:Static q:Language.AuthorName}}" />
+      </Grid>
+      <TextBlock Text="https://github.com/dotnet9/QuickApp" FontSize="12" TextWrapping="Wrap" Foreground="{Binding TextDimBrush}" />
+      <Border Height="1" Background="{Binding PanelBorderBrush}" />
+      <StackPanel Spacing="10">
+        <TextBlock Text="{Binding Dock.UpdateResultText}" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding Dock.UpdateDisplayText}" IsVisible="{Binding Dock.UpdateAvailable}" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding Dock.UpdateNoteText}" Foreground="{Binding TextDimBrush}" TextWrapping="Wrap" />
+        <ProgressBar Minimum="0" Maximum="100" Value="{Binding Dock.DownloadProgress}" IsVisible="{Binding Dock.IsDownloadingUpdate}" />
+        <WrapPanel Orientation="Horizontal">
+          <Button Margin="0,0,8,8" Content="{codewf:I18n {x:Static q:Language.CheckUpdates}}" Command="{Binding Dock.CheckUpdateCommand}" IsEnabled="{Binding !Dock.IsCheckingUpdate}" />
+          <Button Margin="0,0,8,8" Content="{codewf:I18n {x:Static q:Language.Download}}" Command="{Binding Dock.DownloadUpdateCommand}" IsVisible="{Binding Dock.CanDownloadUpdate}" />
+          <Button Margin="0,0,8,8" Content="{Binding Dock.UpdateInstallButtonText}" Command="{Binding Dock.InstallUpdateCommand}" IsVisible="{Binding Dock.IsUpdateReady}" />
+          <Button Margin="0,0,8,8" Content="{codewf:I18n {x:Static q:Language.OpenReleasePage}}" Command="{Binding Dock.OpenUpdateCommand}" IsVisible="{Binding Dock.NeedsUpdatePage}" />
+          <Button Margin="0,0,8,8" Content="{codewf:I18n {x:Static q:Language.Cancel}}" Command="{Binding Dock.CancelUpdateDownloadCommand}" IsVisible="{Binding Dock.IsDownloadingUpdate}" />
+        </WrapPanel>
+      </StackPanel>
+      <TextBlock Text="{codewf:I18n {x:Static q:Language.Copyright}}" Foreground="{Binding TextDimBrush}" FontSize="12" />
+    </StackPanel>
+  </ScrollViewer>
+</codewf:CodeWFWindow>

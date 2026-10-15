@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using Avalonia.Threading;
@@ -40,7 +40,7 @@ public sealed class HotkeyService : IHotkeyService
             {
                 if (!HotkeyGesture.TryParse(binding.Gesture, out HotkeyGesture gesture, out string? error))
                     errors.Add(binding.Name + "：" + error);
-                else if (!seen.Add(gesture)) errors.Add(binding.Name + "：快捷键重复。");
+                else if (!seen.Add(gesture)) errors.Add(binding.Name + AppText.Get(Language.DuplicateHotkeySuffix));
                 else parsed.Add((binding, gesture));
             }
             if (parsed.Count == 0) return errors;
@@ -52,7 +52,7 @@ public sealed class HotkeyService : IHotkeyService
             if (!ready.Wait(TimeSpan.FromSeconds(3)))
             {
                 StopThread();
-                return new[] { "快捷键注册超时，请重试。" };
+                return new[] { AppText.Get(Language.HotkeyTimeout) };
             }
             return errors.ToArray();
         }
@@ -75,7 +75,7 @@ public sealed class HotkeyService : IHotkeyService
                 uint modifiers = MapModifiers(gesture.Modifiers) | NativeMethods.ModNoRepeat;
                 if (hwnd != IntPtr.Zero && NativeMethods.RegisterHotKey(hwnd, i + 1, modifiers, (uint)gesture.VirtualKey))
                     registered[i + 1] = binding;
-                else errors.Add(binding.Name + "（" + binding.Gesture + "）：快捷键已被其他程序占用或注册失败。");
+                else errors.Add(binding.Name + "（" + binding.Gesture + AppText.Get(Language.HotkeyOccupiedSuffix));
             }
             initialized = true;
             ready.Set();

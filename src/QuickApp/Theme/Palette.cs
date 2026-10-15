@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Globalization;
 using Avalonia.Media;
 using QuickApp.Core.Models;
@@ -24,35 +24,19 @@ public sealed record Palette(
     Color Danger,
     Color MenuOpaque)
 {
-    public static Palette Dark { get; } = new(
-        Panel: Color.Parse("#1A1D24"),
-        PanelBorder: Color.Parse("#1FFFFFFF"),
-        Text: Color.Parse("#EEF1F6"),
-        TextDim: Color.Parse("#9AA4B3"),
-        Accent: Color.Parse("#5AA2FF"),
-        AccentInk: Color.Parse("#08111F"),
-        Hover: Color.Parse("#1AFFFFFF"),
-        Active: Color.Parse("#29FFFFFF"),
-        Bubble: Color.Parse("#F7181B21"),
-        Menu: Color.Parse("#FA181B21"),
-        MenuHover: Color.Parse("#14FFFFFF"),
-        Danger: Color.Parse("#FF6B6B"),
-        MenuOpaque: Color.Parse("#F8181B21"));
-
-    public static Palette Light { get; } = new(
-        Panel: Color.Parse("#FFFFFF"),
-        PanelBorder: Color.Parse("#1F111826"),
-        Text: Color.Parse("#111826"),
-        TextDim: Color.Parse("#5C6675"),
-        Accent: Color.Parse("#2563EB"),
-        AccentInk: Color.Parse("#FFFFFF"),
-        Hover: Color.Parse("#0F111826"),
-        Active: Color.Parse("#1F111826"),
-        Bubble: Color.Parse("#FBFFFFFF"),
-        Menu: Color.Parse("#FDFFFFFF"),
-        MenuHover: Color.Parse("#0F111826"),
-        Danger: Color.Parse("#D92D20"),
-        MenuOpaque: Color.Parse("#FDFFFFFF"));
+    /// <summary>直接使用共享主题令牌，禁止按颜色值识别主题。</summary>
+    public static Palette FromApplication()
+    {
+        Color Token(string name)
+        {
+            var app = Avalonia.Application.Current!;
+            if (!app.TryGetResource(name, app.ActualThemeVariant, out var value)) throw new InvalidOperationException(name);
+            return value is ISolidColorBrush brush ? brush.Color : (Color)value!;
+        }
+        return new(Token("StudioSurface"), Token("StudioBorder"), Token("StudioText"), Token("StudioMuted"),
+            Token("StudioAccent"), Token("ButtonSolidForeground"), Token("StudioRaised"), Token("StudioRaised"),
+            Token("StudioRaised"), Token("StudioSurface"), Token("StudioRaised"), Token("SemiColorDanger"), Token("StudioSurface"));
+    }
 
     /// <summary>配色随主题与不透明度重算，扁平风格直接把面板做成不透明。</summary>
     public Palette WithOpacity(double opacity, bool flat)

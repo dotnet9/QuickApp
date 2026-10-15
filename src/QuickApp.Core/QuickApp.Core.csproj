@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -11,4 +11,9 @@
     <EmbeddedResource Include="RecommendedApps.json" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="CodeWF.Toolkit.Core" />
+    <PackageReference Include="CodeWF.Toolkit.Lang" />
+    <Content Include="I18n/*.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

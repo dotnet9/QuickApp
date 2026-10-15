@@ -56,7 +56,7 @@ public sealed class ItemViewModel : ViewModelBase
     public bool ShowSystemAdd => IsSystemResult;
 
     /// <summary>系统应用行副标题（原型 .search-installed-copy span：「开始菜单 · 应用/网页/命令」）。</summary>
-    public string ResultStatus => IsSystemResult ? "开始菜单 · " + KindLabel : string.Empty;
+    public string ResultStatus => IsSystemResult ? AppText.Get(Language.StartMenuPrefix) + KindLabel : string.Empty;
 
     public string Id => Model.Id;
 

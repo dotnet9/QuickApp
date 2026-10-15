@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Globalization;
 
 namespace QuickApp.Core.Services;
@@ -207,10 +207,10 @@ public static class DockPlacement
     /// <summary>日志/提示用的边缘名称。</summary>
     public static string Label(Models.DockEdge edge) => edge switch
     {
-        Models.DockEdge.Bottom => "下",
-        Models.DockEdge.Left => "左",
-        Models.DockEdge.Right => "右",
-        _ => "上"
+        Models.DockEdge.Bottom => AppText.Get(Language.Bottom),
+        Models.DockEdge.Left => AppText.Get(Language.Left),
+        Models.DockEdge.Right => AppText.Get(Language.Right),
+        _ => AppText.Get(Language.Top)
     };
 
     internal static string Invariant(int value) => value.ToString(CultureInfo.InvariantCulture);

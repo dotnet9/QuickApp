@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -189,7 +189,7 @@ internal sealed class PortableHotkeyService : IHotkeyService
     public string? LastParseError { get; private set; }
 
     public IReadOnlyList<string> RegisterBindings(IReadOnlyList<HotkeyBinding> bindings)
-        => bindings.Select(binding => binding.Name + "：当前平台暂不支持全局热键。").ToArray();
+        => bindings.Select(binding => binding.Name + AppText.Get(Language.UnsupportedPlatformHotkeySuffix)).ToArray();
 
     public bool TryRegister(string gesture, Action callback, out string? error)
     {
@@ -201,7 +201,7 @@ internal sealed class PortableHotkeyService : IHotkeyService
         }
 
         LastParseError = null;
-        error = "当前平台暂不支持全局热键。";
+        error = AppText.Get(Language.UnsupportedPlatformHotkey);
         _log?.Invoke(error);
         return false;
     }
@@ -222,7 +222,7 @@ internal sealed class PortableAutoStartService : IAutoStartService
 
     public bool SetEnabled(string appName, bool enabled, string executablePath, out string? error)
     {
-        error = "当前平台暂不支持开机启动。";
+        error = AppText.Get(Language.UnsupportedAutoStart);
         _log?.Invoke(error);
         return false;
     }

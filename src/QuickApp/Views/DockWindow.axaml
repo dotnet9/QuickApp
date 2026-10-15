@@ -1,5 +1,7 @@
-<Window xmlns="https://github.com/avaloniaui"
+﻿<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:l="https://codewf.com"
+        xmlns:q="clr-namespace:QuickApp.Core.I18n;assembly=QuickApp.Core"
         xmlns:vm="clr-namespace:QuickApp.ViewModels"
         x:Class="QuickApp.Views.DockWindow"
         x:DataType="vm:DockViewModel"
@@ -82,7 +84,7 @@
                     VerticalAlignment="Top"
                     IsVisible="{Binding ShowRemove}"
                     Command="{Binding RemoveCommand}"
-                    ToolTip.Tip="移除">
+                    ToolTip.Tip="{l:I18n {x:Static q:Language.Remove}}">
               <Path Data="M6,6 L18,18 M18,6 L6,18"
                     Stroke="{Binding TextBrush}"
                     StrokeThickness="2.6"
@@ -172,7 +174,7 @@
                     Height="30"
                     Padding="0"
                     Command="{Binding AddToDockCommand}"
-                    ToolTip.Tip="添加到 Dock">
+                    ToolTip.Tip="{l:I18n {x:Static q:Language.AddToDockAction}}">
               <Path Data="M12,5 L12,19 M5,12 L19,12"
                     Stroke="{DynamicResource QAAccentBrush}"
                     StrokeThickness="2.2"
@@ -359,7 +361,7 @@
             <TextBox Grid.Column="1"
                      Name="SearchBox"
                      Text="{Binding SearchQuery}"
-                     PlaceholderText="搜索应用 / 网址 / 命令 / 拼音…"
+                     PlaceholderText="{l:I18n {x:Static q:Language.SearchWatermark}}"
                      MinWidth="{Binding SearchMinWidth}"
                      Padding="2,6"
                      FontSize="13"
@@ -376,7 +378,7 @@
                     Width="28"
                     Height="28"
                     Command="{Binding ToggleSearchCommand}"
-                    ToolTip.Tip="关闭搜索">
+                    ToolTip.Tip="{l:I18n {x:Static q:Language.CloseSearch}}">
               <Path Data="M6,6 L18,18 M18,6 L6,18"
                     Stroke="{Binding TextDimBrush}"
                     StrokeThickness="1.75"
@@ -510,8 +512,8 @@
                          MaxWidth="{Binding ActionMaxWidth}"
                          MaxHeight="{Binding ActionMaxHeight}"
                          VerticalAlignment="Center">
-                <Button Theme="{StaticResource IconButton}" Name="SearchButton" Width="28" Height="28" Classes.active="{Binding IsSearchOpen}" Command="{Binding ToggleSearchCommand}" ToolTip.Tip="搜索（S）" />
-                <Button Theme="{StaticResource IconButton}" Name="PinButton" Width="28" Height="28" Classes.active="{Binding IsPinned}" Command="{Binding TogglePinCommand}" ToolTip.Tip="钉住 Dock">
+                <Button Theme="{StaticResource IconButton}" Name="SearchButton" Width="28" Height="28" Classes.active="{Binding IsSearchOpen}" Command="{Binding ToggleSearchCommand}" ToolTip.Tip="{l:I18n {x:Static q:Language.SearchShortcut}}" />
+                <Button Theme="{StaticResource IconButton}" Name="PinButton" Width="28" Height="28" Classes.active="{Binding IsPinned}" Command="{Binding TogglePinCommand}" ToolTip.Tip="{l:I18n {x:Static q:Language.PinDock}}">
                   <Path Data="M9.5,3 L14.5,3 L13.7,8.2 L17,11.5 L7,11.5 L10.3,8.2 Z M12,11.5 L12,21"
                         Stroke="{Binding $parent[Button].Foreground}"
                         StrokeThickness="1.7"
@@ -521,8 +523,8 @@
                         Height="16"
                         Stretch="Uniform" />
                 </Button>
-                <Button Theme="{StaticResource IconButton}" Name="MoreButton" Width="28" Height="28" ToolTip.Tip="更多操作" />
-                <Button Theme="{StaticResource IconButton}" Classes="low-priority" Name="CollapseButton" Width="28" Height="28" Command="{Binding HideCommand}" ToolTip.Tip="收起" />
+                <Button Theme="{StaticResource IconButton}" Name="MoreButton" Width="28" Height="28" ToolTip.Tip="{l:I18n {x:Static q:Language.MoreActions}}" />
+                <Button Theme="{StaticResource IconButton}" Classes="low-priority" Name="CollapseButton" Width="28" Height="28" Command="{Binding HideCommand}" ToolTip.Tip="{l:I18n {x:Static q:Language.Collapse}}" />
               </WrapPanel>
             </StackPanel>
           </Border>
@@ -535,19 +537,19 @@
           <StackPanel Spacing="10">
             <DockPanel>
               <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-                <Button Theme="{StaticResource LinkButton}" Classes="primary update-chip" Content="下载"
+                <Button Theme="{StaticResource LinkButton}" Classes="primary update-chip" Content="{l:I18n {x:Static q:Language.Download}}"
                         IsVisible="{Binding CanDownloadUpdate}"
                         Command="{Binding DownloadUpdateCommand}" />
-                <Button Theme="{StaticResource LinkButton}" Classes="primary update-chip" Content="打开发布页"
+                <Button Theme="{StaticResource LinkButton}" Classes="primary update-chip" Content="{l:I18n {x:Static q:Language.OpenReleasePage}}"
                         IsVisible="{Binding NeedsUpdatePage}"
                         Command="{Binding OpenUpdateCommand}" />
                 <Button Theme="{StaticResource LinkButton}" Classes="primary update-chip" Content="{Binding UpdateInstallButtonText}"
                         IsVisible="{Binding IsUpdateReady}"
                         Command="{Binding InstallUpdateCommand}" />
-                <Button Theme="{StaticResource LinkButton}" Classes="update-chip" Content="取消"
+                <Button Theme="{StaticResource LinkButton}" Classes="update-chip" Content="{l:I18n {x:Static q:Language.Cancel}}"
                         IsVisible="{Binding IsDownloadingUpdate}"
                         Command="{Binding CancelUpdateDownloadCommand}" />
-                <Button Theme="{StaticResource LinkButton}" Classes="update-chip" Content="忽略"
+                <Button Theme="{StaticResource LinkButton}" Classes="update-chip" Content="{l:I18n {x:Static q:Language.Dismiss}}"
                         IsVisible="{Binding !IsDownloadingUpdate}"
                         Command="{Binding DismissUpdateCommand}" />
               </StackPanel>
@@ -576,11 +578,11 @@
                 IsVisible="{Binding ShowUpdatePill}"
                 HorizontalAlignment="Center"
                 Click="OnUpdatePillClick"
-                ToolTip.Tip="发现新版本，点击查看">
+                ToolTip.Tip="{l:I18n {x:Static q:Language.NewVersionHint}}">
           <StackPanel Orientation="Horizontal" Spacing="5">
             <Ellipse Classes="pill-dot" Width="6" Height="6" VerticalAlignment="Center"
                      Fill="{Binding AccentBrush}" />
-            <TextBlock Text="新版本" FontSize="11" VerticalAlignment="Center" />
+            <TextBlock Text="{l:I18n {x:Static q:Language.NewVersion}}" FontSize="11" VerticalAlignment="Center" />
           </StackPanel>
         </Button>
 
@@ -589,11 +591,11 @@
           <Border Height="1" Background="{Binding PanelBorderBrush}" />
           <DockPanel Margin="8,4,8,0">
             <Button DockPanel.Dock="Right"
-                    Theme="{StaticResource LinkButton}" Classes="primary" Content="完成"
+                    Theme="{StaticResource LinkButton}" Classes="primary" Content="{l:I18n {x:Static q:Language.Done}}"
                     Command="{Binding ToggleEditCommand}" VerticalAlignment="Center" />
             <TextBlock Name="EditHint"
                        IsVisible="{Binding !IsVertical}"
-                       Text="拖动排序 · 双击改名 · × 移除"
+                       Text="{l:I18n {x:Static q:Language.EditingHint}}"
                        FontSize="11"
                        VerticalAlignment="Center"
                        Foreground="{Binding TextDimBrush}" />

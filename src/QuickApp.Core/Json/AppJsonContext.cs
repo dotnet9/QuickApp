@@ -1,4 +1,4 @@
-using System.Text.Json.Serialization;
+﻿using System.Text.Json.Serialization;
 using QuickApp.Core.Models;
 
 namespace QuickApp.Core.Json;
@@ -13,9 +13,9 @@ namespace QuickApp.Core.Json;
 [JsonSerializable(typeof(AppConfig))]
 [JsonSerializable(typeof(AppSettings))]
 [JsonSerializable(typeof(LauncherItem))]
-[JsonSerializable(typeof(QuickApp.Core.Services.GitHubRelease))]
-[JsonSerializable(typeof(QuickApp.Core.Services.GitHubAsset))]
-[JsonSerializable(typeof(QuickApp.Core.Services.UpdateCheckState))]
+[JsonSerializable(typeof(CodeWF.Toolkit.Core.UpdateChecking.GitHubRelease))]
+[JsonSerializable(typeof(CodeWF.Toolkit.Core.UpdateChecking.GitHubAsset))]
+[JsonSerializable(typeof(CodeWF.Toolkit.Core.UpdateChecking.UpdateCheckState))]
 [JsonSerializable(typeof(RecommendedApp))]
 [JsonSerializable(typeof(System.Collections.Generic.List<RecommendedApp>))]
 [JsonSerializable(typeof(QuickApp.Core.Services.RecommendedAppsState))]

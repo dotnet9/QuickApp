@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
@@ -82,9 +82,9 @@ public sealed class RecommendedAppCardViewModel : ViewModelBase
     /// <summary>卡片图标：Assets/rec-{id}.png 命名约定，缺失时回退 QuickApp logo；两者都不可用为 null（图标区留空）。</summary>
     public IImage? Icon { get; }
 
-    public string DisplayName => string.IsNullOrWhiteSpace(_app.DisplayName) ? _app.Name : _app.DisplayName!;
+    public string DisplayName => CodeWF.Toolkit.Lang.I18nManager.Instance.Culture?.Name == "en-US" || string.IsNullOrWhiteSpace(_app.DisplayName) ? _app.Name : _app.DisplayName!;
 
-    public string Description => _app.Description ?? string.Empty;
+    public string Description => _app.Id == "vex" ? AppText.Get(Language.VexDescription) : _app.Description ?? string.Empty;
 
     public ICommand InstallCommand { get; }
 
@@ -125,7 +125,7 @@ public sealed class RecommendedAppCardViewModel : ViewModelBase
             string assetSize = _assetSize is > 0 ? FormatSize(_assetSize.Value) : string.Empty;
             string asset = string.Join(" · ", new[] { assetName, assetSize }.Where(part => part.Length > 0));
             string installed = InstalledRecord?.Version is { Length: > 0 } version
-                ? "已装 " + version
+                ? AppText.Get(Language.InstalledPrefix) + version
                 : string.Empty;
             return string.Join(" · ", new[] { asset, installed }.Where(part => part.Length > 0));
         }
@@ -168,15 +168,15 @@ public sealed class RecommendedAppCardViewModel : ViewModelBase
 
     public bool IsInstalled => Phase == RecommendedCardPhase.Installed;
 
-    public string InstallButtonText => IsIdle ? "安装" : "重试";
+    public string InstallButtonText => IsIdle ? AppText.Get(Language.Install) : AppText.Get(Language.Retry);
 
-    public string DockButtonText => InDock ? "移出 Dock" : "加入 Dock";
+    public string DockButtonText => InDock ? AppText.Get(Language.RemoveFromDock) : AppText.Get(Language.AddToDock);
 
-    public string InstallHint => IsResolving ? "正在获取最新版本信息…" : "正在下载安装包…";
+    public string InstallHint => IsResolving ? AppText.Get(Language.ResolvingVersion) : AppText.Get(Language.DownloadingPackage);
 
     public string InstallingHint => IsInstalling
-        ? "正在静默安装，完成后自动加入 Dock…"
-        : "正在安装，完成后自动加入 Dock…";
+        ? AppText.Get(Language.InstallingSilent)
+        : AppText.Get(Language.Installing);
 
     public void Initialize(bool inDock, RecommendedInstallRecord? record)
     {
@@ -214,7 +214,7 @@ public sealed class RecommendedAppCardViewModel : ViewModelBase
                 LatestTag = null;
                 _assetName = null;
                 _assetSize = null;
-                Error = "暂时无法获取版本信息";
+                Error = AppText.Get(Language.VersionUnavailable);
                 if (Phase == RecommendedCardPhase.Resolving)
                 {
                     Phase = RecommendedCardPhase.Idle;
@@ -239,7 +239,7 @@ public sealed class RecommendedAppCardViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            Error = "版本信息获取失败";
+            Error = AppText.Get(Language.VersionFailed);
             if (Phase == RecommendedCardPhase.Resolving)
             {
                 Phase = InstalledRecord is not null ? RecommendedCardPhase.Installed : RecommendedCardPhase.Idle;
@@ -266,8 +266,8 @@ public sealed class RecommendedAppCardViewModel : ViewModelBase
         if (release?.AssetUrl is null || release.ChecksumUrl is null)
         {
             Phase = InstalledRecord is not null ? RecommendedCardPhase.Installed : RecommendedCardPhase.Idle;
-            Error = "没有匹配当前系统的安装包";
-            _toast?.Invoke(DisplayName + "：没有匹配当前系统的安装包");
+            Error = AppText.Get(Language.NoMatchingPackage);
+            _toast?.Invoke(DisplayName + AppText.Get(Language.NoMatchingPackageSuffix));
             return;
         }
 
@@ -300,10 +300,10 @@ public sealed class RecommendedAppCardViewModel : ViewModelBase
                 DownloadProgress = value.Percentage ?? DownloadProgress;
             });
 
-            Core.Services.UpdateDownloadResult result = await DownloadAsync(update, progress, _downloadCancellation.Token).ConfigureAwait(true);
+            CodeWF.Toolkit.Core.UpdateChecking.UpdateDownloadResult result = await DownloadAsync(update, progress, _downloadCancellation.Token).ConfigureAwait(true);
 
             Phase = RecommendedCardPhase.Installing;
-            _toast?.Invoke(DisplayName + " 下载完成，正在安装");
+            _toast?.Invoke(DisplayName + AppText.Get(Language.DownloadedInstallingSuffix));
             bool installerOk = await RunInstallerAsync(result.FilePath).ConfigureAwait(true);
 
             Phase = RecommendedCardPhase.Installed;
@@ -326,27 +326,27 @@ public sealed class RecommendedAppCardViewModel : ViewModelBase
             {
                 SetInDock(true);
                 _installCompleted(this);
-                _toast?.Invoke("已安装 " + DisplayName + "，快捷方式已加入 Dock");
+                _toast?.Invoke(AppText.Get(Language.InstalledCountPrefix) + DisplayName + AppText.Get(Language.ShortcutAddedSuffix));
             }
             else if (installerOk)
             {
-                _toast?.Invoke(DisplayName + " 安装引导已完成，确认装好后点「加入 Dock」");
+                _toast?.Invoke(DisplayName + AppText.Get(Language.InstallGuideSuffix));
             }
             else
             {
-                _toast?.Invoke(DisplayName + " 安装未完成，可重试或从发布页手动安装");
+                _toast?.Invoke(DisplayName + AppText.Get(Language.InstallIncompleteSuffix));
             }
         }
         catch (OperationCanceledException)
         {
             Phase = InstalledRecord is not null ? RecommendedCardPhase.Installed : RecommendedCardPhase.Idle;
-            _toast?.Invoke("已取消下载 " + DisplayName);
+            _toast?.Invoke(AppText.Get(Language.CanceledDownloadPrefix) + DisplayName);
         }
         catch (Exception ex)
         {
             Phase = InstalledRecord is not null ? RecommendedCardPhase.Installed : RecommendedCardPhase.Idle;
-            Error = "下载或安装失败";
-            _toast?.Invoke(DisplayName + " 安装失败：" + ex.Message);
+            Error = AppText.Get(Language.DownloadFailed);
+            _toast?.Invoke(DisplayName + AppText.Get(Language.InstallErrorSuffix) + ex.Message);
         }
         finally
         {
@@ -358,11 +358,11 @@ public sealed class RecommendedAppCardViewModel : ViewModelBase
 
     /// <summary>实际下载由 DockViewModel 注入（复用自更新下载器与 HTTP 客户端）。</summary>
     public Func<UpdateInfo, IProgress<UpdateDownloadProgress>, CancellationToken, Task<UpdateDownloadResult>> DownloadAsync { get; set; }
-        = static (_, _, _) => throw new InvalidOperationException("下载器未初始化");
+        = static (_, _, _) => throw new InvalidOperationException(AppText.Get(Language.DownloaderMissing));
 
     /// <summary>实际安装由 DockViewModel 注入（平台相关：Windows 静默安装、macOS 挂载、Linux 安装 deb）。</summary>
     public Func<string, Task<bool>> RunInstallerAsync { get; set; }
-        = static _ => throw new InvalidOperationException("安装器未初始化");
+        = static _ => throw new InvalidOperationException(AppText.Get(Language.InstallerMissing));
 
     private void CancelDownload() => _downloadCancellation?.Cancel();
 
@@ -422,7 +422,7 @@ public sealed class RecommendedAppCardViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            _toast?.Invoke("打开发布页失败：" + ex.Message);
+            _toast?.Invoke(AppText.Get(Language.OpenReleasePageFailedPrefix) + ex.Message);
         }
     }
 

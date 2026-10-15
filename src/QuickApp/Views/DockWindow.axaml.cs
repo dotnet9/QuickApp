@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
@@ -438,7 +438,7 @@ public partial class DockWindow : Window, IDockHost
             pinPath.RenderTransformOrigin = new RelativePoint(0.5, 0.5, RelativeUnit.Relative);
         }
 
-        ToolTip.SetTip(PinButton, pinned ? "取消钉住 Dock" : "钉住 Dock");
+        ToolTip.SetTip(PinButton, pinned ? AppText.Get(Language.UnpinDock) : AppText.Get(Language.PinDock));
     }
 
     /// <summary>
@@ -1277,20 +1277,20 @@ public partial class DockWindow : Window, IDockHost
         else
         {
             ItemViewModel captured = item;
-            menu.Items.Add(MenuEntry("运行", Icons.Play, () => _vm.RunCommand.Execute(captured)));
+            menu.Items.Add(MenuEntry(AppText.Get(Language.Run), Icons.Play, () => _vm.RunCommand.Execute(captured)));
             menu.Items.Add(new Separator());
-            menu.Items.Add(MenuEntry("编辑…", Icons.Pencil, () => Dispatcher.UIThread.Post(() => _ = EditItemAsync(captured))));
-            menu.Items.Add(MenuEntry("重命名", Icons.Pencil, () =>
+            menu.Items.Add(MenuEntry(AppText.Get(Language.Edit), Icons.Pencil, () => Dispatcher.UIThread.Post(() => _ = EditItemAsync(captured))));
+            menu.Items.Add(MenuEntry(AppText.Get(Language.Rename), Icons.Pencil, () =>
             {
                 _vm.BeginRename(captured);
                 FocusRenameBox();
             }));
-            menu.Items.Add(MenuEntry("更换图标…", Icons.Upload, () => Dispatcher.UIThread.Post(() => _ = ChangeIconAsync(captured))));
-            menu.Items.Add(MenuEntry("复制路径", Icons.Copy, () => CopyToClipboard(captured.Model.Target)));
-            menu.Items.Add(MenuEntry("复制命令", Icons.Terminal, () => CopyToClipboard(ItemQuery.ToCommandText(captured.Model))));
-            menu.Items.Add(MenuEntry("打开位置", Icons.Folder, () => RevealInExplorer(captured.Model.Target)));
+            menu.Items.Add(MenuEntry(AppText.Get(Language.ChangeIcon), Icons.Upload, () => Dispatcher.UIThread.Post(() => _ = ChangeIconAsync(captured))));
+            menu.Items.Add(MenuEntry(AppText.Get(Language.CopyPath), Icons.Copy, () => CopyToClipboard(captured.Model.Target)));
+            menu.Items.Add(MenuEntry(AppText.Get(Language.CopyCommand), Icons.Terminal, () => CopyToClipboard(ItemQuery.ToCommandText(captured.Model))));
+            menu.Items.Add(MenuEntry(AppText.Get(Language.OpenLocation), Icons.Folder, () => RevealInExplorer(captured.Model.Target)));
             menu.Items.Add(new Separator());
-            menu.Items.Add(MenuEntry("移除", Icons.Trash, () =>
+            menu.Items.Add(MenuEntry(AppText.Get(Language.Remove), Icons.Trash, () =>
             {
                 _vm.RemoveCommand.Execute(captured);
                 Dispatcher.UIThread.Post(() =>
@@ -1323,22 +1323,23 @@ public partial class DockWindow : Window, IDockHost
     /// <summary>原型 dockMenuSpec 的实现：「更多」菜单与空白处右键菜单共用。</summary>
     private void AddDockMenuEntries(System.Collections.IList items, Action closeMenu)
     {
-        items.Add(MenuTitle("添加"));
-        items.Add(MenuEntry("文件…", Icons.Upload, () => _ = AddFilesAsync()));
-        items.Add(MenuEntry("目录…", Icons.Folder, () => _ = AddFoldersAsync()));
-        items.Add(MenuEntry("网址…", Icons.Globe, () => _ = ShowItemEditorAsync(new LauncherItem { Kind = ItemKind.Web })));
-        items.Add(MenuEntry("命令行…", Icons.Terminal, () => _ = AddCommandAsync()));
+        items.Add(MenuTitle(AppText.Get(Language.Add)));
+        items.Add(MenuEntry(AppText.Get(Language.File), Icons.Upload, () => _ = AddFilesAsync()));
+        items.Add(MenuEntry(AppText.Get(Language.Directory), Icons.Folder, () => _ = AddFoldersAsync()));
+        items.Add(MenuEntry(AppText.Get(Language.WebAddress), Icons.Globe, () => _ = ShowItemEditorAsync(new LauncherItem { Kind = ItemKind.Web })));
+        items.Add(MenuEntry(AppText.Get(Language.CommandLine), Icons.Terminal, () => _ = AddCommandAsync()));
         items.Add(new Separator());
-        items.Add(MenuTitle("管理"));
-        items.Add(MenuEntry("编辑模式", Icons.Pencil, () => _vm!.ToggleEditCommand.Execute(null)));
-        items.Add(MenuEntry("清空", Icons.Trash, () => _vm!.ClearAllCommand.Execute(null), danger: true));
+        items.Add(MenuTitle(AppText.Get(Language.Manage)));
+        items.Add(MenuEntry(AppText.Get(Language.EditMode), Icons.Pencil, () => _vm!.ToggleEditCommand.Execute(null)));
+        items.Add(MenuEntry(AppText.Get(Language.ClearAll), Icons.Trash, () => _vm!.ClearAllCommand.Execute(null), danger: true));
         items.Add(new Separator());
-        items.Add(MenuTitle("停靠"));
+        items.Add(MenuTitle(AppText.Get(Language.DockEdge)));
         items.Add(BuildEdgePicker(closeMenu));
         items.Add(new Separator());
-        items.Add(MenuEntry("设置", Icons.Gear, ShowSettings));
+        items.Add(MenuEntry(AppText.Get(Language.Settings), Icons.Gear, ShowSettings));
+        items.Add(MenuEntry(AppText.Get(Language.About), Icons.Info, () => AboutRequested?.Invoke(this, EventArgs.Empty)));
         items.Add(new Separator());
-        items.Add(MenuEntry("退出", Icons.Power, Exit, danger: true));
+        items.Add(MenuEntry(AppText.Get(Language.Exit), Icons.Power, Exit, danger: true));
     }
 
     /// <summary>停靠位置四向选择器：桌面示意框，点哪条边停靠哪条边；当前边强调色高亮（原型 .dock-pos）。</summary>
@@ -1495,11 +1496,11 @@ public partial class DockWindow : Window, IDockHost
 
         var files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
         {
-            Title = "选择图标图片",
+            Title = AppText.Get(Language.SelectIcon),
             AllowMultiple = false,
             FileTypeFilter =
             [
-                new FilePickerFileType("图片")
+                new FilePickerFileType(AppText.Get(Language.Images))
                 {
                     Patterns = new[] { "*.png", "*.jpg", "*.jpeg", "*.bmp", "*.webp", "*.ico" }
                 }
@@ -1588,34 +1589,34 @@ public partial class DockWindow : Window, IDockHost
             bool downloading = _vm.IsDownloadingUpdate;
             icon.Data = ready ? Icons.Check : downloading ? Icons.Download : Icons.Upload;
             icon.Stroke = ready ? UpdateReadyBrush : _vm.AccentBrush;
-            title.Text = ready ? "更新已就绪" : downloading ? "正在下载更新" : "发现新版本";
+            title.Text = ready ? AppText.Get(Language.UpdateReady) : downloading ? AppText.Get(Language.DownloadingUpdate) : AppText.Get(Language.UpdateAvailable);
             tag.Text = _vm.UpdateTag;
             desc.Text = ready
-                ? "安装包已校验存放，点击安装后由系统安装器接管，程序随后退出。"
+                ? AppText.Get(Language.InstallExplanation)
                 : downloading
-                    ? "下载在后台进行，可随时取消；完成后 Dock 会提示安装。"
+                    ? AppText.Get(Language.DownloadExplanation)
                     : _vm.NeedsUpdatePage
-                        ? "没有匹配当前系统的安装包，可以前往 Release 页面手动选择资产。"
-                        : "已按当前系统与架构选定安装包，下载完成后需再次点击安装，程序不会静默替换。";
+                        ? AppText.Get(Language.ManualPackageExplanation)
+                        : AppText.Get(Language.DownloadConfirmExplanation);
             actions.Children.Clear();
             if (_vm.CanDownloadUpdate)
             {
-                actions.Children.Add(LinkButton("下载", true, _vm.DownloadUpdateCommand));
-                actions.Children.Add(LinkButton("忽略", false, _vm.DismissUpdateCommand));
+                actions.Children.Add(LinkButton(AppText.Get(Language.Download), true, _vm.DownloadUpdateCommand));
+                actions.Children.Add(LinkButton(AppText.Get(Language.Dismiss), false, _vm.DismissUpdateCommand));
             }
             else if (_vm.NeedsUpdatePage)
             {
-                actions.Children.Add(LinkButton("打开发布页", true, _vm.OpenUpdateCommand));
-                actions.Children.Add(LinkButton("忽略", false, _vm.DismissUpdateCommand));
+                actions.Children.Add(LinkButton(AppText.Get(Language.OpenReleasePage), true, _vm.OpenUpdateCommand));
+                actions.Children.Add(LinkButton(AppText.Get(Language.Dismiss), false, _vm.DismissUpdateCommand));
             }
             else if (downloading)
             {
-                actions.Children.Add(LinkButton("取消", false, _vm.CancelUpdateDownloadCommand));
+                actions.Children.Add(LinkButton(AppText.Get(Language.Cancel), false, _vm.CancelUpdateDownloadCommand));
             }
             else if (ready)
             {
                 actions.Children.Add(LinkButton(_vm.UpdateInstallButtonText, true, _vm.InstallUpdateCommand));
-                actions.Children.Add(LinkButton("忽略", false, _vm.DismissUpdateCommand));
+                actions.Children.Add(LinkButton(AppText.Get(Language.Dismiss), false, _vm.DismissUpdateCommand));
             }
 
             progress.IsVisible = downloading;
@@ -1658,18 +1659,18 @@ public partial class DockWindow : Window, IDockHost
     {
         if (!OperatingSystem.IsWindows())
         {
-            _vm?.Toast("当前平台暂不支持复制到剪贴板");
+            _vm?.Toast(AppText.Get(Language.ClipboardUnsupported));
             return;
         }
 
         IntPtr handle = TryGetPlatformHandle()?.Handle ?? IntPtr.Zero;
         if (ClipboardInterop.TrySetText(text, handle))
         {
-            _vm?.Toast("已复制：" + text);
+            _vm?.Toast(AppText.Get(Language.CopiedPrefix) + text);
             return;
         }
 
-        _vm?.Toast("复制失败，剪贴板被其它程序占用");
+        _vm?.Toast(AppText.Get(Language.ClipboardBusy));
     }
 
     private void RevealInExplorer(string target)
@@ -1678,7 +1679,7 @@ public partial class DockWindow : Window, IDockHost
         {
             if (!System.IO.File.Exists(target))
             {
-                _vm?.Toast("找不到该文件：" + target);
+                _vm?.Toast(AppText.Get(Language.FileMissingPrefix) + target);
                 return;
             }
 
@@ -1852,7 +1853,7 @@ public partial class DockWindow : Window, IDockHost
         if (!changed)
         {
             _vm.Save();
-            _vm.Toast("Dock 回到" + DockPlacement.Label(edge) + "边缘");
+            _vm.Toast(AppText.Get(Language.DockReturnedPrefix) + DockPlacement.Label(edge) + AppText.Get(Language.Edge));
             ScheduleReposition();
         }
     }
@@ -1977,7 +1978,7 @@ public partial class DockWindow : Window, IDockHost
         }
 
         // 先定位再显示，避免窗口在默认位置闪一帧
-        _snapChipText!.Text = "吸附到" + DockPlacement.Label(_dragEdge) + "边缘";
+        _snapChipText!.Text = AppText.Get(Language.SnapPrefix) + DockPlacement.Label(_dragEdge) + AppText.Get(Language.Edge);
         _snapChip.Position = new PixelPoint(cursor.X + 14, Math.Max(4, cursor.Y - 40));
         if (!_snapChip.IsVisible)
         {
@@ -2419,11 +2420,11 @@ public partial class DockWindow : Window, IDockHost
         if (_vm is null) return;
         try
         {
-            var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "选择要添加到 Dock 的目录", AllowMultiple = true });
+            var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = AppText.Get(Language.SelectDockFolder), AllowMultiple = true });
             _vm.AddTargets(folders.Select(folder => folder.TryGetLocalPath()).OfType<string>());
             ScheduleReposition();
         }
-        catch (Exception ex) { AppLog.Error("选择目录失败", ex); _vm.Toast("选择目录失败：" + ex.Message); }
+        catch (Exception ex) { AppLog.Error(AppText.Get(Language.SelectFolderFailed), ex); _vm.Toast(AppText.Get(Language.SelectFolderFailedPrefix) + ex.Message); }
     }
 
     private async System.Threading.Tasks.Task AddFilesAsync()
@@ -2437,7 +2438,7 @@ public partial class DockWindow : Window, IDockHost
         {
             IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
-                Title = "选择要添加到 Dock 的程序或文件",
+                Title = AppText.Get(Language.SelectDockFile),
                 AllowMultiple = true
             });
 
@@ -2460,7 +2461,7 @@ public partial class DockWindow : Window, IDockHost
         }
         catch (Exception ex)
         {
-            AppLog.Error("选择文件失败", ex);
+            AppLog.Error(AppText.Get(Language.SelectFileFailed), ex);
         }
     }
 
