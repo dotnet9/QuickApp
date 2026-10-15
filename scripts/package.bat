@@ -1,11 +1,11 @@
-@echo off
-rem Legacy portable ZIP helper for local builds. GitHub Release uses native
+﻿@echo off
+rem Native installer helper. GitHub Release uses the same native
 rem installers from the platform-specific package scripts instead.
 rem
 rem Usage:
 rem   package.bat                             all platforms
 rem   package.bat win-x64                     one platform
-rem   package.bat "win-x64 win-x86"           several platforms
+rem   package.bat "win-x64"           several platforms
 rem   package.bat win-x64 0.2.0               override the version
 rem   package.bat win-x64 0.2.0 --force       overwrite existing artifacts
 setlocal EnableExtensions EnableDelayedExpansion
@@ -15,8 +15,8 @@ set "SCRIPT_ROOT=%~dp0"
 for %%I in ("%SCRIPT_ROOT%..") do set "REPO_ROOT=%%~fI"
 
 set "PLATFORMS=%~1"
-if "%PLATFORMS%"=="" set "PLATFORMS=win-x64 win-x86 linux-x64 linux-arm64"
-if /I "%PLATFORMS%"=="all" set "PLATFORMS=win-x64 win-x86 linux-x64 linux-arm64"
+if "%PLATFORMS%"=="" set "PLATFORMS=win-x64"
+if /I "%PLATFORMS%"=="all" set "PLATFORMS=win-x64"
 
 set "VERSION=%~2"
 set "FORCE="

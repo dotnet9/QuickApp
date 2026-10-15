@@ -1,4 +1,4 @@
-name: ci
+﻿name: ci
 
 on:
   push:
@@ -24,6 +24,26 @@ jobs:
 
       - name: 构建
         run: dotnet build QuickApp.slnx -c Release --no-restore
+
+      - name: 校验 T4 与单文件原型
+        shell: pwsh
+        run: |
+          pwsh scripts/sync_localization_keys.ps1 -Check
+          pwsh scripts/build_prototype.ps1 -Check
+
+      - name: 验证实际界面与更新状态
+        shell: pwsh
+        run: dotnet run --project scripts/ui-verification/UiVerification.csproj -c Release -- artifacts/ui-verification
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: 验证离线原型路由
+        shell: pwsh
+        run: |
+          npm ci --prefix design/tests
+          npx --prefix design/tests playwright install chromium
+          node design/tests/audit-prototype.cjs
 
       - name: 测试
         run: dotnet test QuickApp.slnx -c Release --no-build --logger "trx;LogFileName=results.trx"

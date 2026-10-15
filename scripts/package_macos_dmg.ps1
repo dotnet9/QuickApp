@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
     [ValidateSet("osx-x64", "osx-arm64")]
@@ -100,14 +100,14 @@ $macosPath = Join-Path $contentsPath "MacOS"
 $resourcesPath = Join-Path $contentsPath "Resources"
 $iconSource = Join-Path $repositoryRoot "logo.png"
 
-if (((Test-Path -LiteralPath $dmgPath) -or (Test-Path -LiteralPath $pkgPath)) -and -not $Force) {
+if ((Test-Path -LiteralPath $dmgPath) -and -not $Force) {
     throw "Artifact already exists for $RuntimeIdentifier (use -Force to overwrite)."
 }
 New-Item -ItemType Directory -Path $outputPath, $macosPath, $resourcesPath -Force | Out-Null
 
 try {
     Get-ChildItem -LiteralPath $sourcePath -Force | ForEach-Object {
-        Copy-Item -LiteralPath $_.FullName -Destination $macosPath -Recurse -Force
+        if ($_.Extension -notin ".pdb", ".dbg", ".dSYM") { Copy-Item -LiteralPath $_.FullName -Destination $macosPath -Recurse -Force }
     }
 
     $executable = Join-Path $macosPath "QuickApp"
@@ -157,17 +157,6 @@ try {
     if ($LASTEXITCODE -ne 0) {
         throw "codesign failed with exit code $LASTEXITCODE."
     }
-
-    if (Test-Path -LiteralPath $pkgPath) {
-        Remove-Item -LiteralPath $pkgPath -Force
-    }
-    & pkgbuild --component $appRoot --install-location "/Applications" --identifier "com.dotnet9.quickapp" --version $cleanVersion $pkgPath
-    if ($LASTEXITCODE -ne 0) {
-        throw "pkgbuild failed with exit code $LASTEXITCODE."
-    }
-
-    $pkgSha = (Get-FileHash -LiteralPath $pkgPath -Algorithm SHA256).Hash.ToLowerInvariant()
-    "$pkgSha  $pkgName" | Set-Content -LiteralPath "$pkgPath.sha256" -Encoding ascii
 
     & ln -s "/Applications" (Join-Path $stageRoot "Applications")
 

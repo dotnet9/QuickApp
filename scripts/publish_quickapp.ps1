@@ -39,8 +39,8 @@ $publishArguments = @(
     "--self-contained", "true",
     "-o", $outputPath,
     "-p:Version=$Version",
-    "-p:DebugType=None",
-    "-p:DebugSymbols=false",
+    "-p:DebugType=portable",
+    "-p:DebugSymbols=true",
     "-p:PublishTrimmed=true",
     "-p:PublishSingleFile=false",
     "-p:PublishAot=true"

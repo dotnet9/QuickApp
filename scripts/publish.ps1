@@ -13,7 +13,7 @@ $repositoryRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot "..")).Pat
 if ([string]::IsNullOrWhiteSpace($Version)) {
     $props = Join-Path $repositoryRoot "Directory.Build.props"
     if (Test-Path -LiteralPath $props) {
-        $match = Select-String -LiteralPath $props -Pattern '<Version>([^<]+)</Version>' |
+        $match = Select-String -LiteralPath $props -Pattern '<Version(?:Prefix)?>([^<]+)</Version(?:Prefix)?>' |
             Select-Object -First 1
         if ($match) { $Version = $match.Matches[0].Groups[1].Value }
     }

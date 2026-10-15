@@ -1,6 +1,6 @@
 ﻿name: release
 
-# 推送 v* 标签即发布：Windows x64 使用 NativeAOT，其它平台使用自包含单文件并生成原生安装包。
+# 推送 v* 标签即发布：五个平台使用 NativeAOT 并生成原生安装包。
 on:
   push:
     tags:
@@ -27,6 +27,26 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - name: 校验 T4 与单文件原型
+        shell: pwsh
+        run: |
+          pwsh scripts/sync_localization_keys.ps1 -Check
+          pwsh scripts/build_prototype.ps1 -Check
+
+      - name: 验证实际界面与更新状态
+        shell: pwsh
+        run: dotnet run --project scripts/ui-verification/UiVerification.csproj -c Release -- artifacts/ui-verification
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: 验证离线原型路由
+        shell: pwsh
+        run: |
+          npm ci --prefix design/tests
+          npx --prefix design/tests playwright install chromium
+          node design/tests/audit-prototype.cjs
+
       - name: 测试
         run: dotnet test QuickApp.slnx -c Release
 
@@ -44,9 +64,9 @@ jobs:
           - rid: linux-arm64
             os: ubuntu-24.04-arm
           - rid: osx-x64
-            os: macos-14
+            os: macos-15-intel
           - rid: osx-arm64
-            os: macos-14
+            os: macos-15
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -78,12 +98,21 @@ jobs:
         shell: pwsh
         run: pwsh scripts/publish_quickapp.ps1 -RuntimeIdentifier '${{ matrix.rid }}' -Version $env:APP_VERSION
 
+      - name: 运行本平台 NativeAOT 自检
+        shell: pwsh
+        run: |
+          $rid = '${{ matrix.rid }}'
+          $tfm = if ($rid -eq 'win-x64') { 'net10.0-windows' } else { 'net10.0' }
+          $name = if ($rid -eq 'win-x64') { 'QuickApp.exe' } else { 'QuickApp' }
+          & "./artifacts/publish/$rid/$tfm/QuickApp/$name" --selfcheck
+          if ($LASTEXITCODE -ne 0) { throw 'NativeAOT 自检失败。' }
+
       - name: 打包 Linux deb + sha256
         if: startsWith(matrix.rid, 'linux-')
         shell: pwsh
         run: pwsh scripts/package_linux_deb.ps1 -RuntimeIdentifier '${{ matrix.rid }}' -Version $env:APP_VERSION -Force
 
-      - name: 打包 macOS pkg + dmg + sha256
+      - name: 打包 macOS dmg + sha256
         if: startsWith(matrix.rid, 'osx-')
         shell: pwsh
         run: pwsh scripts/package_macos_dmg.ps1 -RuntimeIdentifier '${{ matrix.rid }}' -Version $env:APP_VERSION -Force
@@ -162,7 +191,5 @@ jobs:
           files: |
             artifacts/release/*.deb
             artifacts/release/*.dmg
-            artifacts/release/*.pkg
-            artifacts/release/*.zip
             artifacts/release/*.sha256
             artifacts/release/*.exe
