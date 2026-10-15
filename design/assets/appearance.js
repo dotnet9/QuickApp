@@ -5,6 +5,15 @@
   let language=stored.language||'zh-CN',palette=stored.palette||'DotNet';
   const source=new WeakMap(),last=new WeakMap();
   const paletteNames={Default:'DefaultPalette',Desert:'DesertPalette',Aquatic:'AquaticPalette',Dusk:'DuskPalette',NightSky:'NightSkyPalette',DotNet:'DotNetPalette',Aurora:'AuroraPalette',Ember:'EmberPalette'};
+  for(const head of document.querySelectorAll('.modal-head')){
+    const card=head.closest('.modal-card'),close=head.querySelector('button');
+    const controls=document.createElement('div');controls.className='window-controls';
+    for(const [action,symbol,label] of [['minimize','−','Minimize'],['maximize','□','Maximize']]){
+      const button=document.createElement('button');button.type='button';button.className='caption-button';button.dataset.windowAction=action;button.textContent=symbol;button.setAttribute('aria-label',label);
+      button.onclick=()=>{card.classList.toggle(action==='minimize'?'is-minimized':'is-maximized');};controls.append(button);
+    }
+    close.classList.add('caption-button','caption-close');controls.append(close);head.append(controls);
+  }
   const t=key=>dictionary[language].QuickApp.Text[key];
   const translations=Object.entries(dictionary['zh-CN'].QuickApp.Text).filter(([,value])=>value.length>1);
   function translate(value){
@@ -15,6 +24,10 @@
   }
   function localize(){
     root.lang=language;
+    for(const button of document.querySelectorAll('[data-window-action]')){
+      const label=language==='zh-CN'?(button.dataset.windowAction==='minimize'?'最小化或还原':'最大化或还原'):(button.dataset.windowAction==='minimize'?'Minimize or restore':'Maximize or restore');
+      button.setAttribute('aria-label',label);button.title=label;
+    }
     const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
     for(let node=walker.nextNode();node;node=walker.nextNode()){
       if(['SCRIPT','STYLE'].includes(node.parentElement?.tagName))continue;
