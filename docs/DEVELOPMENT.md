@@ -41,7 +41,7 @@ pwsh scripts/build_installer.ps1 -Version 0.9.3
 
 发布文件位于 `artifacts/publish`，平台安装包和 SHA-256 校验文件位于 `artifacts/release`。
 
-Windows x64 会生成 Inno Setup 安装包，Linux x64/arm64 会生成对应架构的 `.deb`，macOS x64/arm64 会生成 `.dmg`。Windows 安装包默认安装到 `Program Files\\QuickApp`，升级时只替换程序文件，不会覆盖 `%APPDATA%\\QuickApp\\config.json`；便携版仍可在程序目录放置 `portable.txt`。本地生成 Windows 安装包需要先安装 Inno Setup 6：
+Windows x64 会生成 Inno Setup 安装包，Linux x64/arm64 会生成对应架构的 `.deb`，macOS x64/arm64 会生成 `.dmg`。Windows 安装包默认安装到 `Program Files\QuickApp`，升级时只替换程序文件，不会覆盖 `%LOCALAPPDATA%\QuickApp\config.json`；便携版仍可在程序目录放置 `portable.txt`。本地生成 Windows 安装包需要先安装 Inno Setup 6：
 
 ```powershell
 pwsh scripts/build_installer.ps1 -Version 0.9.3
@@ -82,7 +82,7 @@ GitHub Actions 会在推送 `v*` 标签时分别构建 Windows、Linux 和 macOS
 首次启动会创建空配置，Dock 默认为空，可从系统应用搜索直接启动，或点 `＋` 加入 Dock；旧版本预置的内置程序条目会在加载老配置时自动清理。配置文件默认位于：
 
 ```text
-%APPDATA%\QuickApp\config.json
+%LOCALAPPDATA%\QuickApp\config.json
 ```
 
 如果程序目录中存在 `portable.txt`，配置会改为保存在程序目录。图标缓存位于 `%LOCALAPPDATA%\QuickApp\icons`。
