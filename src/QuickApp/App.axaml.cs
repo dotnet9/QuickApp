@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using Avalonia.Threading;
 using System.Net.Http;
 using Avalonia;
+using CodeWF.Toolkit.Lang;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
@@ -41,11 +42,8 @@ public partial class App : Application
         ThemeController = new CodeWF.Avalonia.Controls.Themes.StudioThemeController(this);
         ActualThemeVariantChanged += (_, _) => RefreshThemeAliases();
         RefreshThemeAliases();
-        CodeWF.Toolkit.Lang.I18nManager.Instance.CultureChanged += (_, _) =>
-        {
-            foreach (var theme in Styles.OfType<Semi.Avalonia.SemiTheme>())
-                theme.Locale = CodeWF.Toolkit.Lang.I18nManager.Instance.Culture;
-        };
+        I18nManager.Instance.CultureChanged += OnCultureChanged;
+        ApplyControlCulture();
     }
 
     private void RefreshThemeAliases()
@@ -450,4 +448,18 @@ public partial class App : Application
             Environment.Exit(0);
         }
     }
+    private static void OnCultureChanged(object? sender, EventArgs args)
+    {
+        if (Dispatcher.UIThread.CheckAccess()) ApplyControlCulture();
+        else Dispatcher.UIThread.Post(ApplyControlCulture);
+    }
+
+    /// <summary>更新主题内置文案，保留宿主资源的同键覆盖。</summary>
+    private static void ApplyControlCulture()
+    {
+        if (Application.Current is not { } application || I18nManager.Instance.Culture is not { } culture) return;
+        foreach (var theme in application.Styles.OfType<Semi.Avalonia.SemiTheme>()) theme.Locale = culture;
+        foreach (var theme in application.Styles.OfType<Ursa.Themes.Semi.UrsaSemiTheme>()) theme.Locale = culture;
+    }
+
 }

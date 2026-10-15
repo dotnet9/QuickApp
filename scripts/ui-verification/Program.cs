@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
@@ -38,6 +38,7 @@ var model = new DockViewModel(store,new FakeLauncher(),new FakeIcons(),new FakeA
     new UpdateDownloader(new HttpClient(),new UpdateServiceOptions { Repository="QuickApp" }),new FakeAutoStart(),"QuickApp");
 var host = new FakeHost();model.AttachHost(host);
 var settings = new SettingsWindow();settings.Attach(model);settings.Show();Pump();
+ControlLocaleVerification.Run(settings, ["zh-CN", "en-US"]);
 var vm=(SettingsViewModel)settings.DataContext!;
 var tray=new TrayViewModel(model,()=>{},()=>{});
 var traySettings=new NativeMenuItem { Header=tray.SettingsText };
@@ -91,12 +92,28 @@ foreach(var culture in new[]{"en-US","zh-CN"})
     Check(store.Load().Settings.Language==culture,"Host language preference survives reload");
     Check(about.Title==AppText.Get(Language.About),"Existing about window changes language");
     Check(traySettings.Header==AppText.Get(Language.Settings),"Existing tray menu changes language");
-    Check(vm.PlatformText.Contains(".NET 10") && vm.VersionText.Contains("0.9.3"),"About shows actual app metadata");
+    Check(vm.PlatformText.Contains(".NET " + Environment.Version.Major) && vm.VersionText == "v" + typeof(App).Assembly.GetName().Version!.ToString(3),"About shows actual app metadata");
     Capture(about,$"about-{culture}.png");
     foreach(var tab in new[]{"general","appearance","data","recommend","about"})
     {
         settings.ShowTab(tab);Pump();Capture(settings,$"settings-{tab}-{culture}.png");
         Check(settings.GetVisualDescendants().OfType<TextBlock>().Any(text=>!string.IsNullOrWhiteSpace(text.Text)),"Every settings route has actual content");
+        var originalWidth=settings.Width;var originalHeight=settings.Height;
+        settings.Width=settings.MinWidth;settings.Height=settings.MinHeight;Pump();
+        Capture(settings,$"minimum-settings-{tab}-{culture}.png");
+        var selectedTab=settings.GetVisualDescendants().OfType<TabItem>().Single(item=>item.IsSelected);
+        Check(selectedTab.Bounds.Width==155,"Navigation keeps its fixed width in both languages");
+        if(tab=="data")
+        {
+            foreach(var name in new[]{"ImportButton","ExportButton","OpenConfigFolderButton","ReloadConfigButton","StorageModeButton"})
+            {
+                var button=settings.FindControl<Button>(name)!;var position=button.TranslatePoint(default,settings);
+                Check(position is {} point && point.X>=0 && point.Y>=0 && point.X+button.Bounds.Width<=settings.Bounds.Width && point.Y+button.Bounds.Height<=settings.Bounds.Height,"Minimum data page keeps the complete action visible: "+name);
+            }
+            settings.FindControl<Button>("ReloadConfigButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+            Check(File.Exists(store.ConfigFile) && store.Load().Items.Count==1,"Minimum-width reload action executes against isolated configuration");
+        }
+        settings.Width=originalWidth;settings.Height=originalHeight;Pump();
     }
 }
 var dock=new DockWindow();model.Settings.Pinned=true;dock.Attach(model);dock.Show();Pump();
