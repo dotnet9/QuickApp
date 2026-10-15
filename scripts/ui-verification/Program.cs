@@ -68,7 +68,7 @@ foreach(var culture in new[]{"en-US","zh-CN"})
     Check(store.Load().Settings.Language==culture,"Host language preference survives reload");
     Check(about.Title==AppText.Get(Language.About),"Existing about window changes language");
     Check(traySettings.Header==AppText.Get(Language.Settings),"Existing tray menu changes language");
-    Check(vm.PlatformText.Contains(".NET 10") && vm.VersionText.Contains("0.9.1"),"About shows actual app metadata");
+    Check(vm.PlatformText.Contains(".NET 10") && vm.VersionText.Contains("0.9.2"),"About shows actual app metadata");
     Capture(about,$"about-{culture}.png");
     foreach(var tab in new[]{"general","appearance","data","recommend","about"})
     {
@@ -125,7 +125,7 @@ void Capture(Window window,string name){Pump();window.CaptureRenderedFrame()!.Sa
 sealed class FakeUpdates(string root):IUpdateService
 {
     public UpdateServiceOptions Options {get;}=new(){Repository="QuickApp",ProductName="QuickApp"};
-    public Version CurrentVersion=>new(0,9,1);public string CurrentVersionText=>"0.9.1";public int InstallCalls; public string Mode="available"; public bool DelayDownload;
+    public Version CurrentVersion=>new(0,9,2);public string CurrentVersionText=>"0.9.2";public int InstallCalls; public string Mode="available"; public bool DelayDownload;
     public Task<UpdateCheckResult> CheckAsync(Version? current=null,CancellationToken cancellationToken=default)
         => Task.FromResult(Mode switch
         {

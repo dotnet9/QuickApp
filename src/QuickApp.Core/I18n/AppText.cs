@@ -14,7 +14,9 @@ public static class AppText
     public static void Initialize()
     {
         if (_initialized) return;
-        var plugin = new JsonLangPlugin { ResourceFolder = Path.Combine(AppContext.BaseDirectory, "I18n") };
+        var direct = Path.Combine(AppContext.BaseDirectory, "I18n");
+        var bundled = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "Resources", "I18n"));
+        var plugin = new JsonLangPlugin { ResourceFolder = Directory.Exists(direct) ? direct : bundled };
         I18nManager.Instance.Register(plugin, CultureInfo.GetCultureInfo("zh-CN"), out _);
         _initialized = true;
     }

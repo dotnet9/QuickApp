@@ -104,8 +104,15 @@ jobs:
           $rid = '${{ matrix.rid }}'
           $tfm = if ($rid -eq 'win-x64') { 'net10.0-windows' } else { 'net10.0' }
           $name = if ($rid -eq 'win-x64') { 'QuickApp.exe' } else { 'QuickApp' }
-          & "./artifacts/publish/$rid/$tfm/QuickApp/$name" --selfcheck
-          if ($LASTEXITCODE -ne 0) { throw 'NativeAOT 自检失败。' }
+          $binary = [IO.Path]::GetFullPath("./artifacts/publish/$rid/$tfm/QuickApp/$name")
+          if ($IsWindows) {
+            $process = Start-Process -FilePath $binary -ArgumentList '--selfcheck' -Wait -PassThru -WindowStyle Hidden
+            $exitCode = $process.ExitCode
+          } else {
+            & $binary --selfcheck
+            $exitCode = $LASTEXITCODE
+          }
+          if ($exitCode -ne 0) { throw "NativeAOT 自检失败，退出码：$exitCode" }
 
       - name: 打包 Linux deb + sha256
         if: startsWith(matrix.rid, 'linux-')

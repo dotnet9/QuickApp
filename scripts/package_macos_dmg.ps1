@@ -107,7 +107,11 @@ New-Item -ItemType Directory -Path $outputPath, $macosPath, $resourcesPath -Forc
 
 try {
     Get-ChildItem -LiteralPath $sourcePath -Force | ForEach-Object {
-        if ($_.Extension -notin ".pdb", ".dbg", ".dSYM") { Copy-Item -LiteralPath $_.FullName -Destination $macosPath -Recurse -Force }
+        if ($_.Extension -notin ".pdb", ".dbg", ".dSYM") {
+            # MacOS 目录仅放原生可执行文件和动态库，JSON 等资源放入 Resources。
+            $destination = if (-not $_.PSIsContainer -and ($_.Name -eq "QuickApp" -or $_.Extension -eq ".dylib")) { $macosPath } else { $resourcesPath }
+            Copy-Item -LiteralPath $_.FullName -Destination $destination -Recurse -Force
+        }
     }
 
     $executable = Join-Path $macosPath "QuickApp"
@@ -115,6 +119,8 @@ try {
         throw "Published executable was not produced: $executable"
     }
     & chmod +x $executable
+    & $executable --selfcheck
+    if ($LASTEXITCODE -ne 0) { throw "Relocated NativeAOT resource self-check failed: $LASTEXITCODE" }
 
     # 图标：logo.png -> iconset -> .icns。没有 CFBundleIconFile 时启动台会显示通用占位图标，
     # 用户会以为装坏了，所以这一步不能省。
@@ -153,7 +159,7 @@ try {
 
     # ad-hoc 签名：未签名的 app 在新系统上首次打开会被 Gatekeeper 拦，
     # ad-hoc 至少让系统认它是个完整应用包（后续换 Developer ID 只需替换这一步）。
-    & codesign --force --sign - --timestamp=none $appRoot
+    & codesign --force --deep --sign - --timestamp=none $appRoot
     if ($LASTEXITCODE -ne 0) {
         throw "codesign failed with exit code $LASTEXITCODE."
     }
