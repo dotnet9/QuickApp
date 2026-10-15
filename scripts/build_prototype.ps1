@@ -13,7 +13,8 @@ $source = [regex]::Replace($source, '<script src="([^"]+)"></script>', {
 })
 foreach ($asset in '../logo.svg','assets/vex-logo.svg') {
     $assetPath = [IO.Path]::GetFullPath((Join-Path $design $asset))
-    $uri = 'data:image/svg+xml;base64,' + [Convert]::ToBase64String([IO.File]::ReadAllBytes($assetPath))
+    $svg = [IO.File]::ReadAllText($assetPath).ReplaceLineEndings("`n")
+    $uri = 'data:image/svg+xml;base64,' + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($svg))
     $source = $source.Replace($asset, $uri)
 }
 $target = Join-Path $design 'index.html'
