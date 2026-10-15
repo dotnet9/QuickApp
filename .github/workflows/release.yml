@@ -49,6 +49,9 @@ jobs:
 
       - name: 测试
         run: dotnet test QuickApp.slnx -c Release
+      - name: 校验安装包名称与哈希门禁
+        shell: pwsh
+        run: ./scripts/tests/release_installers_test.ps1
 
   publish:
     name: 发布 ${{ matrix.rid }}
@@ -188,6 +191,10 @@ jobs:
           if (-not (Test-Path -LiteralPath $releaseNotes -PathType Leaf)) {
             throw "Release notes are required: $releaseNotes"
           }
+
+      - name: 校验五平台安装包与 SHA-256
+        shell: pwsh
+        run: ./scripts/verify_release_installers.ps1 -Version '${{ steps.version.outputs.version }}'
 
       - name: 创建 GitHub Release
         uses: softprops/action-gh-release@v2

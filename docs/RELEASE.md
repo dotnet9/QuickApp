@@ -1,60 +1,46 @@
-# 发布流程规范（RELEASE）
+# QuickApp 发布流程
 
-> 本文档是各仓库统一的标准发布流程。**每次发版都按本文档执行**，避免出现
-> 「Release 页只有 Full Changelog 链接」「安装包缺失」「版本号不一致」这类不规范情况。
+版本唯一来源为根目录 `Directory.Build.props` 的 `VersionPrefix`，当前为 `0.9.4`，附注标签为 `v0.9.4`。精选说明维护在 `.github/release-notes/v0.9.4.md`，标签附注复用该文件。
 
-## 1. 版本号约定
+## 本机验证
 
-- 版本号唯一来源：根目录 `Directory.Build.props` 的 `<Version>`（个别仓库在主 csproj，如 IEditor/QuickApp）。
-- 发布 tag 必须与该版本一致：`<Version>1.2.3</Version>` ↔ tag `v1.2.3`。
-- README 的「当前版本」行（如有）同步更新。
-- 更新日志：有 `UpdateLog.md` 的仓库，发布前新增对应版本条目（`## 版本 (YYYY-MM-DD)`）。
-
-## 2. 标准发布流程
-
-```text
-1. 改版本号（Directory.Build.props / csproj）+ 更新 UpdateLog.md + 同步 README 版本行
-2. 提交：chore(release): vX.Y.Z（英文规范提交，仓库另有约定从其约定）
-3. 打附注 tag —— tag 的附注消息就是 GitHub Release 的发布说明（见下节）：
-       git tag -a vX.Y.Z -m "应用名 X.Y.Z\n\n- 要点一\n- 要点二 ..."
-4. 推送分支与 tag：git push origin <branch> && git push origin vX.Y.Z
-5. CI（release.yml）自动：测试 → 全平台 NativeAOT 发布 → 制作安装包 → 创建 GitHub Release
-6. 到 Release 页确认：说明可读、各平台安装包齐全（win exe / linux deb / mac dmg）
+```powershell
+dotnet test QuickApp.slnx -c Release
+pwsh scripts/sync_localization_keys.ps1 -Check
+pwsh scripts/build_prototype.ps1 -Check
+pwsh scripts/tests/release_installers_test.ps1
+dotnet run --project scripts/ui-verification/UiVerification.csproj -c Release -- artifacts/ui-managed
+pwsh scripts/publish.ps1 -RuntimeIdentifier win-x64 -Version 0.9.4
+$process = Start-Process ./artifacts/publish/win-x64/net10.0-windows/QuickApp/QuickApp.exe -ArgumentList '--selfcheck' -WindowStyle Hidden -Wait -PassThru
+if ($process.ExitCode -ne 0) { throw 'NativeAOT runtime verification failed.' }
+dotnet publish scripts/ui-verification/UiVerification.csproj -c Release -r win-x64 --self-contained true -m:1 -p:Version=0.9.4 -p:PublishAot=true -p:PublishTrimmed=true -p:IlcGenerateCompleteTypeMetadata=true -p:IlcTrimMetadata=false -p:IlcSingleThreaded=true -o artifacts/ui-native/win-x64
+& ./artifacts/ui-native/win-x64/UiVerification.exe artifacts/ui-evidence/win-x64
 ```
 
-## 3. 发布说明规范（重要）
+同一仓库内的构建、测试与 NativeAOT 编译依次执行，避免中间程序集或 PDB 被原生编译器映射时发生写入冲突。界面验证使用实际视图与受控服务，不修改用户快捷项、不执行安装器。普通桌面、系统托盘、快捷键及真实安装仍需目标系统验证，离屏结果不替代这些交互。
 
-**Release 页的说明来自附注 tag 的消息**。打 tag 时必须写清楚：
+## 提交与标签
 
-```bash
-git tag -a vX.Y.Z -m "应用名 X.Y.Z
+直接在 `main` 按修改范围使用简体中文规范提交。检查通过后推送主分支，再创建新附注标签；不得移动已发布标签。
 
-本版本做了什么（第一段概览）
-
-- 变更要点 1
-- 变更要点 2"
+```powershell
+git push origin main
+git tag -a v0.9.4 -F .github/release-notes/v0.9.4.md
+git push origin v0.9.4
 ```
 
-- 工作流的「准备发布说明」步骤会按以下优先级取内容：
-  1. 精选说明 `.github/release-notes/vX.Y.Z.md`（存在则优先）；
-  2. **附注 tag 消息**（`git tag -l vX.Y.Z --format='%(contents)'`）；
-  3. 兜底：仅版本标题 + 自动生成的 Full Changelog（**不允许停留在这一档**）。
-- 不确定时，发布后打开 Release 页检查说明是否可读。
+本机开发可使用 `temp_nugets` 环境变量目录中的包验证，正式引用保持公开 NuGet 版本，不提交本地源、环境配置或跨仓库项目引用。
 
-## 4. 平台与安装包矩阵
+## 发布与验收
 
-| 平台 | 产物 | 说明 |
-| --- | --- | --- |
-| win-x64 | `.exe` 安装器 | NativeAOT |
-| linux-x64 / linux-arm64 | `.deb`（amd64/arm64） | NativeAOT；arm64 在 arm runner 上原生编译 |
-| osx-x64 / osx-arm64 | `.dmg` | NativeAOT；保留符号（Apple ld_classic 不支持压缩调试段） |
+标签触发 Release 工作流：测试、T4、离线原型与 managed 实际界面通过后，五个原生 runner 发布 NativeAOT 正式程序并执行其 `--selfcheck`，再制作安装包。精选中文说明文件缺失时终止发布。
 
-- 统一配方：`-p:PublishAot=true -p:PublishTrimmed=true -p:PublishSingleFile=false
-  -p:IlcGenerateCompleteTypeMetadata=true -p:IlcTrimMetadata=false -p:IlcSingleThreaded=true`。
-- Linux runner 需 `clang zlib1g-dev`；不要在 x64 runner 上交叉编译其他架构的 AOT。
-- 平台相关功能未适配时，应用内以「当前平台功能正在开发中」友好提示，不阻塞发布与启动。
+| RID | 精确安装包名称 |
+| --- | --- |
+| win-x64 | `QuickApp-v0.9.4-win-x64-setup.exe` |
+| linux-x64 | `QuickApp-v0.9.4-linux-x64.deb` |
+| linux-arm64 | `QuickApp-v0.9.4-linux-arm64.deb` |
+| osx-x64 | `QuickApp-v0.9.4-osx-x64.dmg` |
+| osx-arm64 | `QuickApp-v0.9.4-osx-arm64.dmg` |
 
-## 5. 发布后检查
-
-- Release 页：说明可读、资产齐全（对照矩阵）、带 `.sha256` 的照旧。
-- 安装包抽查：至少在 Windows 本机跑一次发布产物。
+每个安装包必须非空且有对应 `.sha256`；创建 Release 前重新计算真实文件摘要，并严格校验本产品、完整版本、五个 RID 与十项文件，拒绝额外文件。13 个受控正反场景进入普通 CI 和 Release。发布后核对全部工作流、中文说明、十项资产及校验文件；不能把推送成功当作发布成功。

@@ -48,6 +48,10 @@ jobs:
       - name: 测试
         run: dotnet test QuickApp.slnx -c Release --no-build --logger "trx;LogFileName=results.trx"
 
+      - name: 校验安装包名称与哈希门禁
+        shell: pwsh
+        run: ./scripts/tests/release_installers_test.ps1
+
       - name: 上传测试结果
         if: always()
         uses: actions/upload-artifact@v4
