@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Text.RegularExpressions;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -8,12 +9,16 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using QuickApp.Core.Services;
+using CodeWF.Toolkit.Lang.Json;
+using ToolkitResources = CodeWF.Toolkit.Core.I18n.ResourceKeys;
 using Xunit;
 
 namespace QuickApp.Core.Tests;
 
 public sealed class UpdateCheckerTests
 {
+    private static readonly JsonLocalizer ToolkitText = new(typeof(UpdateChecker).Assembly);
+
     [Fact]
     public async Task Selects_current_platform_asset_and_prefers_windows_installer()
     {
@@ -128,9 +133,11 @@ public sealed class UpdateCheckerTests
         UpdateCheckResult second = await checker.CheckAsync(new Version(0, 1, 0));
 
         Assert.False(first.Succeeded);
-        Assert.Contains("限流", first.Error);
+        string expected = "^" + Regex.Escape(ToolkitText.GetResource(ToolkitResources.Update.RateLimitedUntil))
+            .Replace(Regex.Escape("{0}"), @"\d{2}:\d{2}", StringComparison.Ordinal) + "$";
+        Assert.Matches(expected, first.Error!);
         Assert.False(second.Succeeded);
-        Assert.Contains("限流", second.Error);
+        Assert.Equal(first.Error, second.Error);
         Assert.Equal(1, handler.ApiRequests);                   // 限流期间不再请求 API
         Assert.Equal(3, handler.Requests);                      // 网页端点不占配额，仍会尝试（1 + 退回 1 + 第二次网页 1）
     }
@@ -406,7 +413,8 @@ public sealed class UpdateCheckerTests
         UpdateCheckResult result = await checker.CheckAsync(new Version(0, 1, 0));
 
         Assert.False(result.Succeeded);
-        Assert.Contains(timeout ? "超时" : "offline", result.Error);
+        if (timeout) Assert.Equal(ToolkitText.GetResource(ToolkitResources.Update.WebTimeout), result.Error);
+        else Assert.Contains("offline", result.Error);
         Assert.Equal(1, handler.Requests);
         Assert.Equal(0, handler.ApiRequests);
     }
@@ -549,7 +557,7 @@ public sealed class UpdateCheckerTests
         UpdateCheckResult result = await checker.CheckAsync(new Version(0, 1, 0), cancellation.Token);
 
         Assert.False(result.Succeeded);
-        Assert.Equal("操作已取消", result.Error);
+        Assert.Equal(ToolkitText.GetResource(ToolkitResources.Update.Canceled), result.Error);
         Assert.Equal(0, handler.ApiRequests);
         Assert.Equal(stage == "before" ? 0 : stage == "latest" ? 1 : 2, handler.Requests);
     }
@@ -563,7 +571,7 @@ public sealed class UpdateCheckerTests
         UpdateCheckResult result = await checker.CheckAsync(new Version(0, 1, 0));
 
         Assert.False(result.Succeeded);
-        Assert.Contains("有效版本号", result.Error);
+        Assert.Equal(ToolkitText.GetResource(ToolkitResources.Update.InvalidReleaseVersion), result.Error);
         Assert.Equal(0, handler.AssetRequests);
         Assert.Equal(0, handler.ApiRequests);
     }

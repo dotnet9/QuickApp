@@ -22,8 +22,7 @@ public sealed class CommandExecutionTests
                 Kind = ItemKind.Command, Target = "(echo first & echo second) | findstr second > \"result file.txt\"", WorkingDirectory = directory
             });
             using Process process = Process.Start(new ProcessStartInfo(plan.FileName, plan.Arguments) { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = plan.WorkingDirectory })!;
-            Assert.True(process.WaitForExit(10000));
-            Assert.Equal(0, process.ExitCode);
+            VerifyProcessExit(process);
             Assert.Equal("second", File.ReadAllText(Path.Combine(directory, "result file.txt")).Trim());
         }
         finally { Directory.Delete(directory, true); }
@@ -43,8 +42,7 @@ public sealed class CommandExecutionTests
                 Target = "[IO.File]::WriteAllText((Join-Path (Get-Location) 'result.txt'), '中文 \"引号\" & 符号')"
             });
             using Process process = Process.Start(new ProcessStartInfo(plan.FileName, plan.Arguments) { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = plan.WorkingDirectory })!;
-            Assert.True(process.WaitForExit(10000));
-            Assert.Equal(0, process.ExitCode);
+            VerifyProcessExit(process);
             Assert.Equal("中文 \"引号\" & 符号", File.ReadAllText(Path.Combine(directory, "result.txt")));
         }
         finally { Directory.Delete(directory, true); }
@@ -57,5 +55,23 @@ public sealed class CommandExecutionTests
         LaunchPlan plan = LaunchPlanner.Create(new LauncherItem { Kind = ItemKind.Command, Target = "git status", RunInTerminal = true });
         Assert.True(plan.UseShellExecute);
         Assert.Contains("/k", plan.Arguments);
+    }
+
+    /// <summary>为冷启动保留时间，超时也先结束子进程，避免清理目录覆盖原始断言。</summary>
+    private static void VerifyProcessExit(Process process)
+    {
+        try
+        {
+            Assert.True(process.WaitForExit(60000), "Command process did not exit within 60 seconds.");
+            Assert.Equal(0, process.ExitCode);
+        }
+        finally
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+                process.WaitForExit(10000);
+            }
+        }
     }
 }
