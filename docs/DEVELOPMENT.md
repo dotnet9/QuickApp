@@ -5,7 +5,7 @@
 ## 环境
 
 - Windows 10/11，Linux（x64/arm64）或 macOS（x64/arm64）
-- .NET SDK `10.0.401` 或兼容的 .NET 10 SDK
+- .NET SDK 以 `global.json` 为准 或兼容的 .NET 10 SDK
 - Windows SDK 和 MSVC 工具链（只在 Windows NativeAOT 发布时需要）
 
 依赖版本集中在 [`Directory.Packages.props`](../Directory.Packages.props)，当前使用 Avalonia 12.1.3 和 ReactiveUI.Avalonia 12.1.2。
@@ -41,7 +41,7 @@ pwsh scripts/build_installer.ps1 -Version 0.1.0 -Force
 
 发布文件位于 `artifacts/publish`，平台安装包和 SHA-256 校验文件位于 `artifacts/release`。
 
-Windows x64 会生成 Inno Setup 安装包，Linux x64/arm64 会生成对应架构的 `.deb`，macOS x64/arm64 会生成 `.pkg` 和 `.dmg`。Windows 安装包默认安装到 `Program Files\\QuickApp`，升级时只替换程序文件，不会覆盖 `%APPDATA%\\QuickApp\\config.json`；便携版仍可在程序目录放置 `portable.txt`。本地生成 Windows 安装包需要先安装 Inno Setup 6：
+Windows x64 会生成 Inno Setup 安装包，Linux x64/arm64 会生成对应架构的 `.deb`，macOS x64/arm64 会生成 `.dmg`。Windows 安装包默认安装到 `Program Files\\QuickApp`，升级时只替换程序文件，不会覆盖 `%APPDATA%\\QuickApp\\config.json`；便携版仍可在程序目录放置 `portable.txt`。本地生成 Windows 安装包需要先安装 Inno Setup 6：
 
 ```powershell
 pwsh scripts/build_installer.ps1 -Version 0.2.2 -Force
@@ -63,15 +63,15 @@ pwsh scripts/package_macos_dmg.ps1 -RuntimeIdentifier osx-arm64 -Version 0.2.2 -
 
 ## 持续集成与 Release
 
-推送 `v*` 标签时，GitHub Release 会上传 Windows 安装包、Linux `.deb`、macOS `.pkg/.dmg` 及其校验文件。常规推送和 Pull Request 会执行构建与测试工作流。
+推送 `v*` 标签时，GitHub Release 会上传 Windows 安装包、Linux `.deb`、macOS `.dmg` 及其校验文件。常规推送和 Pull Request 会执行构建与测试工作流。
 
-GitHub Actions 会在推送 `v*` 标签时分别构建 Windows、Linux 和 macOS 安装包，并创建包含 Windows 安装包、Linux `.deb`、macOS `.pkg/.dmg` 与 SHA-256 校验文件的 Release。
+GitHub Actions 会在推送 `v*` 标签时分别构建 Windows、Linux 和 macOS 安装包，并创建包含 Windows 安装包、Linux `.deb`、macOS `.dmg` 与 SHA-256 校验文件的 Release。
 
 每个版本的 Release 描述维护在 `.github/release-notes/v版本号.md`，例如 `.github/release-notes/v0.2.5.md`。打标签前先补充该文件；发布工作流会直接使用它作为 GitHub Release 正文，缺少说明时会停止发布。
 
 ## 更新检查
 
-程序默认在启动时检查 GitHub Releases 的最新稳定版本，也可以在设置页手动检查，或关闭自动检查。更新提示会按当前系统和 CPU 架构选择下载资产：Windows x64 优先选择安装包，Linux 选择 `.deb`，macOS 优先选择 `.pkg`、回退到 `.dmg`；没有匹配资产时打开 Release 页面，避免下载错误平台的文件。点击“下载”后界面显示进度，下载完成后还要再次点击“安装/打开安装包”；程序不会静默下载、校验并替换正在运行的程序。每个发布文件旁边的 `.sha256` 可用于完整性校验。
+程序默认在启动时检查 GitHub Releases 的最新稳定版本，也可以在设置页手动检查，或关闭自动检查。更新提示会按当前系统和 CPU 架构选择下载资产：Windows x64 优先选择安装包，Linux 选择 `.deb`，macOS 选择 `.dmg`；没有匹配资产时打开 Release 页面，避免下载错误平台的文件。点击“下载”后界面显示进度，下载完成后还要再次点击“安装/打开安装包”；程序不会静默下载、校验并替换正在运行的程序。每个发布文件旁边的 `.sha256` 可用于完整性校验。
 
 默认检查只访问 GitHub 网页端点：读取 `releases/latest` 的重定向头获取版本号，有新版本时再解析 `expanded_assets/{tag}` 安装包列表，并从 `releases.atom` 取该版本的正文作为「更新说明」（正文不在资产列表页出现，而走 API 容易限流，故用 feed），全程不消耗 API 配额。说明拉取失败只少一段文案，不影响新版本提示、下载与安装入口。版本号已确认而安装包列表暂不可用时，仍显示新版本并提供发布页入口；失败或空资产列表不会写入缓存，下次检查可重新解析。推荐应用解析复用同一策略。`UpdateChecker` 的 `allowApiFallback` 仅供需要 API 回退的调用方显式启用。
 
@@ -119,6 +119,6 @@ Core 层保持平台无关并可单测；Windows API 集中在 `src/QuickApp/Pla
 
 ## 贡献
 
-修改界面时先同步唯一入口 [`design/index.html`](../design/index.html) 的交互原型，再同步 Avalonia 实现。`design` 只保留这一个 HTML；新增界面必须通过实际 Dock、菜单、右键或设置入口打开，数据和交互状态互通，不能以独立演示页代替产品流程。样式和脚本放在 `design/assets`。
+修改界面时先同步`scripts/prototype-source` 与 `design/assets` 的交互原型维护源，再同步 Avalonia 实现。`design` 只保留这一个 HTML；新增界面必须通过实际 Dock、菜单、右键或设置入口打开，数据和交互状态互通，不能以独立演示页代替产品流程。样式和脚本放在 `design/assets`，运行 `scripts/build_prototype.ps1` 后内嵌到唯一交付文件 `design/index.html`；单文件复制到空目录后可离线打开。
 
 原型用浏览器本地存储保存演示配置；启动系统程序、文件/目录选择、显示器迁移和下载安装用演示状态模拟，配置导入导出使用 JSON。原型不会操作真实 QuickApp 配置或安装软件，也不会切换系统输入法；客户端的 Windows 热键唤起会切到英文输入态。提交前运行 `dotnet test QuickApp.slnx --no-restore` 和 `git diff --check`，并从页面入口验证修改涉及的完整操作链路。

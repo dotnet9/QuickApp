@@ -11,7 +11,13 @@ QuickApp 是一个跨平台的系统快捷启动器，用常驻 Dock 统一打�
 
 ## 界面预览
 
-动图录制自 [`design`](design) 目录的 HTML 界面原型，Avalonia 实现与原型保持一致。
+以下静态图来自实际 Windows NativeAOT 程序的 Skia 离屏运行；历史动图来自交互原型，两者分别标注。
+
+| 实际外观设置 · .NET 紫 | 实际关于窗口 · 英文 |
+| :---: | :---: |
+| ![](docs/media/appearance-dotnet.png) | ![](docs/media/about-en.png) |
+
+三态明暗模式与八套配色独立保存，包含 .NET 紫、极光、余烬；语言切换覆盖已打开的窗口、下拉框和托盘文案。更新检查、下载、SHA-256 校验与安装统一使用 CodeWF.Toolkit。逐项验证和已知边界见 [界面验证记录](docs/UI-VERIFICATION.md)。
 
 | 四边停靠 · 悬停放大 · 点击启动 | 拼音搜索 · 系统应用 · 加入 Dock |
 | :---: | :---: |
@@ -27,7 +33,7 @@ QuickApp 是一个跨平台的系统快捷启动器，用常驻 Dock 统一打�
 
 打开目录可以直接添加目录，无需写命令。Windows 下在条目编辑中设置 `Ctrl+Alt+D` 等组合键，QuickApp 运行时即可直接打开，Dock 收起也有效。命令可选择 CMD 或 PowerShell；新命令默认在终端运行并保留输出，例如把 `git status` 配合仓库工作目录保存为常用操作。
 
-从 [Releases](https://github.com/dotnet9/QuickApp/releases) 下载安装包（Windows 安装包 / Linux `.deb` / macOS `.pkg`、`.dmg`），或源码直接运行：
+从 [Releases](https://github.com/dotnet9/QuickApp/releases) 下载安装包（Windows x64 `.exe` / Linux x64、arm64 `.deb` / macOS x64、arm64 `.dmg`），或源码直接运行：
 
 ```powershell
 dotnet run --project src/QuickApp/QuickApp.csproj
@@ -45,14 +51,14 @@ dotnet run --project src/QuickApp/QuickApp.csproj
 
 ## 开发
 
-需要 .NET 10 SDK（`10.0.401`）：
+需要 .NET 10 SDK（版本以 [global.json](global.json) 为准）：
 
 ```powershell
 dotnet build QuickApp.slnx   # 构建
 dotnet test QuickApp.slnx    # 测试
 ```
 
-界面按「原型先行」维护：先改唯一入口 [design/index.html](design/index.html) 的交互原型，再同步 Avalonia 实现。所有界面通过 Dock、菜单、右键或设置打开，共用数据和状态；`design` 不再新增其他 HTML 页面。环境要求、发布打包、项目结构与贡献规范见 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)。
+交互原型唯一交付文件为 [design/index.html](design/index.html)，复制到空目录即可离线打开。维护源位于 `scripts/prototype-source` 和 `design/assets`，修改后运行 `scripts/build_prototype.ps1` 重新内嵌，禁止直接修改生成文件。所有界面通过 Dock、菜单、右键或设置打开，共用数据和状态。环境要求、发布打包、项目结构与贡献规范见 [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md)。
 
 ## 许可证
 

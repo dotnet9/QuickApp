@@ -45,7 +45,7 @@ git tag -a vX.Y.Z -m "应用名 X.Y.Z
 
 | 平台 | 产物 | 说明 |
 | --- | --- | --- |
-| win-x64 | 安装器或 zip（各仓既有形态） | NativeAOT |
+| win-x64 | `.exe` 安装器 | NativeAOT |
 | linux-x64 / linux-arm64 | `.deb`（amd64/arm64） | NativeAOT；arm64 在 arm runner 上原生编译 |
 | osx-x64 / osx-arm64 | `.dmg` | NativeAOT；保留符号（Apple ld_classic 不支持压缩调试段） |
 
