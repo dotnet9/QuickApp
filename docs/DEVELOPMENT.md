@@ -8,7 +8,7 @@
 - .NET SDK 以 `global.json` 为准 或兼容的 .NET 10 SDK
 - Windows SDK 和 MSVC 工具链（只在 Windows NativeAOT 发布时需要）
 
-依赖版本集中在 [`Directory.Packages.props`](../Directory.Packages.props)，当前使用 Avalonia 12.1.3 和 ReactiveUI.Avalonia 12.1.2。
+依赖版本集中在 [`Directory.Packages.props`](../Directory.Packages.props)，当前使用 Avalonia 12.1.4 和 ReactiveUI.Avalonia 12.1.2。
 
 ## 构建和测试
 
