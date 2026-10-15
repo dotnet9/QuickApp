@@ -70,6 +70,7 @@ vm.SetThemeCommand.Execute("system");Pump();model.Save();
 Check(store.Load().Settings.Theme=="system","System mode persists separately from palette");
 Check(model.Settings.Palette=="DotNet" && App.ThemeController.Palette==StudioPalette.DotNet,"Switching to system mode preserves the explicit palette");
 var about=new AboutWindow { DataContext=vm };about.Show();Pump();
+Check(!about.GetVisualDescendants().OfType<Button>().Single(button=>button.Name=="PART_MinimizeButton").IsEnabled && !about.GetVisualDescendants().OfType<Button>().Single(button=>button.Name=="PART_MaximizeRestoreButton").IsEnabled,"About respects disabled minimize and maximize capabilities");
 foreach(var culture in new[]{"en-US","zh-CN"})
 {
     var selectedPalette=model.Settings.Palette;
