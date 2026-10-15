@@ -10,6 +10,7 @@
     const controls=document.createElement('div');controls.className='window-controls';
     for(const [action,symbol,label] of [['minimize','−','Minimize'],['maximize','□','Maximize']]){
       const button=document.createElement('button');button.type='button';button.className='caption-button';button.dataset.windowAction=action;button.textContent=symbol;button.setAttribute('aria-label',label);
+      button.disabled=card.classList.contains('standalone-about');
       button.onclick=()=>{card.classList.toggle(action==='minimize'?'is-minimized':'is-maximized');};controls.append(button);
     }
     close.classList.add('caption-button','caption-close');controls.append(close);head.append(controls);

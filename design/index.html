@@ -760,6 +760,7 @@ html[data-edge="left"] .dock-items.searching,html[data-edge="right"] .dock-items
 .window-controls{display:flex;margin-left:auto;height:31px;flex:none}
 .window-controls .caption-button{display:grid;place-items:center;width:44px;height:31px;min-width:44px;margin:0;padding:0;border:0;border-radius:0;background:transparent;color:var(--text);font:18px 'Segoe UI',sans-serif;box-shadow:none}
 .window-controls .caption-button svg{width:14px;height:14px}.window-controls .caption-button:hover{background:var(--hover)}.window-controls .caption-close:hover{background:#c42b1c;color:#fff}
+.window-controls .caption-button:disabled{opacity:.4;cursor:default;background:transparent}
 .modal-card.is-minimized{height:33px!important;min-height:33px;overflow:hidden}.modal-card.is-minimized>:not(.modal-head){display:none}
 .modal-card.is-maximized{width:calc(100vw - 24px);height:calc(100vh - 24px);max-width:none;max-height:none}
 
@@ -2011,6 +2012,7 @@ window.QA = (function(){
     const controls=document.createElement('div');controls.className='window-controls';
     for(const [action,symbol,label] of [['minimize','−','Minimize'],['maximize','□','Maximize']]){
       const button=document.createElement('button');button.type='button';button.className='caption-button';button.dataset.windowAction=action;button.textContent=symbol;button.setAttribute('aria-label',label);
+      button.disabled=card.classList.contains('standalone-about');
       button.onclick=()=>{card.classList.toggle(action==='minimize'?'is-minimized':'is-maximized');};controls.append(button);
     }
     close.classList.add('caption-button','caption-close');controls.append(close);head.append(controls);
