@@ -35,8 +35,8 @@ dotnet run --project src/QuickApp/QuickApp.csproj
 Windows x64 的自包含 NativeAOT 发布：
 
 ```powershell
-scripts\publish-win-x64.bat 0.1.0
-pwsh scripts/build_installer.ps1 -Version 0.1.0 -Force
+scripts\publish-win-x64.bat 0.9.3
+pwsh scripts/build_installer.ps1 -Version 0.9.3
 ```
 
 发布文件位于 `artifacts/publish`，平台安装包和 SHA-256 校验文件位于 `artifacts/release`。
@@ -44,22 +44,22 @@ pwsh scripts/build_installer.ps1 -Version 0.1.0 -Force
 Windows x64 会生成 Inno Setup 安装包，Linux x64/arm64 会生成对应架构的 `.deb`，macOS x64/arm64 会生成 `.dmg`。Windows 安装包默认安装到 `Program Files\\QuickApp`，升级时只替换程序文件，不会覆盖 `%APPDATA%\\QuickApp\\config.json`；便携版仍可在程序目录放置 `portable.txt`。本地生成 Windows 安装包需要先安装 Inno Setup 6：
 
 ```powershell
-pwsh scripts/build_installer.ps1 -Version 0.2.2 -Force
+pwsh scripts/build_installer.ps1 -Version 0.9.3
 ```
 
 安装包和对应的 `.sha256` 文件会写入 `artifacts/release`。
 
-Linux/macOS 的自包含单文件发布（不启用 NativeAOT，安装包脚本会把它们封装成对应平台安装包）：
+Linux/macOS 在对应系统和架构上使用 NativeAOT 发布，安装包脚本将产物封装成对应平台安装包：
 
 ```powershell
-pwsh scripts/publish_quickapp.ps1 -RuntimeIdentifier linux-x64 -Version 0.2.2
-pwsh scripts/package_linux_deb.ps1 -RuntimeIdentifier linux-x64 -Version 0.2.2 -Force
+pwsh scripts/publish_quickapp.ps1 -RuntimeIdentifier linux-x64 -Version 0.9.3
+pwsh scripts/package_linux_deb.ps1 -RuntimeIdentifier linux-x64 -Version 0.9.3
 
-pwsh scripts/publish_quickapp.ps1 -RuntimeIdentifier osx-arm64 -Version 0.2.2
-pwsh scripts/package_macos_dmg.ps1 -RuntimeIdentifier osx-arm64 -Version 0.2.2 -Force
+pwsh scripts/publish_quickapp.ps1 -RuntimeIdentifier osx-arm64 -Version 0.9.3
+pwsh scripts/package_macos_dmg.ps1 -RuntimeIdentifier osx-arm64 -Version 0.9.3
 ```
 
-可用 RID：`win-x64`、`linux-x64`、`linux-arm64`、`osx-x64`、`osx-arm64`。`scripts/publish-all.bat` 一次发布全部 RID、`scripts/publish-win-x64.bat` 只发 win-x64；Windows x64 使用 NativeAOT，其余 RID 使用自包含单文件。
+可用 RID：`win-x64`、`linux-x64`、`linux-arm64`、`osx-x64`、`osx-arm64`，五个平台均使用 NativeAOT。`scripts/publish-win-x64.bat` 用于当前 Windows x64；其他平台须在匹配系统和架构上执行，不能在 Windows 上直接运行全部 RID 的原生编译。CI 使用五个原生 runner 分别发布。
 
 ## 持续集成与 Release
 
