@@ -23,7 +23,7 @@
 .modal-card{border:1px solid var(--text-dim);border-radius:3px;box-shadow:0 12px 44px #0005;isolation:isolate}
 .modal-head,.settings-card .modal-head,.standalone-about .modal-head{height:32px;min-height:32px;padding:0 0 0 8px;border-bottom:1px solid var(--line);z-index:2}
 .window-controls{display:flex;margin-left:auto;height:31px;flex:none}
-.window-controls .caption-button{display:grid;place-items:center;width:44px;height:31px;min-width:44px;margin:0;padding:0;border:0;border-radius:0;background:transparent;color:var(--text);font:18px 'Segoe UI',sans-serif;box-shadow:none}
+.window-controls .caption-button{display:grid;place-items:center;width:32px;height:31px;min-width:32px;margin:0;padding:0;border:0;border-radius:0;background:transparent;color:var(--text);font:18px 'Segoe UI',sans-serif;box-shadow:none}
 .window-controls .caption-button svg{width:14px;height:14px}.window-controls .caption-button:hover{background:var(--hover)}.window-controls .caption-close:hover{background:#c42b1c;color:#fff}
 .window-controls .caption-button:disabled{opacity:.4;cursor:default;background:transparent}
 .modal-card.is-minimized{height:33px!important;min-height:33px;overflow:hidden}.modal-card.is-minimized>:not(.modal-head){display:none}

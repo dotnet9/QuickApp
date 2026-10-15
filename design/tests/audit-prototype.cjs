@@ -28,6 +28,7 @@ const { pathToFileURL } = require('node:url');
   const frame=await page.locator('.settings-card').evaluate(element=>({border:parseFloat(getComputedStyle(element).borderTopWidth),title:parseFloat(getComputedStyle(element.querySelector('.modal-head')).height),buttons:element.querySelector('.window-controls').children.length}));
   if(frame.border<1||frame.title!==32||frame.buttons!==3)throw new Error('Desktop settings frame is incomplete: '+JSON.stringify(frame));
   if(await page.locator('.settings-card .window-controls > button:last-child').getAttribute('id')!=='settingsClose' || await page.locator('.settings-card .title-appearance > #qaTheme').count()!==1)throw new Error('Theme toggle must stay separate from the standard caption buttons');
+  if(!(await page.locator('.settings-card .window-controls button').evaluateAll(buttons=>buttons.every(button=>parseFloat(getComputedStyle(button).width)===32))))throw new Error('Caption widths differ from the shared native window');
   const paletteOrder=await page.locator('#qaPalette button[data-palette]').evaluateAll(buttons=>buttons.map(button=>button.dataset.palette));
   if(JSON.stringify(paletteOrder)!==JSON.stringify(['DotNet','Aurora','Ember','Default','Aquatic','Desert','Dusk','NightSky']))throw new Error('Palette order differs from the native title bar');
   const swatches=await page.locator('#qaPalette button i').evaluateAll(dots=>dots.map(dot=>[getComputedStyle(dot).backgroundColor,getComputedStyle(dot).backgroundImage]));
