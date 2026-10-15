@@ -1,4 +1,4 @@
-﻿const { chromium } = require('playwright');
+const { chromium } = require('playwright');
 const path = require('node:path');
 const fs = require('node:fs');
 const { pathToFileURL } = require('node:url');
@@ -6,6 +6,9 @@ const { pathToFileURL } = require('node:url');
   const output=path.resolve(process.env.QUICKAPP_AUDIT_OUTPUT||'artifacts/prototype-verification');fs.mkdirSync(output,{recursive:true});
   const browser=await chromium.launch({headless:true,...(process.env.CI?{}:{channel:'msedge'})});
   const page=await browser.newPage({viewport:{width:1280,height:900},deviceScaleFactor:1});
+  const setLanguage=async value=>{await page.locator('#qaLanguage').click();await page.locator('#qaLanguageMenu [data-language="'+value+'"]').click();};
+  const setMode=async value=>{for(let index=0;index<3;index++){if(await page.locator('#qaTheme').getAttribute('data-mode')===value)return;await page.locator('#qaTheme').click();}if(await page.locator('#qaTheme').getAttribute('data-mode')!==value)throw Error('Theme cycle failed');};
+  const setPalette=async value=>{await page.locator('button[data-palette="'+value+'"]').click();};
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
   const isolated=path.join(output,'standalone');fs.mkdirSync(isolated,{recursive:true});
   const entry=path.join(isolated,'QuickApp.html');fs.copyFileSync(path.resolve(__dirname,'../index.html'),entry);
@@ -20,14 +23,14 @@ const { pathToFileURL } = require('node:url');
   await page.locator('.settings-card [data-window-action="maximize"]').click();
   let routes=0;
   for(const language of ['zh-CN','en-US']){
-    await page.locator('[data-tab="appearance"]').click();await page.selectOption('#qaLanguage',language);
+    await page.locator('[data-tab="appearance"]').click();await setLanguage(language);
     for(const palette of ['Default','Desert','Aquatic','Dusk','NightSky','DotNet','Aurora','Ember']){
-      await page.selectOption('#qaPalette',palette);
+      await setPalette(palette);
       for(const mode of ['light','dark']){
-        await page.locator('[data-control="themePref"] [data-value="'+mode+'"]').click();
+        await setMode(mode);
         const properties=await page.locator('.settings-card').evaluate(element=>({width:element.getBoundingClientRect().width,height:element.getBoundingClientRect().height,text:getComputedStyle(element).color}));
         if(Math.abs(properties.width-720)>2||Math.abs(properties.height-620)>2)throw new Error('Settings viewport differs: '+JSON.stringify(properties));
-        if(await page.locator('#qaPalette option').count()!==8)throw new Error('Palette catalog differs');
+        if(await page.locator('#qaPalette [data-palette]').count()!==8)throw new Error('Palette catalog differs');
         await page.locator('.settings-card').screenshot({path:path.join(output,`appearance-${language}-${palette}-${mode}.png`),animations:'disabled'});routes++;
       }
     }
@@ -37,7 +40,7 @@ const { pathToFileURL } = require('node:url');
       await page.locator('.settings-card').screenshot({path:path.join(output,`settings-${tab}-${language}.png`),animations:'disabled'});routes++;
     }
   }
-  await page.locator('[data-tab="appearance"]').click();await page.locator('[data-control="themePref"] [data-value="system"]').click();
+  await page.locator('[data-tab="appearance"]').click();await setMode('system');
   await page.locator('#settingsClose').click();await page.locator('#btnMenu').click();
   await page.getByRole('menuitem',{name:'About',exact:true}).click();
   if(!(await page.locator('#aboutLayer').isVisible()))throw new Error('Independent about entry is missing');

@@ -47,15 +47,16 @@
     const hex=tokens.StudioSurfaceColor.replace('#','');root.style.setProperty('--surface',[0,2,4].map(i=>parseInt(hex.slice(i,i+2),16)).join(','));
     root.style.setProperty('--accent-ink','#ffffff');
     localStorage.setItem('quickapp-appearance',JSON.stringify({language,palette}));
-    const picker=document.getElementById('qaPalette');
-    for(const option of picker.options)option.textContent=t(paletteNames[option.value]);
+    document.getElementById('qaPalette').innerHTML=Object.keys(paletteNames).map(key=>`<button class="palette-dot" role="option" data-palette="${key}" aria-selected="${key===palette}" title="${t(paletteNames[key])}" aria-label="${t(paletteNames[key])}"><i style="background:${QUICKAPP_PALETTES[key][root.dataset.theme==='light'?'light':'dark'].StudioAccentColor}"></i></button>`).join('');
+    const mode=QUICKAPP_THEME.get(),toggle=document.getElementById('qaTheme');toggle.dataset.mode=mode;toggle.textContent=mode==='light'?'☀':mode==='dark'?'☾':'◐';toggle.title=t(mode==='light'?'LightTheme':mode==='dark'?'DarkTheme':'SystemTheme');toggle.setAttribute('aria-label',toggle.title);
+    document.getElementById('qaLanguage').title=t('InterfaceLanguage');
     localize();
   }
-  const palettePicker=document.getElementById('qaPalette');
-  for(const key of Object.keys(paletteNames))palettePicker.add(new Option(t(paletteNames[key]),key));
-  palettePicker.value=palette;palettePicker.onchange=()=>{palette=palettePicker.value;apply();};
-  const languagePicker=document.getElementById('qaLanguage');languagePicker.value=language;
-  languagePicker.onchange=()=>{language=languagePicker.value;apply();};
+  document.getElementById('qaPalette').onclick=event=>{const button=event.target.closest('[data-palette]');if(button){palette=button.dataset.palette;apply();}};
+  document.getElementById('qaTheme').onclick=()=>{QUICKAPP_THEME.set(({system:'light',light:'dark',dark:'system'})[QUICKAPP_THEME.get()]);apply();};
+  document.getElementById('qaLanguage').onclick=()=>{const menu=document.getElementById('qaLanguageMenu');menu.hidden=!menu.hidden;};
+  document.getElementById('qaLanguageMenu').onclick=event=>{const button=event.target.closest('[data-language]');if(button){language=button.dataset.language;document.getElementById('qaLanguageMenu').hidden=true;apply();}};
+  document.addEventListener('click',event=>{if(!event.target.closest('.language-picker'))document.getElementById('qaLanguageMenu').hidden=true;});
   new MutationObserver(()=>localize()).observe(document.body,{childList:true,subtree:true,characterData:true});
   new MutationObserver(apply).observe(root,{attributes:true,attributeFilter:['data-theme']});
   apply();

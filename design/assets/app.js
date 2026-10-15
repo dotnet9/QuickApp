@@ -9,6 +9,7 @@
   let stored;
   try { stored = JSON.parse(localStorage.getItem(storageKey)); } catch (_) { /* 首次运行或存储不可用 */ }
   const st = {...defaults, ...(stored?.settings || {}), dockVisible:true, searchOpen:false, edit:false, exited:false};
+  window.QUICKAPP_THEME = { get:()=>st.themePref, set:value=>{st.themePref=value;persist();refresh();} };
   let items = stored?.items || QA.SEED.map((it, i) => ({...it, id:'i' + i}));
   let savedConfig = {settings:{...st}, items:items.map(it => ({...it}))};
   let configError = null;
@@ -426,7 +427,7 @@
   $('#standaloneAboutClose').onclick = () => closeLayer('aboutLayer');
   $('#standaloneCheckUpdate').onclick = () => {
     $('#standaloneUpdateStatus').textContent='正在检查…';$('#standaloneCheckUpdate').disabled=true;
-    setTimeout(()=>{update={phase:'found',tag:'v0.9.3',progress:0,installer:true,notes:'维护更新'};$('#standaloneUpdateStatus').textContent='发现新版本 v0.9.3';$('#standaloneCheckUpdate').disabled=false;openUpdateNotes();},500);
+    setTimeout(()=>{update={phase:'found',tag:'v0.9.4',progress:0,installer:true,notes:'维护更新'};$('#standaloneUpdateStatus').textContent='发现新版本 v0.9.4';$('#standaloneCheckUpdate').disabled=false;openUpdateNotes();},500);
   }; $('#dialogClose').onclick = () => closeLayer('dialogLayer');
   $$('[data-dismiss]').forEach(el => el.onclick = () => closeLayer(el.dataset.dismiss));
   $$('[data-tab]').forEach((tab, i, tabs) => {
@@ -444,12 +445,12 @@
   $('#aboutLicense').onclick = () => dialog('许可证', [h('h3', {text:'MIT License'}), h('p', {text:'Copyright (c) QuickApp contributors'}), h('p', {text:'Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files, to deal in the Software without restriction.'}), h('p', {text:'THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND.'})], [chip('关闭', () => closeLayer('dialogLayer'), true)]);
   $('#aboutCheckUpdate').onclick = () => {
     $('#aboutCheckResult').textContent = '正在检查…'; $('#aboutCheckUpdate').disabled = true;
-    setTimeout(() => { update = {phase:'found', tag:'v0.9.3', progress:0, installer:true, notes:'## 应用多开（启动数量）\n\n- 程序 / 文件 / 目录条目可填写「启动数量」，一次点击连续启动多个实例。\n- 旧配置没有该字段即为 1，导入导出与存储模式切换一并保留。\n- 在「关于」检查到新版本时直接弹出版本说明。'}; $('#aboutCheckResult').textContent = '发现新版本 v0.9.3'; $('#aboutCheckUpdate').disabled = false; closeLayer('settingsLayer'); openUpdateNotes(); }, 500);
+    setTimeout(() => { update = {phase:'found', tag:'v0.9.4', progress:0, installer:true, notes:'## 应用多开（启动数量）\n\n- 程序 / 文件 / 目录条目可填写「启动数量」，一次点击连续启动多个实例。\n- 旧配置没有该字段即为 1，导入导出与存储模式切换一并保留。\n- 在「关于」检查到新版本时直接弹出版本说明。'}; $('#aboutCheckResult').textContent = '发现新版本 v0.9.4'; $('#aboutCheckUpdate').disabled = false; closeLayer('settingsLayer'); openUpdateNotes(); }, 500);
   };
   /* 版本说明卡片：已安装版本 / 最新版本 / 更新说明；按钮在 下载 → 安装 之间切换 */
   function openUpdateNotes() {
     const notes = h('div', {class:'stack'},
-      h('div', {class:'row'}, h('span', {class:'row-label', text:'已安装版本'}), h('span', {class:'spacer'}), h('span', {class:'row-note', text:'v0.9.2'})),
+      h('div', {class:'row'}, h('span', {class:'row-label', text:'已安装版本'}), h('span', {class:'spacer'}), h('span', {class:'row-note', text:'v0.9.3'})),
       h('div', {class:'row'}, h('span', {class:'row-label', text:'最新版本'}), h('span', {class:'spacer'}), h('span', {class:'row-note update-notes-version', text:update.tag})),
       h('label', {text:'更新说明'}), h('pre', {class:'update-notes-text', text:update.notes}));
     const install = chip(update.phase === 'ready' ? '安装' : '下载', () => {
