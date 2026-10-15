@@ -1,0 +1,20 @@
+/* 与原生设置窗口的 720×620、32 像素标题栏和 136 像素导航保持一致。 */
+.settings-card{width:720px;height:620px;max-height:95vh;display:flex;flex-direction:column}
+.settings-card .modal-head{height:32px;min-height:32px;padding:0 8px;border-bottom:0}
+.settings-card .modal-head h2{font-size:14px}
+.settings-layout{flex:1;min-height:0;max-height:none}
+.settings-nav{padding-top:0}
+.settings-content{padding-top:4px}
+.settings-panel select{width:180px;min-height:30px;text-align:left;background:var(--hover);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:4px 8px}
+.settings-panel option{text-align:left;background:var(--menu-bg);color:var(--text)}
+
+.settings-panel .row{padding:0;min-height:34px}
+
+.standalone-about{width:580px;height:560px;max-height:95vh}
+.standalone-about .modal-head{height:32px;min-height:32px;padding:0 8px;border-bottom:0}
+.standalone-about .modal-head h2{font-size:14px}
+.standalone-about-body{padding:28px;overflow:auto}
+.standalone-about-hero{display:flex;gap:16px;align-items:center;margin-bottom:18px}
+.standalone-about-hero img{width:56px;height:56px}.standalone-about-hero strong{display:block;font-size:24px;font-weight:600;margin-bottom:5px}.standalone-about-hero span{color:var(--text-dim)}
+.standalone-about-info{display:grid;grid-template-columns:110px 1fr;gap:12px 0;margin:0 0 18px}.standalone-about-info dd{margin:0}
+.standalone-about-body p{margin:18px 0}.standalone-about-body hr{border:0;border-top:1px solid var(--line)}

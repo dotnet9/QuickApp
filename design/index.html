@@ -3,11 +3,761 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>QuickApp · 交互原型</title>
-<link rel="icon" href="../logo.svg"><link rel="stylesheet" href="assets/proto.css">
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIiB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcm9sZT0iaW1nIiBhcmlhLWxhYmVsPSJRdWlja0FwcCI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9InFhLWJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzVCODJGOCIvPgogICAgICA8c3RvcCBvZmZzZXQ9Ii41NSIgc3RvcC1jb2xvcj0iIzNENUNFOCIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMyRjQ5QzkiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICA8cmFkaWFsR3JhZGllbnQgaWQ9InFhLWdsb3ciIGN4PSIuMjIiIGN5PSIuMTIiIHI9IjEuMDUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZmZmZmYiIHN0b3Atb3BhY2l0eT0iLjI2Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iLjUiIHN0b3AtY29sb3I9IiNmZmZmZmYiIHN0b3Atb3BhY2l0eT0iMCIvPgogICAgPC9yYWRpYWxHcmFkaWVudD4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0icWEtYm9sdCIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNGRkQ0NEUiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjRkZBQjFGIi8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KCiAgPCEtLSDlnIbop5LmlrnlvaLlupXmnb/vvJrlk4HniYzok53muJDlj5ggLS0+CiAgPHJlY3QgeD0iMzIiIHk9IjMyIiB3aWR0aD0iNDQ4IiBoZWlnaHQ9IjQ0OCIgcng9IjExMiIgZmlsbD0idXJsKCNxYS1iZykiLz4KICA8cmVjdCB4PSIzMiIgeT0iMzIiIHdpZHRoPSI0NDgiIGhlaWdodD0iNDQ4IiByeD0iMTEyIiBmaWxsPSJ1cmwoI3FhLWdsb3cpIi8+CgogIDwhLS0gUSDkuLvkvZPvvJrlnIbnjq8gLS0+CiAgPGNpcmNsZSBjeD0iMjU0IiBjeT0iMjQ0IiByPSIxMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZmZmZiIgc3Ryb2tlLXdpZHRoPSI2MCIvPgoKICA8IS0tIFEg55qE5bC+5be077ya5LiA6YGT6Zeq55S177yM5LuO546v5YaF5YiS5Ye6IC0tPgogIDxwYXRoIGQ9Ik0zMTUuNSAyMjEuOSBMMjgzLjQgMzQzLjMgTDMyOS43IDMyNi40IEwzNDcuMSA0MjAuMiBMMzg0LjQgMjgwLjMgTDMzMy45IDI5OC42IFoiCiAgICAgICAgZmlsbD0idXJsKCNxYS1ib2x0KSIgc3Ryb2tlPSJ1cmwoI3FhLWJvbHQpIiBzdHJva2Utd2lkdGg9IjE2IiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo="><style>/* ============================================================================
+   QuickApp 原型共享样式（零依赖、离线可用）
+   design/index.html 的各界面共用这份 token 与组件。
+   Avalonia 实现以这里的尺寸、圆角、颜色和状态为准。
+   ========================================================================== */
+
+/* ============================ 1. 视觉 token ============================ */
+:root{
+  color-scheme:dark;
+  --font:"Microsoft YaHei UI","Microsoft YaHei",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --tile-size:44px;
+  --dock-radius:18px;
+  --dock-alpha:1;
+  --items-window:530px;
+
+  --dur-dock:240ms;
+  --ease-out:cubic-bezier(.22,1,.36,1);
+  --ease-pop:cubic-bezier(.34,1.56,.64,1);
+
+  /* 深色（默认） */
+  --accent:#5aa2ff;
+  --accent-ink:#08111f;
+  --text:#eef1f6;
+  --text-dim:#9aa4b3;
+  --line:rgba(255,255,255,.12);
+  --hover:rgba(255,255,255,.10);
+  --active:rgba(255,255,255,.16);
+  --surface:26,29,36;
+  --bubble-bg:rgba(24,27,33,.97);
+  --menu-bg:rgba(24,27,33,.98);
+  --menu-hover:rgba(255,255,255,.08);
+  --scrim:rgba(5,7,11,.55);
+  --danger:#ff6b6b;
+  --ok:#3fb96f;
+  --shadow:0 18px 40px rgba(0,0,0,.45),0 2px 8px rgba(0,0,0,.35);
+  --panel-shadow:0 18px 40px rgba(0,0,0,.45),0 2px 8px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.10);
+  --wall:radial-gradient(1200px 700px at 18% 6%,#22345c 0%,transparent 60%),
+         radial-gradient(900px 600px at 85% 18%,#1d3d46 0%,transparent 55%),
+         linear-gradient(160deg,#0a0c11,#12151c 60%,#0a0c11);
+  --taskbar:rgba(12,14,19,.72);
+}
+html[data-theme="light"]{
+  color-scheme:light;
+  --accent:#2563eb;
+  --accent-ink:#ffffff;
+  --text:#111826;
+  --text-dim:#5c6675;
+  --line:rgba(17,24,38,.12);
+  --hover:rgba(17,24,38,.06);
+  --active:rgba(17,24,38,.12);
+  --surface:255,255,255;
+  --bubble-bg:rgba(255,255,255,.98);
+  --menu-bg:rgba(255,255,255,.99);
+  --menu-hover:rgba(17,24,38,.06);
+  --scrim:rgba(15,23,42,.32);
+  --danger:#d92d20;
+  --ok:#1f9d55;
+  --shadow:0 18px 40px rgba(15,23,42,.18),0 2px 8px rgba(15,23,42,.10);
+  --panel-shadow:0 18px 40px rgba(15,23,42,.18),0 2px 8px rgba(15,23,42,.10),inset 0 1px 0 rgba(255,255,255,.7);
+  --wall:radial-gradient(1200px 700px at 18% 6%,#cfe0ff 0%,transparent 60%),
+         radial-gradient(900px 600px at 85% 14%,#d6f0ea 0%,transparent 55%),
+         linear-gradient(160deg,#eef2f8,#e6ecf5 60%,#f5f8fc);
+  --taskbar:rgba(255,255,255,.72);
+}
+/* 桌面壁纸独立于主题：跟随(默认)/深/浅 */
+html[data-wall="dark"]{
+  --wall:radial-gradient(1200px 700px at 18% 6%,#22345c 0%,transparent 60%),
+         radial-gradient(900px 600px at 85% 18%,#1d3d46 0%,transparent 55%),
+         linear-gradient(160deg,#0a0c11,#12151c 60%,#0a0c11);
+}
+html[data-wall="light"]{
+  --wall:radial-gradient(1200px 700px at 18% 6%,#cfe0ff 0%,transparent 60%),
+         radial-gradient(900px 600px at 85% 14%,#d6f0ea 0%,transparent 55%),
+         linear-gradient(160deg,#eef2f8,#e6ecf5 60%,#f5f8fc);
+}
+html[data-style="glass"]{ --panel-bg:rgba(var(--surface),var(--dock-alpha)); --panel-blur:blur(20px) saturate(160%); }
+html[data-style="flat"]{ --panel-bg:rgba(var(--surface),var(--dock-alpha)); --panel-blur:none; --panel-shadow:var(--shadow); }
+html[data-style="flat"] .menu{ box-shadow:var(--shadow); }
+/* 不支持 backdrop-filter 时毛玻璃退化为半透明纯色 */
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  html[data-style="glass"]{ --panel-bg:rgba(var(--surface),.95); --panel-blur:none; }
+}
+
+/* ============================ 2. 基础 ============================ */
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{
+  margin:0;font-family:var(--font);color:var(--text);background:var(--wall);
+  overflow:hidden;user-select:none;-webkit-font-smoothing:antialiased;
+}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+::-webkit-scrollbar{width:0;height:0}
+
+/* 模拟桌面任务栏（仅背景语境） */
+.taskbar{
+  position:fixed;left:0;right:0;bottom:0;height:40px;z-index:10;
+  background:var(--taskbar);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-top:1px solid var(--line);display:flex;align-items:center;gap:10px;padding:0 14px;
+  pointer-events:none;color:var(--text-dim);font-size:12px;
+}
+.taskbar i{width:22px;height:22px;border-radius:6px;background:var(--hover);display:block}
+.taskbar .clock{margin-left:auto}
+
+/* ============================ 3. Dock（默认上边缘 · 横向） ============================ */
+.dock-handle{
+  position:fixed;z-index:120;top:5px;left:50%;width:54px;height:5px;padding:0;
+  border-radius:999px;background:var(--text-dim);opacity:0;pointer-events:none;
+  transform:translateX(-50%);transition:opacity 160ms linear,background 160ms linear,transform 180ms var(--ease-out),box-shadow 160ms linear;
+  cursor:pointer;
+}
+.dock-handle::before{content:"";position:absolute;inset:-8px -12px}
+body:not(.dock-visible):not(.dock-pinned) .dock-handle{opacity:.68;pointer-events:auto}
+.dock-handle:hover,.dock-handle:focus-visible{
+  opacity:1;background:var(--accent);box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 36%,transparent),0 2px 8px rgba(0,0,0,.24);
+  transform:translateX(-50%) scaleX(1.12);outline:none;
+}
+body.dock-pinned .dock-handle{display:none}
+
+.dock{
+  position:fixed;top:10px;left:0;right:0;margin:0 auto;width:fit-content;max-width:94vw;z-index:100;
+  display:flex;flex-direction:column;gap:2px;
+  padding:0;border:1px solid transparent;border-radius:var(--dock-radius);
+  background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none;
+  transform:translateY(0);opacity:1;
+  transition:transform var(--dur-dock) var(--ease-out),opacity 180ms linear,background 160ms linear,border-color 160ms linear,border-radius 160ms linear,box-shadow 200ms var(--ease-out);
+}
+html[data-search-open="true"] .dock,
+html[data-edit="true"] .dock{
+  padding:6px 8px;background:var(--panel-bg);backdrop-filter:var(--panel-blur);-webkit-backdrop-filter:var(--panel-blur);
+  border-color:var(--line);box-shadow:var(--panel-shadow);
+}
+body:not(.dock-visible) .dock{transform:translateY(calc(-100% - 22px));opacity:0;pointer-events:none}
+.dock-body{display:flex;align-items:center;gap:8px;max-width:100%}
+
+/* 滚动区：留白保证悬停放大不被裁切。
+   悬停峰值 scale(1.52) + 5px 朝桌面内位移需要 ≥17px 留白，统一 18px；
+   任何停靠边都不允许出现悬浮图标被裁剪（横向 18px 上下、竖向 18px 内侧）。 */
+.items-wrap{position:relative;display:flex;min-width:0;flex:1 1 auto}
+.dock-items{
+  display:flex;align-items:flex-start;gap:6px;padding:18px 14px;
+  overflow-x:auto;overflow-y:hidden;min-width:0;flex:1 1 auto;max-width:var(--items-window);
+  scroll-snap-type:x proximity;scroll-behavior:smooth;overscroll-behavior:contain;
+  cursor:default;
+}
+.dock-items.panning{cursor:grabbing}
+.dock-item{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;width:var(--tile-size);flex:0 0 auto;scroll-snap-align:start}
+.dock-item.dragging{opacity:.35}
+.dock-item.renaming .tile{opacity:.3}
+/* 推荐页安装完成:新快捷方式进入 Dock 的进场动画 */
+@keyframes tilePopIn{from{transform:scale(.4);opacity:0}60%{transform:scale(1.14)}to{transform:scale(1);opacity:1}}
+.dock-item.just-added{animation:tilePopIn 360ms var(--ease-pop)}
+
+/* 搜索结果：自定义配置与开始菜单应用分组展示，结果区域高度稳定 */
+html[data-search-open="true"] .dock-items.searching{
+  display:flex;flex-direction:column;align-items:stretch;gap:10px;
+  min-height:calc(var(--tile-size) + 42px);max-height:300px;padding:18px 14px 22px;overflow-x:hidden;overflow-y:auto;
+}
+.search-group{display:flex;flex-direction:column;gap:6px;min-width:0}
+.search-group-title{display:flex;align-items:center;gap:7px;color:var(--text-dim);font-size:11px;line-height:1.2;padding:0 2px}
+.search-group-title strong{font-weight:600;color:var(--text)}
+.search-group-title .search-group-count{font-variant-numeric:tabular-nums;opacity:.75}
+.search-result-row{display:flex;align-items:flex-start;gap:8px;min-width:0;flex-wrap:wrap}
+.search-installed-list{display:flex;flex-direction:column;gap:6px;min-width:0}
+.search-installed-item{
+  display:flex;align-items:center;gap:9px;min-height:48px;padding:5px 7px;
+  border:1px solid var(--line);border-radius:10px;background:rgba(var(--surface),.3);
+  cursor:pointer;outline:none;transition:border-color 140ms linear,background 140ms linear,transform 140ms var(--ease-out);
+}
+.search-installed-item:hover,.search-installed-item:focus-visible{border-color:var(--accent);background:var(--hover)}
+.search-installed-item:active{transform:scale(.995)}
+.search-result-row .tile:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.search-installed-item .tile{width:36px;height:36px;border-radius:10px;flex:0 0 auto;box-shadow:0 2px 5px rgba(0,0,0,.24)}
+.search-installed-copy{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1 1 auto}
+.search-installed-copy strong{font-size:12px;color:var(--text);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.search-installed-copy span{font-size:11px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 紧凑「＋」添加钮：图形化表达，悬停气泡给出完整语义，不占行宽 */
+.search-result-add{
+  width:30px;height:30px;padding:0;border-radius:9px;flex:0 0 auto;justify-content:center;
+  display:grid;place-items:center;background:var(--hover);color:var(--accent);
+  transition:background 140ms linear,transform 140ms var(--ease-pop);
+}
+.search-result-add:hover{background:var(--accent);color:var(--accent-ink);transform:scale(1.08)}
+.search-result-add:active{transform:scale(.94)}
+.dock-items.searching .dock-empty{align-self:stretch;min-height:64px;display:grid;place-items:center;padding:12px 18px;text-align:center}
+
+.tile{
+  position:relative;width:var(--tile-size);height:var(--tile-size);
+  border-radius:calc(var(--tile-size) * .28);display:grid;place-items:center;
+  color:#fff;box-shadow:0 2px 6px rgba(0,0,0,.28);
+  transition:transform 260ms var(--ease-out),box-shadow 220ms var(--ease-out),filter 220ms linear;
+}
+.tile.app-icon{background:transparent!important;box-shadow:none;color:var(--text)}
+.tile.app-icon .tile-icon svg{width:90%;height:90%}
+/* 用户选择的本地图片图标：等比放进图标块 */
+.tile-img{width:72%;height:72%;object-fit:contain;display:block;pointer-events:none}
+.tile.running{animation:tileRun 320ms var(--ease-out)}
+.tile-icon{display:grid;place-items:center;line-height:0}
+
+.tile-name{
+  font-size:12px;line-height:1.2;max-width:var(--tile-size);width:var(--tile-size);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  color:var(--text);text-align:center;
+}
+html[data-label="icon"] .tile-name{display:none}
+
+.remove{
+  position:absolute;left:-3px;top:-3px;width:17px;height:17px;border-radius:50%;
+  background:rgba(12,14,19,.82);color:#fff;display:grid;place-items:center;
+  box-shadow:0 1px 3px rgba(0,0,0,.4);transition:background 140ms linear,transform 140ms var(--ease-pop);
+}
+.remove:hover{background:var(--danger);transform:scale(1.12)}
+
+.dock-empty{padding:12px 14px;color:var(--text-dim);font-size:12px;white-space:nowrap}
+
+/* 两端渐隐只覆盖应用图标，提示还有内容但不挡住图标 */
+.fade{position:absolute;top:0;bottom:0;width:22px;pointer-events:none;opacity:0;transition:opacity 160ms linear;z-index:2}
+.fade-left{left:0;background:linear-gradient(90deg,rgba(var(--surface),.46),rgba(var(--surface),0))}
+.fade-right{right:0;background:linear-gradient(270deg,rgba(var(--surface),.46),rgba(var(--surface),0))}
+.fade.show{opacity:1}
+
+.dock-tools{
+  display:flex;align-items:center;gap:4px;padding:2px;
+  border:1px solid var(--line);border-radius:14px;
+  background:var(--panel-bg);backdrop-filter:var(--panel-blur);-webkit-backdrop-filter:var(--panel-blur);
+  box-shadow:0 6px 16px rgba(0,0,0,.24);flex:0 0 auto;
+}
+.dock-divider{width:1px;height:max(54px,calc(var(--tile-size) * 1.1));background:var(--line);flex:0 0 auto}
+/* Dock 操作区用两行排列，降低横向抢占并让小图标更有呼吸感 */
+.dock-actions{display:grid;grid-template-columns:repeat(2,28px);grid-template-rows:repeat(2,28px);column-gap:2px;row-gap:0;align-items:center;flex:0 0 auto}
+.dock-actions .icon-btn{width:28px;height:28px;border-radius:8px}
+html[data-search-open="true"] .dock-tools,
+html[data-edit="true"] .dock-tools{
+  padding:0;border-color:transparent;border-radius:0;background:transparent;
+  backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:none;
+}
+
+.icon-btn{
+  width:32px;height:32px;border-radius:9px;display:grid;place-items:center;color:var(--text-dim);
+  transition:background 140ms linear,color 140ms linear,transform 140ms var(--ease-pop);
+}
+.icon-btn:hover{background:var(--hover);color:var(--text)}
+.icon-btn:active{transform:scale(.92)}
+.icon-btn.active{color:var(--accent);background:var(--hover)}
+.icon-btn.low-priority{opacity:.68}
+.icon-btn.low-priority:hover,.icon-btn.low-priority:focus-visible{opacity:1}
+.icon-btn[aria-pressed="false"] svg{transform:rotate(42deg)}
+.icon-btn svg{transition:transform 180ms var(--ease-pop)}
+
+/* 滚动进度限制在应用图标区域 */
+.scroll-indicator{position:absolute;left:18px;right:18px;bottom:4px;height:2px;margin:0;border-radius:2px;background:var(--hover);overflow:hidden;z-index:3}
+.scroll-indicator i{position:absolute;top:0;bottom:0;left:0;border-radius:2px;background:var(--accent);opacity:.65}
+
+/* 搜索行 */
+.dock-search{display:flex;align-items:center;gap:6px;padding:4px 6px 2px;border-bottom:1px solid var(--line);margin-bottom:2px}
+.dock-search .search-icon{color:var(--text-dim);line-height:0}
+.dock-search input{
+  flex:1 1 auto;min-width:190px;background:none;border:0;outline:none;color:var(--text);
+  font-size:13px;padding:6px 2px;
+}
+.dock-search input::placeholder{color:var(--text-dim)}
+.search-count{font-size:11px;color:var(--text-dim);font-variant-numeric:tabular-nums;flex:0 0 auto}
+.dock-search .icon-btn{width:28px;height:28px;flex:0 0 auto}
+
+/* 编辑工具条 */
+.dock-editbar{
+  display:flex;align-items:center;gap:6px;padding:4px 8px 0;border-top:1px solid var(--line);
+  font-size:11px;color:var(--text-dim);margin-top:2px;
+}
+.dock-editbar .spacer{flex:1 1 auto}
+.chip{
+  display:inline-flex;align-items:center;gap:5px;height:26px;padding:0 10px;border-radius:8px;
+  background:var(--hover);color:var(--text);font-size:12px;transition:background 140ms linear;
+}
+.chip:hover{background:var(--active)}
+.chip.primary{background:var(--accent);color:var(--accent-ink)}
+.chip.primary:hover{filter:brightness(1.08)}
+.chip-icon{line-height:0;display:grid;place-items:center}
+
+/* ============================ 4. 更新提示（本次新增规范） ============================ */
+/* 横排 Dock（上/下边缘）：更新条是面板内的一行，位于图标区下方。
+   必须带 min-width，绝不允许星号列把文本压扁；文本单行截断，按钮恒在右侧。 */
+.update-bar{
+  display:flex;align-items:center;gap:9px;
+  min-width:330px;max-width:100%;
+  margin:4px 2px 0;padding:7px 8px 7px 10px;
+  border:1px solid var(--line);border-radius:10px;
+  background:var(--hover);
+}
+.update-bar .update-icon{color:var(--accent);flex:0 0 auto;display:grid;place-items:center;line-height:0}
+.update-bar .update-icon.done{color:var(--ok)}
+.update-main{display:flex;flex-direction:column;gap:5px;min-width:0;flex:1 1 auto}
+.update-line{display:flex;align-items:center;gap:8px;min-width:0}
+.update-text{font-size:12px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.update-text .update-tag{color:var(--text-dim);font-size:11px}
+.update-actions{display:flex;align-items:center;gap:2px;margin-left:auto;flex:0 0 auto}
+.update-actions .chip{height:24px;padding:0 9px;font-size:11.5px}
+/* 下载中：进度条在文本下方，占满文本区 */
+.update-progress{position:relative;height:4px;border-radius:2px;background:var(--active);overflow:hidden}
+.update-progress i{position:absolute;top:0;bottom:0;left:0;width:40%;border-radius:inherit;background:var(--accent);transition:width 220ms linear}
+.update-progress.indeterminate i{width:34%;animation:updateSlide 1.1s linear infinite}
+@keyframes updateSlide{from{left:-34%}to{left:100%}}
+
+/* 竖排 Dock（左/右边缘）：Dock 上只出现紧凑更新胶囊，点击弹出更新卡片。
+   竖排 Dock 的宽度永远不被更新内容撑开。 */
+.update-pill{
+  display:inline-flex;align-items:center;justify-content:center;gap:5px;
+  margin-top:2px;padding:4px 9px;border-radius:999px;
+  border:1px solid color-mix(in srgb,var(--accent) 55%,transparent);
+  background:color-mix(in srgb,var(--accent) 14%,transparent);
+  color:var(--accent);font-size:11px;line-height:1;white-space:nowrap;flex:0 0 auto;
+}
+.update-pill:hover{background:color-mix(in srgb,var(--accent) 24%,transparent)}
+.update-pill .pill-dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:pillBlink 1.6s ease-in-out infinite}
+@keyframes pillBlink{0%,100%{opacity:1}50%{opacity:.35}}
+
+/* 更新卡片：竖排时弹出，锚在 Dock 内侧；横排时也可用同款卡片做悬浮详情 */
+.update-card{
+  width:290px;max-width:92vw;padding:12px 12px 10px;border-radius:12px;
+  background:var(--menu-bg);border:1px solid var(--line);box-shadow:var(--shadow);
+  backdrop-filter:var(--panel-blur);-webkit-backdrop-filter:var(--panel-blur);
+  display:flex;flex-direction:column;gap:8px;
+  animation:popIn 120ms var(--ease-out);
+}
+.update-card .update-head{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600}
+.update-card .update-head .update-head-icon{color:var(--accent);display:grid;place-items:center;line-height:0}
+.update-card .update-head .update-head-icon.done{color:var(--ok)}
+.update-card .update-head .update-ver{margin-left:auto;font-size:11px;font-weight:400;color:var(--text-dim);border:1px solid var(--line);border-radius:999px;padding:2px 8px}
+.update-card .update-desc{font-size:11.5px;color:var(--text-dim);line-height:1.55}
+.update-card .update-line{gap:8px}
+.update-card .update-actions{margin-left:0;justify-content:flex-end;width:100%}
+
+/* ============================ 5. 浮层 ============================ */
+.overlay-layer{position:fixed;inset:0;z-index:300;pointer-events:none}
+.bubble{
+  position:fixed;max-width:240px;padding:7px 11px;border-radius:10px;
+  background:var(--bubble-bg);border:1px solid var(--line);box-shadow:var(--shadow);
+  display:flex;flex-direction:column;gap:3px;pointer-events:none;z-index:310;
+}
+.bubble[data-pos="above"]{transform:translate(-50%,-100%)}
+.bubble[data-pos="below"]{transform:translate(-50%,0)}
+.bubble[data-pos="right"],.bubble[data-pos="left"]{transform:translate(0,-50%)}
+.bubble-name{font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bubble-target{font-size:11px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.drop-line{position:fixed;width:3px;border-radius:2px;background:var(--accent);box-shadow:0 0 8px var(--accent);z-index:305}
+.rename-input{
+  position:fixed;height:32px;padding:0 10px;border-radius:8px;pointer-events:auto;z-index:320;
+  background:var(--menu-bg);color:var(--text);border:1px solid var(--accent);outline:none;
+  font-size:13px;text-align:center;box-shadow:var(--shadow);
+}
+
+/* ============================ 6. 菜单 / 托盘 ============================ */
+.menu{
+  position:fixed;min-width:87px;max-height:min(70vh,520px);overflow:auto;padding:6px;border-radius:11px;z-index:320;
+  background:var(--menu-bg);border:1px solid var(--line);box-shadow:var(--shadow);
+  backdrop-filter:var(--panel-blur);-webkit-backdrop-filter:var(--panel-blur);
+  animation:popIn 110ms var(--ease-out);
+}
+@keyframes popIn{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:scale(1)}}
+.menu-item{
+  display:flex;align-items:center;gap:9px;width:100%;height:30px;padding:0 10px;border-radius:7px;
+  font-size:12.5px;color:var(--text);text-align:left;
+}
+.menu-item .mi-icon{line-height:0;color:var(--text-dim);flex:0 0 auto;display:grid;place-items:center}
+.menu-item:hover{background:var(--menu-hover)}
+.menu-item.danger{color:var(--danger)}
+.menu-item.danger .mi-icon{color:var(--danger)}
+.menu-sep{height:1px;margin:5px 8px;background:var(--line)}
+.menu-title{padding:7px 10px 5px;font-size:11px;color:var(--text-dim)}
+.menu-item .mi-note{margin-left:auto;font-size:11px;color:var(--text-dim)}
+/* 停靠位置四向选择：桌面示意框，点哪条边停靠哪条边（WinForms 锚定编辑器的直觉） */
+.dock-pos{position:relative;height:96px;margin:2px 8px 6px;border:1px solid var(--line);border-radius:9px;background:var(--hover)}
+.dock-pos .edge{position:absolute;display:grid;place-items:center;background:none;border:0;cursor:pointer;color:var(--text-dim);border-radius:7px;padding:0}
+.dock-pos .edge:hover{background:var(--menu-hover);color:var(--text)}
+.dock-pos .edge::before{content:"";width:58%;height:6px;border-radius:3px;background:currentColor}
+.dock-pos .e-left::before,.dock-pos .e-right::before{width:6px;height:58%}
+.dock-pos .e-top{left:20px;right:20px;top:5px;height:20px}
+.dock-pos .e-bottom{left:20px;right:20px;bottom:5px;height:20px}
+.dock-pos .e-left{top:30px;bottom:30px;left:5px;width:20px}
+.dock-pos .e-right{top:30px;bottom:30px;right:5px;width:20px}
+.dock-pos .edge.active{background:var(--accent);color:var(--accent-ink)}
+
+.tray-preview{
+  position:fixed;top:12px;right:12px;z-index:320;border-radius:11px;overflow:hidden;
+  background:var(--menu-bg);border:1px solid var(--line);box-shadow:var(--shadow);
+  backdrop-filter:var(--panel-blur);-webkit-backdrop-filter:var(--panel-blur);
+  animation:popIn 120ms var(--ease-out);
+}
+.tray-preview .tray-head{
+  display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line);
+  font-size:11px;color:var(--text-dim);
+}
+.tray-preview .tray-head .tray-icon{width:22px;height:22px;border-radius:6px;display:block}
+.tray-preview .menu{position:static;border:0;box-shadow:none;background:none;backdrop-filter:none;animation:none}
+
+/* ============================ 7. 弹窗 ============================ */
+.modal-layer{position:fixed;inset:0;z-index:340;display:grid;place-items:center}
+.scrim{position:absolute;inset:0;background:var(--scrim);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+.modal-card{
+  position:relative;width:520px;max-width:92vw;max-height:86vh;overflow:auto;
+  background:var(--menu-bg);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);
+  animation:popIn 150ms var(--ease-out);
+}
+.modal-card.small{width:380px}
+/* 版本说明卡片：已安装版本 / 最新版本 / 更新说明正文 */
+.update-notes-version{color:var(--accent);font-weight:600}
+.update-notes-text{margin:0;max-height:260px;overflow:auto;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--hover);
+  font-family:inherit;font-size:11.5px;line-height:1.6;color:var(--text);white-space:pre-wrap;word-break:break-word}
+.modal-head{display:flex;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:inherit}
+.modal-head h2{margin:0;font-size:14px;font-weight:600}
+.modal-head .icon-btn{margin-left:auto}
+.modal-body{padding:6px 16px 16px}
+.settings-card{width:700px;max-width:94vw;overflow:hidden}
+.settings-layout{display:flex;min-height:430px;max-height:calc(86vh - 58px)}
+.settings-nav{width:136px;flex:0 0 auto;padding:8px 0;background:var(--hover);border-right:1px solid var(--line);display:flex;flex-direction:column;gap:2px}
+.settings-tab{
+  position:relative;display:flex;align-items:center;width:100%;height:38px;padding:0 18px;
+  color:var(--text-dim);font-size:13px;text-align:left;border-radius:0;transition:background 140ms linear,color 140ms linear;
+}
+.settings-tab .tab-icon{width:16px;height:16px;margin-right:9px;display:grid;place-items:center;line-height:0}
+.settings-tab .tab-icon svg{width:16px;height:16px}
+.settings-tab:hover{background:var(--active);color:var(--text)}
+.settings-tab.active{background:var(--accent);color:var(--accent-ink);font-weight:600}
+.settings-tab.active::before{content:"";position:absolute;left:0;top:7px;bottom:7px;width:3px;border-radius:0 3px 3px 0;background:currentColor;opacity:.7}
+.settings-content{flex:1;min-width:0;overflow:auto;padding:4px 18px 18px}
+.settings-panel .group:first-child{padding-top:12px}
+.about-hero{display:flex;align-items:center;gap:12px;padding:20px 0 14px;border-bottom:1px solid var(--line)}
+.about-mark{width:48px;height:48px;border-radius:14px;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,.22)}
+.about-mark img{width:100%;height:100%;display:block}
+.about-hero strong,.about-hero span{display:block}
+.about-hero strong{font-size:16px;font-weight:600}
+.about-hero span{margin-top:3px;font-size:12px;color:var(--text-dim)}
+.about-links{display:flex;gap:8px;align-items:center;padding-top:14px}
+.about-url{max-width:100%;color:var(--accent);text-align:right;overflow-wrap:anywhere;text-decoration:none}
+.about-url:hover{text-decoration:underline}
+/* 推荐应用（设置 · 推荐页签）：自研软件卡片 + 一键下载安装 + 完成后自动加入 Dock */
+.rec-list{display:flex;flex-direction:column;gap:10px;padding:4px 0 10px}
+.rec-card{
+  display:flex;flex-direction:column;gap:10px;padding:13px 14px;
+  border:1px solid var(--line);border-radius:12px;background:rgba(var(--surface),.35);
+  transition:border-color 140ms linear,background 140ms linear;
+}
+.rec-card:hover{border-color:color-mix(in srgb,var(--accent) 40%,var(--line));background:rgba(var(--surface),.5)}
+.rec-head{display:flex;align-items:flex-start;gap:12px;min-width:0}
+.rec-icon{
+  width:44px;height:44px;border-radius:12px;flex:0 0 auto;overflow:hidden;
+  display:grid;place-items:center;background:rgba(var(--surface),.55);border:1px solid var(--line);
+}
+.rec-icon img{width:78%;height:78%;object-fit:contain;display:block}
+.rec-info{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:4px}
+.rec-title{display:flex;align-items:center;gap:8px;min-width:0}
+.rec-title strong{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rec-ver{
+  font-size:10.5px;line-height:1;color:var(--accent);flex:0 0 auto;
+  border:1px solid color-mix(in srgb,var(--accent) 45%,transparent);border-radius:999px;padding:3px 8px;
+}
+.rec-desc{font-size:12px;color:var(--text-dim);line-height:1.6}
+.rec-meta{font-size:11px;color:var(--text-dim);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rec-foot{display:flex;align-items:center;gap:10px;min-height:26px}
+.rec-actions{display:flex;align-items:center;gap:8px;margin-left:auto;flex-wrap:wrap;justify-content:flex-end}
+.rec-badge{
+  display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--ok);
+  border:1px solid color-mix(in srgb,var(--ok) 45%,transparent);border-radius:999px;padding:4px 10px;
+}
+.rec-badge svg{width:12px;height:12px}
+/* 下载中：进度条复用更新条的 .update-progress；行内百分比 + 取消 */
+.rec-download{display:flex;align-items:center;gap:10px;min-width:0}
+.rec-download .update-progress{flex:1 1 auto}
+.rec-pct{font-size:11px;color:var(--text-dim);font-variant-numeric:tabular-nums;min-width:36px;text-align:right}
+.rec-phase-note{font-size:11.5px;color:var(--text)}
+.group{padding:12px 0 6px;border-bottom:1px solid var(--line)}
+.group:last-child{border-bottom:0}
+.group h3{margin:0 0 8px;font-size:12px;font-weight:600;color:var(--text-dim)}
+.row{display:flex;align-items:center;gap:12px;min-height:34px;padding:3px 0;flex-wrap:wrap}
+.row-label{font-size:13px;cursor:pointer}
+.row-note{font-size:11px;color:var(--text-dim)}
+.row .spacer{flex:1 1 auto}
+.select-control{height:28px;max-width:210px;padding:0 26px 0 9px;border:1px solid var(--line);border-radius:7px;background:var(--hover);color:var(--text);font-size:12px;outline:none}
+.select-control:focus-visible{border-color:var(--accent)}
+/* 原生下拉列表跟随主题：显式给 option 配色，避免浅底浅字 */
+.select-control option{background:var(--menu-bg);color:var(--text)}
+.row input[type="range"]{width:130px;accent-color:var(--accent)}
+output{font-size:11px;color:var(--text-dim);font-variant-numeric:tabular-nums;min-width:46px;text-align:right}
+.stack{display:flex;flex-direction:column;gap:6px;padding:4px 0 8px}
+.stack label{font-size:12px;color:var(--text-dim)}
+.stack input{
+  height:34px;padding:0 10px;border-radius:8px;background:var(--hover);border:1px solid var(--line);
+  color:var(--text);font-size:13px;outline:none;
+}
+.stack input:focus{border-color:var(--accent)}
+
+.switch{
+  width:38px;height:22px;border-radius:11px;background:var(--hover);border:1px solid var(--line);
+  position:relative;flex:0 0 auto;transition:background 160ms linear,border-color 160ms linear;
+}
+.switch i{position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;background:var(--text-dim);transition:transform 180ms var(--ease-pop),background 160ms linear}
+.switch[aria-checked="true"]{background:var(--accent);border-color:var(--accent)}
+.switch[aria-checked="true"] i{transform:translateX(16px);background:#fff}
+
+.seg{display:flex;gap:2px;padding:2px;border-radius:9px;background:var(--hover);flex:0 0 auto}
+.seg button{height:26px;padding:0 10px;border-radius:7px;font-size:12px;color:var(--text-dim)}
+.seg button.active{background:var(--accent);color:var(--accent-ink)}
+.seg.sm button{height:22px;padding:0 8px;font-size:11px}
+
+/* ============================ 8. Toast ============================ */
+.toast-layer{
+  position:fixed;left:50%;bottom:56px;transform:translateX(-50%);z-index:400;
+  display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;
+}
+.toast{
+  display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:10px;
+  background:var(--menu-bg);border:1px solid var(--line);box-shadow:var(--shadow);
+  font-size:12.5px;color:var(--text);pointer-events:auto;max-width:70vw;
+  animation:toastIn 180ms var(--ease-out);
+}
+.toast-downloading{position:relative;padding-bottom:13px}
+.toast-progress{position:absolute;left:14px;right:14px;bottom:5px;height:2px;border-radius:2px;background:var(--hover);overflow:hidden}
+.toast-progress i{display:block;height:100%;border-radius:inherit;background:var(--accent);transition:width 220ms linear}
+@keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.toast .toast-action{color:var(--accent);font-size:12.5px;flex:0 0 auto}
+.toast.hide{opacity:0;transform:translateY(6px);transition:opacity 160ms linear,transform 160ms linear}
+
+/* ============================ 12. 四边停靠 ============================ */
+/* 悬停位移朝桌面内部，让图标远离所在屏幕边缘 */
+:root{ --pop-x:0px; --pop-y:5px }
+html[data-edge="top"]{ --pop-x:0px; --pop-y:5px }
+html[data-edge="bottom"]{ --pop-x:0px; --pop-y:-5px }
+html[data-edge="left"]{ --pop-x:5px; --pop-y:0px }
+html[data-edge="right"]{ --pop-x:-5px; --pop-y:0px }
+
+.dock-item:hover,.dock-item:focus-within{z-index:5}
+.dock-item:hover .tile,.dock-item:focus-within .tile{
+  z-index:1;transform:translate(var(--pop-x),var(--pop-y)) scale(1.44);
+  animation:tileHoverIn 380ms var(--ease-pop) both;
+  box-shadow:0 14px 28px rgba(0,0,0,.42),0 3px 8px rgba(0,0,0,.26);
+  filter:brightness(1.1) saturate(1.12);
+}
+.dock-item:hover + .dock-item .tile,
+.dock-item:has(+ .dock-item:hover) .tile,
+.dock-item:focus-within + .dock-item .tile,
+.dock-item:has(+ .dock-item:focus-within) .tile{
+  transform:translate(calc(var(--pop-x) * .4),calc(var(--pop-y) * .4)) scale(1.12);
+  box-shadow:0 5px 12px rgba(0,0,0,.3);
+}
+.dock-item:hover .tile:active,.dock-item:focus-within .tile:active{
+  animation:none;transform:translate(var(--pop-x),var(--pop-y)) scale(.94);transition-duration:90ms;
+}
+@keyframes tileHoverIn{
+  0%{transform:translate(calc(var(--pop-x) * .5),calc(var(--pop-y) * .5)) scale(.86)}
+  58%{transform:translate(var(--pop-x),var(--pop-y)) scale(1.52)}
+  80%{transform:translate(var(--pop-x),var(--pop-y)) scale(1.39)}
+  100%{transform:translate(var(--pop-x),var(--pop-y)) scale(1.44)}
+}
+@keyframes tileRun{
+  0%{transform:translate(var(--pop-x),var(--pop-y)) scale(1.44)}
+  45%{transform:translate(0,0) scale(.9)}
+  100%{transform:none}
+}
+
+/* 编辑模式：图标不悬浮放大。放大只服务于「看清楚再启动」；
+   编辑态图标是拖拽对象，悬浮放大反而盖住 × 角标、妨碍拖拽瞄准。 */
+html[data-edit="true"] .dock-item:hover,
+html[data-edit="true"] .dock-item:focus-within{z-index:auto}
+html[data-edit="true"] .dock-item:hover .tile,
+html[data-edit="true"] .dock-item:focus-within .tile{
+  animation:none!important;
+  transform:none!important;
+  box-shadow:0 2px 6px rgba(0,0,0,.28);
+  filter:none;
+  z-index:auto;
+}
+html[data-edit="true"] .dock-item:hover + .dock-item .tile,
+html[data-edit="true"] .dock-item:has(+ .dock-item:hover) .tile{transform:none!important}
+html[data-edit="true"] .tile{cursor:grab}
+html[data-edit="true"] .remove{cursor:pointer}
+
+/* 收起把手始终贴在当前停靠边，并与 Dock 的中心轴对齐 */
+html[data-edge="bottom"] .dock-handle{top:auto;bottom:5px}
+html[data-edge="left"] .dock-handle,
+html[data-edge="right"] .dock-handle{
+  top:50%;left:5px;right:auto;width:5px;height:54px;transform:translateY(-50%);
+}
+html[data-edge="right"] .dock-handle{left:auto;right:5px}
+html[data-edge="left"] .dock-handle:hover,
+html[data-edge="left"] .dock-handle:focus-visible,
+html[data-edge="right"] .dock-handle:hover,
+html[data-edge="right"] .dock-handle:focus-visible{transform:translateY(-50%) scaleY(1.12)}
+
+/* 收起方向随边变化 */
+html[data-edge="bottom"] .dock{top:auto;bottom:10px}
+html[data-edge="bottom"] body:not(.dock-visible) .dock{transform:translateY(calc(100% + 22px))}
+
+html[data-edge="left"] .dock,
+html[data-edge="right"] .dock{
+  top:0;bottom:0;margin:auto 0;height:fit-content;width:fit-content;
+  max-height:94vh;max-width:none;flex-direction:column;
+}
+html[data-edge="left"] .dock{left:10px;right:auto}
+html[data-edge="right"] .dock{right:10px;left:auto}
+html[data-edge="left"] body:not(.dock-visible) .dock{transform:translateX(calc(-100% - 22px))}
+html[data-edge="right"] body:not(.dock-visible) .dock{transform:translateX(calc(100% + 22px))}
+
+/* 左 / 右：竖向排布 */
+html[data-edge="left"] .dock-body,
+html[data-edge="right"] .dock-body{flex-direction:column;align-items:stretch;gap:6px}
+html[data-edge="left"] .dock-tools,
+html[data-edge="right"] .dock-tools{flex-direction:column;align-items:center;gap:2px;padding:2px;align-self:center}
+html[data-edge="left"] .items-wrap,
+html[data-edge="right"] .items-wrap{flex-direction:column;flex:1 1 auto;min-height:0}
+html[data-edge="left"] .dock-items,
+html[data-edge="right"] .dock-items{
+  flex-direction:column;align-items:stretch;gap:4px;padding:14px 18px;
+  overflow-x:hidden;overflow-y:auto;min-height:0;max-width:none;
+  max-height:calc(var(--tile-size) * 10 + 110px);
+  scroll-snap-type:y proximity;
+}
+html[data-edge="left"] .dock-items.searching .search-result-row,
+html[data-edge="right"] .dock-items.searching .search-result-row{flex-direction:column;align-items:stretch}
+html[data-edge="left"] .dock-item,
+html[data-edge="right"] .dock-item{flex-direction:row;align-items:center;gap:8px;width:100%}
+html[data-edge="right"] .dock-item{flex-direction:row-reverse}
+html[data-edge="left"] .tile-name,
+html[data-edge="right"] .tile-name{max-width:9em;width:auto;text-align:left}
+html[data-edge="right"] .tile-name{text-align:right}
+html[data-edge="left"] .dock-divider,
+html[data-edge="right"] .dock-divider{width:28px;height:1px;align-self:center}
+html[data-edge="left"] .dock-actions,
+html[data-edge="right"] .dock-actions{grid-template-columns:repeat(2,28px);grid-template-rows:repeat(2,28px);column-gap:2px;row-gap:0}
+html[data-edge="left"] .remove,
+html[data-edge="right"] .remove{left:auto;right:-3px}
+html[data-edge="left"] .dock-search input,
+html[data-edge="right"] .dock-search input{min-width:170px}
+html[data-edge="left"] .dock-editbar,
+html[data-edge="right"] .dock-editbar{flex-direction:column;align-items:center;gap:4px;padding:4px 0 0}
+html[data-edge="left"] .dock-editbar > span:first-child,
+html[data-edge="right"] .dock-editbar > span:first-child{display:none}
+html[data-edge="left"] .dock-editbar .spacer,
+html[data-edge="right"] .dock-editbar .spacer{display:none}
+html[data-edit="true"][data-edge="left"] .dock-item,
+html[data-edit="true"][data-edge="right"] .dock-item{width:auto;align-self:center}
+
+/* 左 / 右及搜索列表：渐隐和滚动指示线改为上下 / 竖向 */
+html[data-edge="left"] .fade-left,
+html[data-edge="right"] .fade-left,
+html[data-search-open="true"] .fade-left{
+  left:0;right:0;top:0;bottom:auto;width:auto;height:22px;
+  background:linear-gradient(180deg,rgba(var(--surface),.46),rgba(var(--surface),0));
+}
+html[data-edge="left"] .fade-right,
+html[data-edge="right"] .fade-right,
+html[data-search-open="true"] .fade-right{
+  left:0;right:0;bottom:0;top:auto;width:auto;height:22px;
+  background:linear-gradient(0deg,rgba(var(--surface),.46),rgba(var(--surface),0));
+}
+html[data-edge="left"] .scroll-indicator,
+html[data-edge="right"] .scroll-indicator,
+html[data-search-open="true"] .scroll-indicator{
+  position:absolute;top:18px;bottom:18px;height:auto;width:2px;margin:0;
+}
+html[data-edge="left"] .scroll-indicator{right:5px;left:auto}
+html[data-edge="right"] .scroll-indicator,
+html[data-search-open="true"]:not([data-edge="left"]) .scroll-indicator{left:5px;right:auto}
+html[data-edge="left"] .scroll-indicator i,
+html[data-edge="right"] .scroll-indicator i,
+html[data-search-open="true"] .scroll-indicator i{left:0;right:0;top:0;bottom:auto;width:auto}
+
+/* 竖排 Dock：更新胶囊排在工具区下方 */
+html[data-edge="left"] .update-pill,
+html[data-edge="right"] .update-pill{align-self:center;margin-top:2px}
+
+@media (max-width:640px){
+  .dock{max-width:96vw}
+  .dock-actions{gap:1px}
+  .settings-card{max-width:calc(100vw - 16px)}
+  .settings-layout{display:block;min-height:0;max-height:calc(86vh - 58px)}
+  .settings-nav{width:auto;flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding:4px 6px}
+  .settings-tab{width:auto;flex:0 0 auto;height:34px;padding:0 14px;border-radius:7px}
+  .settings-tab.active::before{top:auto;right:7px;bottom:2px;left:7px;width:auto;height:2px;border-radius:2px}
+  .settings-content{max-height:calc(86vh - 104px);padding:0 14px 14px}
+  .bubble{max-width:min(240px,60vw)}
+  .update-bar{min-width:280px}
+}
+
+/* 单入口交互原型：所有弹窗与主 Dock 同页显示。 */
+[hidden]{display:none!important}
+.desktop-app{position:fixed;left:32px;top:44%;display:flex;flex-direction:column;align-items:center;gap:8px;width:84px;padding:12px 8px;color:var(--text);border-radius:10px;font-size:12px}
+.desktop-app:hover{background:var(--hover)}
+.desktop-app img{width:46px;height:46px;border-radius:12px}
+.taskbar{z-index:20;display:flex;align-items:center;gap:14px;padding:0 18px;pointer-events:auto}
+.taskbar .clock{position:static}
+.desktop-caption{font-size:11px;color:var(--text-dim)}
+#trayButton{display:grid;place-items:center;width:30px;height:30px;border-radius:6px}
+#trayButton:hover{background:var(--hover)}
+#trayButton img{width:18px;height:18px}
+.menu{max-height:calc(100vh - 16px);overflow-y:auto}
+.menu-item:focus-visible{background:var(--menu-hover);outline:2px solid var(--accent);outline-offset:-2px}
+.dock-items.searching{width:min(480px,calc(100vw - 124px));max-height:min(300px,calc(100vh - 180px))}
+html[data-edge="left"] .dock-items.searching,html[data-edge="right"] .dock-items.searching{width:min(380px,calc(100vw - 52px));max-height:min(300px,calc(100vh - 180px));padding:18px 14px 22px}
+#updatePopover{position:fixed;z-index:310}
+#updatePopover .update-card{position:relative;left:auto;top:auto;margin:0;max-width:calc(100vw - 16px)}
+#dialogLayer{z-index:360}
+.item-editor{width:440px;margin:0}
+.item-editor .stack{gap:7px;max-height:min(440px,calc(100vh - 190px));overflow-y:auto;overflow-x:hidden;padding-right:4px}
+.item-editor .stack>*{flex-shrink:0}
+.item-editor input,.item-editor select,#pickerPath{width:100%;box-sizing:border-box}
+.item-editor select{height:34px;padding:0 10px;border:1px solid var(--line);border-radius:8px;background:var(--hover);color:var(--text);font-size:13px}
+.item-editor select option{background:var(--menu-bg);color:var(--text)}
+.browse-row{display:flex;gap:6px}.browse-row input{flex:1;min-width:0}.browse-row .chip{height:34px;flex:none}
+.item-editor .note{font-size:11px;color:var(--text-dim);line-height:1.5;margin:2px 0}
+.check-row{display:flex;align-items:center;gap:7px}.item-editor .check-row input{width:14px;height:14px;padding:0}
+.error{color:var(--danger);font-size:12px;margin-top:8px}
+.item-editor .modal-body>.row{margin-top:14px}
+.dialog-actions{margin-top:16px}
+.picker-list{display:flex;flex-direction:column;gap:4px;margin:12px 0 16px}
+.picker-list button{display:flex;align-items:center;gap:8px;padding:10px 8px;border-radius:8px;text-align:left;color:var(--text);font-size:12px;overflow-wrap:anywhere}
+.picker-list button:hover,.picker-list button:focus-visible{background:var(--hover)}
+.picker-list button>span:first-child{flex:none;line-height:0;color:var(--accent)}
+.rename-input{position:absolute;inset:auto auto -16px 50%;transform:translateX(-50%);width:110px;z-index:6}
+@media(max-width:640px){.settings-content .row{flex-wrap:wrap;gap:8px}.settings-content .row-note{overflow-wrap:anywhere}.settings-nav{max-width:100%}.settings-tab{padding:0 9px}.settings-tab .tab-icon{margin-right:5px}.dock-search input{min-width:0!important}.search-count{display:none}.update-bar{min-width:min(280px,calc(100vw - 44px))}.dock-editbar>span:first-child{display:none}}
+
+/* ============================ 13. 无障碍降级 ============================ */
+@media (prefers-reduced-motion:reduce){
+  *{animation-duration:1ms!important;transition-duration:1ms!important}
+  .dock-item:hover .tile,.dock-item:focus-within .tile,
+  .dock-item:hover + .dock-item .tile,.dock-item:has(+ .dock-item:hover) .tile,
+  .dock-item:focus-within + .dock-item .tile,.dock-item:has(+ .dock-item:focus-within) .tile{
+    animation:none!important;transform:none
+  }
+}
+</style><style>/* 与原生设置窗口的 720×620、32 像素标题栏和 136 像素导航保持一致。 */
+.settings-card{width:720px;height:620px;max-height:95vh;display:flex;flex-direction:column}
+.settings-card .modal-head{height:32px;min-height:32px;padding:0 8px;border-bottom:0}
+.settings-card .modal-head h2{font-size:14px}
+.settings-layout{flex:1;min-height:0;max-height:none}
+.settings-nav{padding-top:0}
+.settings-content{padding-top:4px}
+.settings-panel select{width:180px;min-height:30px;text-align:left;background:var(--hover);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:4px 8px}
+.settings-panel option{text-align:left;background:var(--menu-bg);color:var(--text)}
+
+.settings-panel .row{padding:0;min-height:34px}
+
+.standalone-about{width:580px;height:560px;max-height:95vh}
+.standalone-about .modal-head{height:32px;min-height:32px;padding:0 8px;border-bottom:0}
+.standalone-about .modal-head h2{font-size:14px}
+.standalone-about-body{padding:28px;overflow:auto}
+.standalone-about-hero{display:flex;gap:16px;align-items:center;margin-bottom:18px}
+.standalone-about-hero img{width:56px;height:56px}.standalone-about-hero strong{display:block;font-size:24px;font-weight:600;margin-bottom:5px}.standalone-about-hero span{color:var(--text-dim)}
+.standalone-about-info{display:grid;grid-template-columns:110px 1fr;gap:12px 0;margin:0 0 18px}.standalone-about-info dd{margin:0}
+.standalone-about-body p{margin:18px 0}.standalone-about-body hr{border:0;border-top:1px solid var(--line)}
+</style>
 </head>
 <body class="dock-visible">
-<button class="desktop-app" id="launchApp" title="启动 QuickApp"><img src="../logo.svg" alt=""><span>QuickApp</span></button>
-<div class="taskbar"><span class="desktop-caption">QuickApp 交互原型</span><span class="spacer"></span><button id="trayButton" title="QuickApp 托盘菜单" aria-label="QuickApp 托盘菜单"><img src="../logo.svg" alt=""></button><span class="clock" id="clock"></span></div>
+<button class="desktop-app" id="launchApp" title="启动 QuickApp"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIiB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcm9sZT0iaW1nIiBhcmlhLWxhYmVsPSJRdWlja0FwcCI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9InFhLWJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzVCODJGOCIvPgogICAgICA8c3RvcCBvZmZzZXQ9Ii41NSIgc3RvcC1jb2xvcj0iIzNENUNFOCIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMyRjQ5QzkiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICA8cmFkaWFsR3JhZGllbnQgaWQ9InFhLWdsb3ciIGN4PSIuMjIiIGN5PSIuMTIiIHI9IjEuMDUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZmZmZmYiIHN0b3Atb3BhY2l0eT0iLjI2Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iLjUiIHN0b3AtY29sb3I9IiNmZmZmZmYiIHN0b3Atb3BhY2l0eT0iMCIvPgogICAgPC9yYWRpYWxHcmFkaWVudD4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0icWEtYm9sdCIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNGRkQ0NEUiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjRkZBQjFGIi8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KCiAgPCEtLSDlnIbop5LmlrnlvaLlupXmnb/vvJrlk4HniYzok53muJDlj5ggLS0+CiAgPHJlY3QgeD0iMzIiIHk9IjMyIiB3aWR0aD0iNDQ4IiBoZWlnaHQ9IjQ0OCIgcng9IjExMiIgZmlsbD0idXJsKCNxYS1iZykiLz4KICA8cmVjdCB4PSIzMiIgeT0iMzIiIHdpZHRoPSI0NDgiIGhlaWdodD0iNDQ4IiByeD0iMTEyIiBmaWxsPSJ1cmwoI3FhLWdsb3cpIi8+CgogIDwhLS0gUSDkuLvkvZPvvJrlnIbnjq8gLS0+CiAgPGNpcmNsZSBjeD0iMjU0IiBjeT0iMjQ0IiByPSIxMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZmZmZiIgc3Ryb2tlLXdpZHRoPSI2MCIvPgoKICA8IS0tIFEg55qE5bC+5be077ya5LiA6YGT6Zeq55S177yM5LuO546v5YaF5YiS5Ye6IC0tPgogIDxwYXRoIGQ9Ik0zMTUuNSAyMjEuOSBMMjgzLjQgMzQzLjMgTDMyOS43IDMyNi40IEwzNDcuMSA0MjAuMiBMMzg0LjQgMjgwLjMgTDMzMy45IDI5OC42IFoiCiAgICAgICAgZmlsbD0idXJsKCNxYS1ib2x0KSIgc3Ryb2tlPSJ1cmwoI3FhLWJvbHQpIiBzdHJva2Utd2lkdGg9IjE2IiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=" alt=""><span>QuickApp</span></button>
+<div class="taskbar"><span class="desktop-caption">QuickApp 交互原型</span><span class="spacer"></span><button id="trayButton" title="QuickApp 托盘菜单" aria-label="QuickApp 托盘菜单"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIiB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcm9sZT0iaW1nIiBhcmlhLWxhYmVsPSJRdWlja0FwcCI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9InFhLWJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzVCODJGOCIvPgogICAgICA8c3RvcCBvZmZzZXQ9Ii41NSIgc3RvcC1jb2xvcj0iIzNENUNFOCIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMyRjQ5QzkiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICA8cmFkaWFsR3JhZGllbnQgaWQ9InFhLWdsb3ciIGN4PSIuMjIiIGN5PSIuMTIiIHI9IjEuMDUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZmZmZmYiIHN0b3Atb3BhY2l0eT0iLjI2Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iLjUiIHN0b3AtY29sb3I9IiNmZmZmZmYiIHN0b3Atb3BhY2l0eT0iMCIvPgogICAgPC9yYWRpYWxHcmFkaWVudD4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0icWEtYm9sdCIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNGRkQ0NEUiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjRkZBQjFGIi8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KCiAgPCEtLSDlnIbop5LmlrnlvaLlupXmnb/vvJrlk4HniYzok53muJDlj5ggLS0+CiAgPHJlY3QgeD0iMzIiIHk9IjMyIiB3aWR0aD0iNDQ4IiBoZWlnaHQ9IjQ0OCIgcng9IjExMiIgZmlsbD0idXJsKCNxYS1iZykiLz4KICA8cmVjdCB4PSIzMiIgeT0iMzIiIHdpZHRoPSI0NDgiIGhlaWdodD0iNDQ4IiByeD0iMTEyIiBmaWxsPSJ1cmwoI3FhLWdsb3cpIi8+CgogIDwhLS0gUSDkuLvkvZPvvJrlnIbnjq8gLS0+CiAgPGNpcmNsZSBjeD0iMjU0IiBjeT0iMjQ0IiByPSIxMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZmZmZiIgc3Ryb2tlLXdpZHRoPSI2MCIvPgoKICA8IS0tIFEg55qE5bC+5be077ya5LiA6YGT6Zeq55S177yM5LuO546v5YaF5YiS5Ye6IC0tPgogIDxwYXRoIGQ9Ik0zMTUuNSAyMjEuOSBMMjgzLjQgMzQzLjMgTDMyOS43IDMyNi40IEwzNDcuMSA0MjAuMiBMMzg0LjQgMjgwLjMgTDMzMy45IDI5OC42IFoiCiAgICAgICAgZmlsbD0idXJsKCNxYS1ib2x0KSIgc3Ryb2tlPSJ1cmwoI3FhLWJvbHQpIiBzdHJva2Utd2lkdGg9IjE2IiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=" alt=""></button><span class="clock" id="clock"></span></div>
 <button class="dock-handle" id="dockHandle" type="button" title="悬停停留后展开 Dock" aria-label="展开 Dock"></button>
 <div class="dock" id="dock" role="toolbar" aria-label="快捷 Dock">
   <div class="dock-search" id="searchRow" hidden>
@@ -34,7 +784,7 @@
 
   <div class="modal-card settings-card" role="dialog" aria-modal="true" aria-label="设置">
     <div class="modal-head">
-      <h2>设置</h2>
+      <h2>QuickApp 设置</h2>
       <button class="icon-btn" id="settingsClose" data-icon="x" title="关闭" aria-label="关闭"></button>
     </div>
     <div class="settings-layout">
@@ -72,7 +822,7 @@
           </div>
           <div class="group">
             <h3>快捷键</h3>
-            <div class="row"><span class="row-label">全局唤起</span><span class="spacer"></span><span class="row-note">固定：Ctrl + Alt + Space</span></div>
+            <div class="row"><span class="row-label">全局唤起</span><span class="spacer"></span><span class="row-note">Ctrl + Alt + Space</span></div>
             <div class="row"><span class="row-note">← → ↑ ↓ 移动 · Enter 运行 · 1–9 快速启动 · S / Ctrl+K 搜索 · E 编辑 · Esc 关闭</span></div>
           </div>
         </section>
@@ -81,6 +831,8 @@
         <section class="settings-panel" data-panel="appearance" role="tabpanel" hidden>
           <div class="group">
             <h3>界面与显示</h3>
+            <div class="row"><span class="row-label">语言</span><span class="spacer"></span><select id="qaLanguage"><option value="zh-CN">简体中文</option><option value="en-US">English</option></select></div>
+            <div class="row"><span class="row-label">主题色</span><span class="spacer"></span><select id="qaPalette"></select></div>
             <div class="row"><span class="row-label">主题</span><span class="spacer"></span>
               <div class="seg" data-control="themePref">
                 <button data-value="system">跟随系统</button><button data-value="dark">深色</button><button data-value="light">浅色</button>
@@ -106,7 +858,7 @@
             <div class="row"><span class="row-label">配置文件位置</span><span class="spacer"></span>
               <span class="row-note" id="configPath">%LOCALAPPDATA%\QuickApp\config.json</span></div>
             <div class="row"><span class="row-label">存储位置</span><span class="spacer"></span>
-              <span class="row-note" id="storageMode">安装版 · 用户配置目录</span></div>
+              <span class="row-note" id="storageMode">安装版 · 配置在 %LOCALAPPDATA%\QuickApp</span></div>
             <div class="row"><button class="chip" id="switchStorage" type="button">切换为便携版</button></div>
             <div class="row"><span class="row-note">导入配置会替换当前的快捷项与设置</span></div>
             <div class="row">
@@ -123,23 +875,23 @@
         <section class="settings-panel" data-panel="recommend" role="tabpanel" hidden>
           <div class="group">
             <h3>推荐应用</h3>
-            <div class="row"><span class="row-note">精选作者自研软件，一键下载并安装（安装包来自 GitHub Releases，附 sha256 校验）；安装完成后自动把快捷方式加入 Dock，可随时在编辑模式移除。</span></div>
+            <div class="row"><span class="row-note">精选作者自研软件，一键下载并安装（安装包实时取自各仓库 GitHub Releases 最新发布，附 sha256 校验）；安装完成后自动把快捷方式加入 Dock，可随时在编辑模式移除。</span></div>
             <div class="rec-list" id="recList"></div>
           </div>
           <div class="group">
-            <div class="row"><span class="row-note">推荐列表随应用版本更新 · 全部作品见 <a class="about-url" href="https://doc.codewf.com/" target="_blank" rel="noreferrer">doc.codewf.com</a></span></div>
+            <div class="row"><span class="row-note"><a class="about-url" href="https://doc.codewf.com/" target="_blank" rel="noreferrer">推荐列表随应用版本更新 · 全部作品见 doc.codewf.com</a></span></div>
           </div>
         </section>
 
         <!-- 关于 -->
         <section class="settings-panel" data-panel="about" role="tabpanel" hidden>
           <div class="about-hero">
-            <div class="about-mark"><img src="../logo.svg" alt="QuickApp logo"></div>
+            <div class="about-mark"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIiB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcm9sZT0iaW1nIiBhcmlhLWxhYmVsPSJRdWlja0FwcCI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9InFhLWJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzVCODJGOCIvPgogICAgICA8c3RvcCBvZmZzZXQ9Ii41NSIgc3RvcC1jb2xvcj0iIzNENUNFOCIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMyRjQ5QzkiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICA8cmFkaWFsR3JhZGllbnQgaWQ9InFhLWdsb3ciIGN4PSIuMjIiIGN5PSIuMTIiIHI9IjEuMDUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZmZmZmYiIHN0b3Atb3BhY2l0eT0iLjI2Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iLjUiIHN0b3AtY29sb3I9IiNmZmZmZmYiIHN0b3Atb3BhY2l0eT0iMCIvPgogICAgPC9yYWRpYWxHcmFkaWVudD4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0icWEtYm9sdCIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNGRkQ0NEUiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjRkZBQjFGIi8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KCiAgPCEtLSDlnIbop5LmlrnlvaLlupXmnb/vvJrlk4HniYzok53muJDlj5ggLS0+CiAgPHJlY3QgeD0iMzIiIHk9IjMyIiB3aWR0aD0iNDQ4IiBoZWlnaHQ9IjQ0OCIgcng9IjExMiIgZmlsbD0idXJsKCNxYS1iZykiLz4KICA8cmVjdCB4PSIzMiIgeT0iMzIiIHdpZHRoPSI0NDgiIGhlaWdodD0iNDQ4IiByeD0iMTEyIiBmaWxsPSJ1cmwoI3FhLWdsb3cpIi8+CgogIDwhLS0gUSDkuLvkvZPvvJrlnIbnjq8gLS0+CiAgPGNpcmNsZSBjeD0iMjU0IiBjeT0iMjQ0IiByPSIxMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZmZmZiIgc3Ryb2tlLXdpZHRoPSI2MCIvPgoKICA8IS0tIFEg55qE5bC+5be077ya5LiA6YGT6Zeq55S177yM5LuO546v5YaF5YiS5Ye6IC0tPgogIDxwYXRoIGQ9Ik0zMTUuNSAyMjEuOSBMMjgzLjQgMzQzLjMgTDMyOS43IDMyNi40IEwzNDcuMSA0MjAuMiBMMzg0LjQgMjgwLjMgTDMzMy45IDI5OC42IFoiCiAgICAgICAgZmlsbD0idXJsKCNxYS1ib2x0KSIgc3Ryb2tlPSJ1cmwoI3FhLWJvbHQpIiBzdHJva2Utd2lkdGg9IjE2IiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=" alt="QuickApp logo"></div>
             <div><strong>QuickApp</strong><span>快捷应用启动器</span></div>
           </div>
           <div class="group">
-            <div class="row"><span class="row-label">版本</span><span class="spacer"></span><span class="row-note">v0.8.0</span></div>
-            <div class="row"><span class="row-label">定位</span><span class="spacer"></span><span class="row-note">快速打开软件、文件、目录、网址与常用命令</span></div>
+            <div class="row"><span class="row-label">版本</span><span class="spacer"></span><span class="row-note">v0.9.0</span></div>
+            <div class="row"><span class="row-label">开发平台</span><span class="spacer"></span><span class="row-note">.NET 10 · Avalonia 12.1.4 · win-x64</span></div><div class="row"><span class="row-label">编译时间</span><span class="spacer"></span><span class="row-note">2026-10-15</span></div><div class="row"><span class="row-label">定位</span><span class="spacer"></span><span class="row-note">快速打开软件、文件、目录、网址与常用命令</span></div>
           </div>
           <div class="group">
             <h3>项目信息</h3>
@@ -150,7 +902,7 @@
           <div class="group">
             <div class="row"><span class="row-label">检查更新</span><span class="spacer"></span>
               <button class="chip" id="aboutCheckUpdate" type="button">立即检查</button></div>
-            <div class="row"><span class="row-note" id="aboutCheckResult">尚未检查更新</span></div>
+            <div class="row"><span class="row-note" id="aboutCheckResult">尚未检查</span></div>
           </div>
           <div class="about-links">
             <button class="chip" type="button" id="aboutLicense">许可证</button>
@@ -160,6 +912,11 @@
     </div>
   </div>
 </div>
+<div class="modal-layer" id="aboutLayer" hidden><div class="scrim" data-dismiss="aboutLayer"></div><div class="modal-card standalone-about" role="dialog" aria-modal="true" aria-labelledby="standaloneAboutTitle">
+<div class="modal-head"><h2 id="standaloneAboutTitle">关于</h2><button class="icon-btn" id="standaloneAboutClose" data-icon="x" aria-label="关闭"></button></div>
+<div class="standalone-about-body"><div class="standalone-about-hero"><img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIiB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcm9sZT0iaW1nIiBhcmlhLWxhYmVsPSJRdWlja0FwcCI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9InFhLWJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzVCODJGOCIvPgogICAgICA8c3RvcCBvZmZzZXQ9Ii41NSIgc3RvcC1jb2xvcj0iIzNENUNFOCIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMyRjQ5QzkiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICA8cmFkaWFsR3JhZGllbnQgaWQ9InFhLWdsb3ciIGN4PSIuMjIiIGN5PSIuMTIiIHI9IjEuMDUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZmZmZmYiIHN0b3Atb3BhY2l0eT0iLjI2Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iLjUiIHN0b3AtY29sb3I9IiNmZmZmZmYiIHN0b3Atb3BhY2l0eT0iMCIvPgogICAgPC9yYWRpYWxHcmFkaWVudD4KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0icWEtYm9sdCIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNGRkQ0NEUiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjRkZBQjFGIi8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KCiAgPCEtLSDlnIbop5LmlrnlvaLlupXmnb/vvJrlk4HniYzok53muJDlj5ggLS0+CiAgPHJlY3QgeD0iMzIiIHk9IjMyIiB3aWR0aD0iNDQ4IiBoZWlnaHQ9IjQ0OCIgcng9IjExMiIgZmlsbD0idXJsKCNxYS1iZykiLz4KICA8cmVjdCB4PSIzMiIgeT0iMzIiIHdpZHRoPSI0NDgiIGhlaWdodD0iNDQ4IiByeD0iMTEyIiBmaWxsPSJ1cmwoI3FhLWdsb3cpIi8+CgogIDwhLS0gUSDkuLvkvZPvvJrlnIbnjq8gLS0+CiAgPGNpcmNsZSBjeD0iMjU0IiBjeT0iMjQ0IiByPSIxMjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZmZmZiIgc3Ryb2tlLXdpZHRoPSI2MCIvPgoKICA8IS0tIFEg55qE5bC+5be077ya5LiA6YGT6Zeq55S177yM5LuO546v5YaF5YiS5Ye6IC0tPgogIDxwYXRoIGQ9Ik0zMTUuNSAyMjEuOSBMMjgzLjQgMzQzLjMgTDMyOS43IDMyNi40IEwzNDcuMSA0MjAuMiBMMzg0LjQgMjgwLjMgTDMzMy45IDI5OC42IFoiCiAgICAgICAgZmlsbD0idXJsKCNxYS1ib2x0KSIgc3Ryb2tlPSJ1cmwoI3FhLWJvbHQpIiBzdHJva2Utd2lkdGg9IjE2IiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=" alt="QuickApp logo"><div><strong>QuickApp</strong><span>快捷应用启动器</span></div></div>
+<dl class="standalone-about-info"><dt>版本</dt><dd>v0.9.0</dd><dt>开发平台</dt><dd>.NET 10 · Avalonia 12.1.4 · win-x64</dd><dt>编译时间</dt><dd>2026-10-15</dd><dt>作者</dt><dd>沙漠尽头的狼</dd></dl>
+<p class="row-note">https://github.com/dotnet9/QuickApp</p><hr><p id="standaloneUpdateStatus">尚未检查</p><p class="row-note">更新包下载完成后可直接安装。</p><div class="about-links"><button class="chip" id="standaloneCheckUpdate">检查更新</button></div><p class="row-note">版权所有 © Dotnet9</p></div></div></div>
 <div class="modal-layer" id="editorLayer" hidden><div class="scrim" data-dismiss="editorLayer"></div><form class="modal-card item-editor" id="editor" role="dialog" aria-modal="true" aria-labelledby="editorTitle">
 <div class="modal-head"><h2 id="editorTitle">编辑快捷项</h2><button type="button" class="icon-btn" data-icon="x" id="close" aria-label="关闭"></button></div>
 <div class="modal-body"><div class="stack">
@@ -176,5 +933,1109 @@
 </div><div id="error" class="error" role="alert" hidden></div>
 <div class="row"><span class="spacer"></span><button type="button" class="chip" id="cancel">取消</button><button class="chip primary" type="submit" id="save">保存</button></div></div></form></div>
 <div class="modal-layer" id="dialogLayer" hidden><div class="scrim" data-dismiss="dialogLayer"></div><div class="modal-card small" role="dialog" aria-modal="true" aria-labelledby="dialogTitle"><div class="modal-head"><h2 id="dialogTitle"></h2><button class="icon-btn" id="dialogClose" data-icon="x" aria-label="关闭"></button></div><div class="modal-body" id="dialogBody"></div></div></div>
-<script src="assets/proto.js"></script><script src="assets/app.js"></script>
-</body></html>
+<script>// 根据应用 JSON 生成；运行 scripts/sync_localization_keys.ps1 更新。
+window.QUICKAPP_RESOURCES = {"zh-CN":{"language":"简体中文","description":"QuickApp zh-CN","cultureName":"zh-CN","QuickApp":{"Text":{"Retry":"重试","Settings":"设置","Exit":"退出","ProductName":"QuickApp 快捷应用","NotChecked":"尚未检查","Edge":"边缘","Pinned":"已钉住","Unpinned":"已取消钉住","NewVersionPrefix":"发现新版本 ","PreparingDownload":"正在准备下载…","DownloadComplete":"下载完成","Install":"安装","OpenPackage":"打开安装包","NoPlatformPackage":"暂无法获取当前系统的安装包","ConfigReloadRequired":"配置读取失败，请先在设置的数据页重新加载配置。","SaveFailed":"保存失败，请检查配置目录权限。","UpdatedPrefix":"已更新：","AddedPrefix":"已添加：","ReadFailedPrefix":"读取配置失败：","ReloadedPrefix":"已重新加载 ","ShortcutCountSuffix":" 个快捷项","PortableStorage":"便携版 · 配置随程序目录","InstalledStorage":"安装版 · 配置在 %LOCALAPPDATA%\\QuickApp","SwitchToInstalled":"切换为安装版","SwitchToPortable":"切换为便携版","StorageMigrated":"已切换并迁移配置，立即生效","SwitchFailedPrefix":"切换失败：","Configured":"已配置","SystemApps":"系统应用","ResultsSuffix":" 个结果","ConfigErrorHint":"配置读取失败 · 设置中可重试","NoMatchPrefix":"没有匹配「","NoMatchSuffix":"」的项目","EmptyHint":"右键空白处添加应用","Empty":"空空如也","EditModeHint":"编辑模式下不运行 · 点「完成」退出","LaunchFailedPrefix":"启动失败：","LaunchingPrefix":"正在启动 ","InstancesSuffix":" 个：","LaunchingItemPrefix":"正在启动：","AlreadyConfiguredSuffix":" 已在自定义配置中","RemovedPrefix":"已移除 ","Undo":"撤销","AlreadyEmpty":"列表已经是空的","ClearedPrefix":"已清空 ","ItemsSuffix":" 项","Restored":"已恢复","ReloadConfigRequired":"配置读取失败，请先重新加载配置。","AddedCountPrefix":"已添加 ","ChangedPrefix":"已更换 ","IconCopyFailedSuffix":" 的图标（复制失败，仍引用原图：","IconSuffix":" 的图标","InvalidImport":"导入失败：不是有效的 QuickApp 配置文件","ImportSaveFailed":"保存导入配置失败，请检查目录权限。","ImportedPrefix":"已导入 ","DockedPrefix":"已停靠到","MovedMonitorPrefix":"已移动到显示器 ","AutoStartEnabled":"已开启开机启动","AutoStartDisabled":"已关闭开机启动","AutoStartFailed":"设置开机启动失败","JustChecked":"刚刚检查过更新","UpdateCheckFailed":"检查更新失败，请稍后重试","UpdateErrorPrefix":"检查更新失败：","CurrentVersionPrefix":"已是最新版本 ","ViewUpdateHintSuffix":" · 点「查看」看更新说明","View":"查看","DownloadingPrefix":"正在下载更新 · ","Cancel":"取消","DownloadReadyPrefix":"下载完成，请点击","DownloadCanceled":"已取消下载","DownloadFailed":"下载失败，请重试","PackageMissing":"安装包不存在，请重新下载","OpenPackageFailed":"打开安装包失败","NameRequired":"名称不能为空，已保留原名","RenamedPrefix":"已重命名为 ","OrderSaved":"顺序已保存","StartMenuPrefix":"开始菜单 · ","InstalledPrefix":"已装 ","RemoveFromDock":"移出 Dock","AddToDock":"加入 Dock","ResolvingVersion":"正在获取最新版本信息…","DownloadingPackage":"正在下载安装包…","InstallingSilent":"正在静默安装，完成后自动加入 Dock…","Installing":"正在安装，完成后自动加入 Dock…","VersionUnavailable":"暂时无法获取版本信息","VersionFailed":"版本信息获取失败","NoMatchingPackage":"没有匹配当前系统的安装包","NoMatchingPackageSuffix":"：没有匹配当前系统的安装包","DownloadedInstallingSuffix":" 下载完成，正在安装","InstalledCountPrefix":"已安装 ","ShortcutAddedSuffix":"，快捷方式已加入 Dock","InstallGuideSuffix":" 安装引导已完成，确认装好后点「加入 Dock」","InstallIncompleteSuffix":" 安装未完成，可重试或从发布页手动安装","CanceledDownloadPrefix":"已取消下载 ","InstallErrorSuffix":" 安装失败：","DownloaderMissing":"下载器未初始化","InstallerMissing":"安装器未初始化","NoAutoHide":"不自动隐藏","ConfigPreservedPrefix":"读取配置失败，原数据已保留：","Hide":"隐藏","Show":"显示","AutoStartPrefix":"开机启动（","On":"开","Off":"关","PinPrefix":"钉住（","Remove":"移除","AddToDockAction":"添加到 Dock","SearchWatermark":"搜索应用 / 网址 / 命令 / 拼音…","CloseSearch":"关闭搜索","SearchShortcut":"搜索（S）","PinDock":"钉住 Dock","MoreActions":"更多操作","Collapse":"收起","Download":"下载","OpenReleasePage":"打开发布页","Dismiss":"忽略","NewVersionHint":"发现新版本，点击查看","NewVersion":"新版本","Done":"完成","EditingHint":"拖动排序 · 双击改名 · × 移除","UnpinDock":"取消钉住 Dock","Run":"运行","Edit":"编辑…","Rename":"重命名","ChangeIcon":"更换图标…","CopyPath":"复制路径","CopyCommand":"复制命令","OpenLocation":"打开位置","Add":"添加","File":"文件…","Directory":"目录…","WebAddress":"网址…","CommandLine":"命令行…","Manage":"管理","EditMode":"编辑模式","ClearAll":"清空","DockEdge":"停靠","SelectIcon":"选择图标图片","Images":"图片","UpdateReady":"更新已就绪","DownloadingUpdate":"正在下载更新","UpdateAvailable":"发现新版本","InstallExplanation":"安装包已校验存放，点击安装后由系统安装器接管，程序随后退出。","DownloadExplanation":"下载在后台进行，可随时取消；完成后 Dock 会提示安装。","ManualPackageExplanation":"没有匹配当前系统的安装包，可以前往 Release 页面手动选择资产。","DownloadConfirmExplanation":"已按当前系统与架构选定安装包，下载完成后需再次点击安装，程序不会静默替换。","ClipboardUnsupported":"当前平台暂不支持复制到剪贴板","CopiedPrefix":"已复制：","ClipboardBusy":"复制失败，剪贴板被其它程序占用","FileMissingPrefix":"找不到该文件：","DockReturnedPrefix":"Dock 回到","SnapPrefix":"吸附到","SelectDockFolder":"选择要添加到 Dock 的目录","SelectFolderFailed":"选择目录失败","SelectFolderFailedPrefix":"选择目录失败：","SelectDockFile":"选择要添加到 Dock 的程序或文件","SelectFileFailed":"选择文件失败","EditItem":"编辑快捷项","Type":"类型","ProgramFileFolder":"程序 / 文件 / 目录","Url":"网址","Command":"命令","Name":"名称","GeneratedNameHint":"留空时根据目标生成","Target":"路径或程序名","TargetExample":"例如：C:\\Work 或 explorer.exe","Arguments":"启动参数（可选）","ArgumentsExample":"例如：--new-window","Instances":"启动数量","InstancesHint":"大于 1 时一次启动多个实例，适合微信等多开；实际能否多开由程序自身决定。","WorkingDirectory":"工作目录（可选）","WorkingDirectoryExample":"例如：C:\\Work\\QuickApp","Browse":"选择…","CommandInterpreter":"命令解释器","KeepTerminal":"在终端运行并保留窗口","TerminalHint":"查看输出请使用终端；后台运行适合无需交互的操作。","ShellHint":"当前平台的命令使用系统 Shell 在后台执行。","ItemHotkey":"全局快捷键（可选 · Windows）","HotkeyPlaceholder":"点击后按组合键，例如 Ctrl + Alt + D","Clear":"清除","HotkeyHint":"QuickApp 运行时，Dock 收起也可直接启动。","Save":"保存","AddItem":"添加快捷项","UnsupportedHotkey":"当前平台暂不支持全局快捷键；已有配置会保留。","CommandExample":"例如：git status","UrlExample":"例如：https://dotnet9.com","HotkeyModifiersRequired":"快捷键需要 Ctrl、Alt、Shift 或 Win 修饰键。","SelectProgram":"选择程序或文件","SelectFileFailedPrefix":"选择文件失败：","SelectFolder":"选择目录","SettingsTitle":"QuickApp 设置","General":"常规","StartupDisplay":"启动与显示","AutoStart":"开机启动","RevealOnHover":"悬停唤出","RevealHint":"停留片刻后展开 Dock","Monitor":"目标显示器","MonitorHint":"Dock 只存在于所选显示器：停靠、收起、唤出把手都在它上面，切换后整体迁移；显示器被拔掉时回落主显示器","AutoHideDelay":"自动隐藏延时","CollapseAfterLaunch":"运行后收起","CheckAtStartup":"启动时检查更新","Keyboard":"快捷键","GlobalHotkey":"全局唤起","KeyboardHint":"← → ↑ ↓ 移动 · Enter 运行 · 1–9 快速启动 · S / Ctrl+K 搜索 · E 编辑 · Esc 关闭","Appearance":"外观","InterfaceDisplay":"界面与显示","Theme":"主题","SystemTheme":"跟随系统","DarkTheme":"深色","LightTheme":"浅色","Style":"风格","Glass":"毛玻璃","Flat":"扁平","IconLabels":"图标标签","IconsOnly":"仅图标","IconAndName":"图标 + 名称","IconSize":"图标尺寸","PanelRadius":"面板圆角","GlassFallback":"毛玻璃在部分系统上可能退化为纯色","Data":"数据","Configuration":"配置","ConfigLocation":"配置文件位置","StorageLocation":"存储位置","ImportWarning":"导入配置会替换当前的快捷项与设置","ImportConfig":"导入配置","ExportConfig":"导出配置","OpenConfigFolder":"打开配置文件夹","ReloadConfig":"重新加载配置","Recommended":"推荐","RecommendedApps":"推荐应用","RecommendedHint":"精选作者自研软件，一键下载并安装（安装包实时取自各仓库 GitHub Releases 最新发布，附 sha256 校验）；安装完成后自动把快捷方式加入 Dock，可随时在编辑模式移除。","ReleasePage":"发布页","Resolving":"正在获取最新版本…","Installed":"已安装","RecommendedFooter":"推荐列表随应用版本更新 · 全部作品见 doc.codewf.com","About":"关于","AppDescription":"快捷应用启动器","Version":"版本","Purpose":"定位","PurposeDescription":"快速打开软件、文件、目录、网址与常用命令","ProjectInfo":"项目信息","Author":"作者","AuthorName":"沙漠尽头的狼","Website":"官方网站","Repository":"仓库地址","CheckUpdates":"检查更新","ViewNewVersion":"查看新版本","CheckNow":"立即检查","License":"许可证","ExportTitle":"导出 QuickApp 配置","ConfigFileType":"QuickApp 配置","ImportTitle":"导入 QuickApp 配置","PrimaryMonitor":"主显示器","MonitorPrefix":"显示器 ","LeftEdge":"左侧","RightEdge":"右侧","TopEdge":"上方","BottomEdge":"下方","ConfirmReplace":"替换快捷配置？","ReplaceConfig":"替换当前配置","ImportReplacesPrefix":"导入将替换当前 ","ImportReplacesSuffix":" 个快捷项及设置。","GotIt":"知道了","LicenseDescription":"QuickApp 以 MIT 许可证发布。你可以自由使用、修改和分发本软件，但请保留原始版权声明。","InstalledVersion":"已安装版本","LatestVersion":"最新版本","ReleaseNotes":"更新说明","CannotDownloadHint":"当前无法下载安装包，请检查网络，或点「打开发布页」手动下载。","InstallConfirmHint":"下载完成后会自动打开安装程序，QuickApp 随即退出；安装包是否保留由安装程序决定。","PackageFallbackHint":"暂未找到适合当前系统的安装包，将打开 GitHub 发布页手动下载。","NoReleaseNotes":"该版本没有提供更新说明，可点「打开发布页」查看。","UnsupportedPlatformHotkeySuffix":"：当前平台暂不支持全局热键。","UnsupportedPlatformHotkey":"当前平台暂不支持全局热键。","UnsupportedAutoStart":"当前平台暂不支持开机启动。","RunKeyUnavailable":"无法打开注册表 Run 键（可能被安全软件拦截）。","DeleteAutoStartFailedPrefix":"删除开机启动项失败，错误码 ","WriteAutoStartFailedPrefix":"写入开机启动项失败，错误码 ","DuplicateHotkeySuffix":"：快捷键重复。","HotkeyTimeout":"快捷键注册超时，请重试。","HotkeyOccupiedSuffix":"）：快捷键已被其他程序占用或注册失败。","ConfigEmpty":"配置文件为空。","ConfigInvalidObject":"配置内容不是有效的对象。","BrokenConfigPrefix":"配置文件缺失，原内容保留在 ","BrokenConfigSuffix":".broken，请恢复有效配置或导入备份。","CreateConfigFailed":"无法创建配置文件，请检查目录权限后重试。","SaveBlocked":"配置读取尚未恢复，取消保存以保护已有数据。","StorageSwitchBlocked":"配置读取失败，请先重新加载或导入有效配置，再切换存储位置。","ImageMissing":"图片不存在","Bottom":"下","Left":"左","Right":"右","Top":"上","EmptyHotkey":"热键描述为空。","HotkeyRequiresModifier":"热键至少要有一个修饰键（Ctrl/Alt/Shift/Win）加一个键。","InvalidModifierSuffix":"」不是修饰键，修饰键只支持 Ctrl/Alt/Shift/Win。","UnknownKeyPrefix":"无法识别的键名：","Web":"网页","Application":"应用","Untitled":"未命名","TargetRequired":"请填写目标。","InvalidItemKind":"请选择有效的快捷项类型。","InvalidUrl":"请填写有效的 HTTP 或 HTTPS 网址。","InvalidWorkingDirectory":"工作目录不存在，请选择有效目录。","ReservedHotkey":"该快捷键已用于唤出 QuickApp。","UsedHotkeyPrefix":"该快捷键已用于「","InstanceRangePrefix":"启动数量请填写 1 到 ","InstanceRangeSuffix":" 之间的整数。","EmptyLaunchTarget":"该项目没有可执行的目标。","StartupConfigError":"配置读取失败，原数据未覆盖，请在设置的数据页重新加载。","WakeQuickApp":"唤出 QuickApp","HotkeyRegisterFailedPrefix":"全局热键注册失败：","RegisteredPrefix":"已注册 ","GlobalShortcutCountSuffix":" 个全局快捷键","OpenReleasePageFailedPrefix":"打开发布页失败：","OpenUrlFailedPrefix":"打开链接失败：","Palette":"主题色","Platform":"开发平台","BuildTime":"编译时间","DefaultPalette":"默认","DesertPalette":"沙漠","AquaticPalette":"水生","DuskPalette":"暮色","NightSkyPalette":"夜空","DotNetPalette":".NET 紫","AuroraPalette":"极光 AI","EmberPalette":"余烬 AI","DownloadProgress":"下载中 {0:0}%","DownloadingVersionProgress":"正在下载 {0} · {1:0}%","DownloadingVersion":"正在下载 {0}","VersionDownloaded":"{0} 下载完成","FixedHotkey":"固定：{0}","Copyright":"版权所有 © Dotnet9","VexDescription":"Markdown 编辑器：实时预览、大纲、统计与多格式导出。","InterfaceLanguage":"语言","ChineseLanguage":"简体中文","TrayAutoStart":"开机启动（{0}）","TrayPin":"钉住（{0}）"}}},"en-US":{"language":"English","description":"QuickApp en-US","cultureName":"en-US","QuickApp":{"Text":{"Retry":"Retry","Settings":"Settings","Exit":"Exit","ProductName":"QuickApp","NotChecked":"Not checked","Edge":"Edge","Pinned":"Pinned","Unpinned":"Unpinned","NewVersionPrefix":"New version ","PreparingDownload":"Preparing download…","DownloadComplete":"Download complete","Install":"Install","OpenPackage":"Open package","NoPlatformPackage":"No package is available for this platform","ConfigReloadRequired":"Configuration could not be read. Reload it in Settings → Data.","SaveFailed":"Could not save. Check configuration folder permissions.","UpdatedPrefix":"Updated: ","AddedPrefix":"Added: ","ReadFailedPrefix":"Could not read configuration: ","ReloadedPrefix":"Reloaded ","ShortcutCountSuffix":" shortcuts","PortableStorage":"Portable · configuration beside the app","InstalledStorage":"Installed · configuration in %LOCALAPPDATA%\\QuickApp","SwitchToInstalled":"Use installed storage","SwitchToPortable":"Use portable storage","StorageMigrated":"Configuration moved; the new location is active","SwitchFailedPrefix":"Could not switch: ","Configured":"Configured","SystemApps":"System apps","ResultsSuffix":" results","ConfigErrorHint":"Configuration error · retry in Settings","NoMatchPrefix":"No matches for “","NoMatchSuffix":"”","EmptyHint":"Right-click an empty area to add an app","Empty":"No shortcuts yet","EditModeHint":"Finish editing before launching","LaunchFailedPrefix":"Could not launch: ","LaunchingPrefix":"Launching ","InstancesSuffix":" instances: ","LaunchingItemPrefix":"Launching: ","AlreadyConfiguredSuffix":" is already configured","RemovedPrefix":"Removed ","Undo":"Undo","AlreadyEmpty":"The list is already empty","ClearedPrefix":"Cleared ","ItemsSuffix":" items","Restored":"Restored","ReloadConfigRequired":"Reload configuration before continuing.","AddedCountPrefix":"Added ","ChangedPrefix":"Changed ","IconCopyFailedSuffix":" icon (copy failed; using original: ","IconSuffix":" icon","InvalidImport":"The file is not a valid QuickApp configuration","ImportSaveFailed":"Could not save the imported configuration. Check folder permissions.","ImportedPrefix":"Imported ","DockedPrefix":"Docked to ","MovedMonitorPrefix":"Moved to monitor ","AutoStartEnabled":"Launch at sign-in enabled","AutoStartDisabled":"Launch at sign-in disabled","AutoStartFailed":"Could not change launch at sign-in","JustChecked":"Updates were just checked","UpdateCheckFailed":"Could not check for updates. Try again later.","UpdateErrorPrefix":"Update check failed: ","CurrentVersionPrefix":"You are up to date: ","ViewUpdateHintSuffix":" · select View for release notes","View":"View","DownloadingPrefix":"Downloading update · ","Cancel":"Cancel","DownloadReadyPrefix":"Download complete. Select ","DownloadCanceled":"Download canceled","DownloadFailed":"Download failed. Try again.","PackageMissing":"The package is missing. Download it again.","OpenPackageFailed":"Could not open the package","NameRequired":"Name cannot be empty; the original name was kept","RenamedPrefix":"Renamed to ","OrderSaved":"Order saved","StartMenuPrefix":"Start menu · ","InstalledPrefix":"Installed ","RemoveFromDock":"Remove from Dock","AddToDock":"Add to Dock","ResolvingVersion":"Finding the latest version…","DownloadingPackage":"Downloading package…","InstallingSilent":"Installing silently; a shortcut will be added afterwards…","Installing":"Installing; a shortcut will be added afterwards…","VersionUnavailable":"Version information is temporarily unavailable","VersionFailed":"Could not load version information","NoMatchingPackage":"No package matches this platform","NoMatchingPackageSuffix":": no package matches this platform","DownloadedInstallingSuffix":" downloaded; installing","InstalledCountPrefix":"Installed ","ShortcutAddedSuffix":"; a shortcut was added to the Dock","InstallGuideSuffix":" installer opened. After installing, select Add to Dock.","InstallIncompleteSuffix":" installation did not finish. Retry or open the release page.","CanceledDownloadPrefix":"Canceled download: ","InstallErrorSuffix":" installation failed: ","DownloaderMissing":"The downloader is not initialized","InstallerMissing":"The installer is not initialized","NoAutoHide":"Never","ConfigPreservedPrefix":"Could not read configuration; original data was preserved: ","Hide":"Hide","Show":"Show","AutoStartPrefix":"Launch at sign-in (","On":"On","Off":"Off","PinPrefix":"Pin (","Remove":"Remove","AddToDockAction":"Add to Dock","SearchWatermark":"Search apps, links, commands or pinyin…","CloseSearch":"Close search","SearchShortcut":"Search (S)","PinDock":"Pin Dock","MoreActions":"More actions","Collapse":"Collapse","Download":"Download","OpenReleasePage":"Open release page","Dismiss":"Dismiss","NewVersionHint":"A new version is available. Select to view.","NewVersion":"New version","Done":"Done","EditingHint":"Drag to reorder · double-click to rename · × to remove","UnpinDock":"Unpin Dock","Run":"Run","Edit":"Edit…","Rename":"Rename","ChangeIcon":"Change icon…","CopyPath":"Copy path","CopyCommand":"Copy command","OpenLocation":"Open location","Add":"Add","File":"File…","Directory":"Folder…","WebAddress":"Web address…","CommandLine":"Command…","Manage":"Manage","EditMode":"Edit mode","ClearAll":"Clear all","DockEdge":"Dock edge","SelectIcon":"Choose an icon image","Images":"Images","UpdateReady":"Update ready","DownloadingUpdate":"Downloading update","UpdateAvailable":"New version available","InstallExplanation":"The package is verified. The system installer will take over after you select Install.","DownloadExplanation":"Download runs in the background. You can cancel it at any time.","ManualPackageExplanation":"Open the release page to choose a package for this platform.","DownloadConfirmExplanation":"The package matches this platform. Confirm installation after the download finishes.","ClipboardUnsupported":"Clipboard access is unavailable on this platform","CopiedPrefix":"Copied: ","ClipboardBusy":"Could not copy. Another application is using the clipboard.","FileMissingPrefix":"File not found: ","DockReturnedPrefix":"Dock returned to ","SnapPrefix":"Snap to ","SelectDockFolder":"Choose a folder to add to the Dock","SelectFolderFailed":"Could not select a folder","SelectFolderFailedPrefix":"Could not select a folder: ","SelectDockFile":"Choose an app or file to add to the Dock","SelectFileFailed":"Could not select a file","EditItem":"Edit shortcut","Type":"Type","ProgramFileFolder":"App / file / folder","Url":"Web address","Command":"Command","Name":"Name","GeneratedNameHint":"Leave blank to use the target name","Target":"Path or executable","TargetExample":"e.g. C:\\Work or explorer.exe","Arguments":"Arguments (optional)","ArgumentsExample":"e.g. --new-window","Instances":"Instances","InstancesHint":"Launch multiple instances when supported by the target app.","WorkingDirectory":"Working directory (optional)","WorkingDirectoryExample":"e.g. C:\\Work\\QuickApp","Browse":"Browse…","CommandInterpreter":"Command interpreter","KeepTerminal":"Run in a terminal and keep it open","TerminalHint":"Use a terminal to see output; run in the background for noninteractive tasks.","ShellHint":"Commands run through the system shell in the background.","ItemHotkey":"Global shortcut (optional · Windows)","HotkeyPlaceholder":"Click and press a shortcut, e.g. Ctrl + Alt + D","Clear":"Clear","HotkeyHint":"Launch directly even when the Dock is collapsed.","Save":"Save","AddItem":"Add shortcut","UnsupportedHotkey":"Global shortcuts are unavailable on this platform. Existing settings are preserved.","CommandExample":"e.g. git status","UrlExample":"e.g. https://dotnet9.com","HotkeyModifiersRequired":"A shortcut requires Ctrl, Alt, Shift or Win.","SelectProgram":"Choose an app or file","SelectFileFailedPrefix":"Could not select a file: ","SelectFolder":"Choose a folder","SettingsTitle":"QuickApp Settings","General":"General","StartupDisplay":"Startup and display","AutoStart":"Launch at sign-in","RevealOnHover":"Reveal on hover","RevealHint":"Pause at the edge to reveal the Dock","Monitor":"Monitor","MonitorHint":"The Dock follows the selected monitor and falls back to the primary monitor when it is disconnected.","AutoHideDelay":"Auto-hide delay","CollapseAfterLaunch":"Collapse after launching","CheckAtStartup":"Check for updates at startup","Keyboard":"Keyboard","GlobalHotkey":"Global shortcut","KeyboardHint":"Arrows: navigate · Enter: run · 1–9: launch · S / Ctrl+K: search · E: edit · Esc: close","Appearance":"Appearance","InterfaceDisplay":"Interface and display","Theme":"Theme","SystemTheme":"System","DarkTheme":"Dark","LightTheme":"Light","Style":"Style","Glass":"Glass","Flat":"Flat","IconLabels":"Icon labels","IconsOnly":"Icons only","IconAndName":"Icon and name","IconSize":"Icon size","PanelRadius":"Panel radius","GlassFallback":"Glass may fall back to an opaque surface on some systems","Data":"Data","Configuration":"Configuration","ConfigLocation":"Configuration file","StorageLocation":"Storage location","ImportWarning":"Import replaces your current shortcuts and settings","ImportConfig":"Import configuration","ExportConfig":"Export configuration","OpenConfigFolder":"Open configuration folder","ReloadConfig":"Reload configuration","Recommended":"Recommended","RecommendedApps":"Recommended apps","RecommendedHint":"Install verified packages from the latest GitHub releases and add shortcuts to the Dock.","ReleasePage":"Release page","Resolving":"Finding the latest version…","Installed":"Installed","RecommendedFooter":"More apps at doc.codewf.com","About":"About","AppDescription":"Quick app launcher","Version":"Version","Purpose":"Purpose","PurposeDescription":"Launch apps, files, folders, links and commands","ProjectInfo":"Project information","Author":"Author","AuthorName":"Dotnet9","Website":"Website","Repository":"Repository","CheckUpdates":"Check for updates","ViewNewVersion":"View new version","CheckNow":"Check now","License":"License","ExportTitle":"Export QuickApp configuration","ConfigFileType":"QuickApp configuration","ImportTitle":"Import QuickApp configuration","PrimaryMonitor":"Primary monitor","MonitorPrefix":"Monitor ","LeftEdge":"Left","RightEdge":"Right","TopEdge":"Top","BottomEdge":"Bottom","ConfirmReplace":"Replace shortcut configuration?","ReplaceConfig":"Replace configuration","ImportReplacesPrefix":"Import will replace your current ","ImportReplacesSuffix":" shortcuts and settings.","GotIt":"Got it","LicenseDescription":"QuickApp is licensed under MIT. You may use, modify and distribute it while retaining the copyright notice.","InstalledVersion":"Installed version","LatestVersion":"Latest version","ReleaseNotes":"Release notes","CannotDownloadHint":"Could not download the package. Check your connection or open the release page.","InstallConfirmHint":"After downloading, select Install to open the system installer.","PackageFallbackHint":"No compatible package was found. Open the GitHub release page to download manually.","NoReleaseNotes":"No release notes were provided. Open the release page for details.","UnsupportedPlatformHotkeySuffix":": global shortcuts are not supported on this platform.","UnsupportedPlatformHotkey":"Global shortcuts are not supported on this platform.","UnsupportedAutoStart":"Launch at sign-in is not supported on this platform.","RunKeyUnavailable":"Could not access the Run registry key. Check security software settings.","DeleteAutoStartFailedPrefix":"Could not remove launch at sign-in. Error ","WriteAutoStartFailedPrefix":"Could not enable launch at sign-in. Error ","DuplicateHotkeySuffix":": duplicate shortcut.","HotkeyTimeout":"Shortcut registration timed out. Try again.","HotkeyOccupiedSuffix":"): the shortcut is occupied or could not be registered.","ConfigEmpty":"The configuration file is empty.","ConfigInvalidObject":"The configuration is not a valid object.","BrokenConfigPrefix":"The configuration file is missing. Original content is preserved at ","BrokenConfigSuffix":".broken. Restore a valid configuration or import a backup.","CreateConfigFailed":"Could not create configuration. Check folder permissions and retry.","SaveBlocked":"Saving is blocked to protect unreadable configuration.","StorageSwitchBlocked":"Reload or import valid configuration before changing its storage location.","ImageMissing":"The image does not exist","Bottom":"bottom","Left":"left","Right":"right","Top":"top","EmptyHotkey":"The shortcut is empty.","HotkeyRequiresModifier":"A shortcut requires a modifier (Ctrl/Alt/Shift/Win) and a key.","InvalidModifierSuffix":"” is not a modifier. Use Ctrl/Alt/Shift/Win.","UnknownKeyPrefix":"Unknown key: ","Web":"Web","Application":"Application","Untitled":"Untitled","TargetRequired":"Enter a target.","InvalidItemKind":"Choose a valid shortcut type.","InvalidUrl":"Enter a valid HTTP or HTTPS address.","InvalidWorkingDirectory":"The working directory does not exist.","ReservedHotkey":"This shortcut is reserved for QuickApp.","UsedHotkeyPrefix":"This shortcut is already assigned to “","InstanceRangePrefix":"Enter an instance count between 1 and ","InstanceRangeSuffix":".","EmptyLaunchTarget":"This item has no executable target.","StartupConfigError":"Could not load configuration. Original data was preserved. Reload it in Settings → Data.","WakeQuickApp":"Show QuickApp","HotkeyRegisterFailedPrefix":"Could not register global shortcut: ","RegisteredPrefix":"Registered ","GlobalShortcutCountSuffix":" global shortcuts","OpenReleasePageFailedPrefix":"Could not open release page: ","OpenUrlFailedPrefix":"Could not open link: ","Palette":"Accent palette","Platform":"Platform","BuildTime":"Built","DefaultPalette":"Default","DesertPalette":"Desert","AquaticPalette":"Aquatic","DuskPalette":"Dusk","NightSkyPalette":"Night sky","DotNetPalette":".NET purple","AuroraPalette":"Aurora AI","EmberPalette":"Ember AI","DownloadProgress":"Downloading {0:0}%","DownloadingVersionProgress":"Downloading {0} · {1:0}%","DownloadingVersion":"Downloading {0}","VersionDownloaded":"{0} downloaded","FixedHotkey":"Fixed: {0}","Copyright":"Copyright © Dotnet9","VexDescription":"Markdown editor with live preview, outline, statistics and export.","InterfaceLanguage":"Language","ChineseLanguage":"简体中文","TrayAutoStart":"Launch at sign-in ({0})","TrayPin":"Pin ({0})"}}}};
+</script><script>// 共享 StudioTheme 12.1.4.19 的令牌快照；无运行时跨仓依赖。
+window.QUICKAPP_PALETTES={"Default": {"light": {"StudioBackgroundColor": "#FFFFFF", "StudioSurfaceColor": "#F8F9FB", "StudioRaisedColor": "#EEF1F6", "StudioBorderColor": "#DDE2EB", "StudioTextColor": "#202736", "StudioMutedColor": "#68758B", "StudioAccentColor": "#0064FA", "StudioSecondaryColor": "#4D8EFF", "StudioPrimaryColor": "#0064FA", "StudioGradientStartColor": "#0064FA", "StudioTextGradientEndColor": "#4D8EFF"}, "dark": {"StudioBackgroundColor": "#13161C", "StudioSurfaceColor": "#1A1E26", "StudioRaisedColor": "#242A35", "StudioBorderColor": "#354051", "StudioTextColor": "#EDF1F8", "StudioMutedColor": "#A6B2C6", "StudioAccentColor": "#6AA8FF", "StudioSecondaryColor": "#4D8EFF", "StudioPrimaryColor": "#0064FA", "StudioGradientStartColor": "#0064FA", "StudioTextGradientEndColor": "#8CBBFF"}}, "Desert": {"light": {"StudioBackgroundColor": "#FFFCF5", "StudioSurfaceColor": "#FBF4E7", "StudioRaisedColor": "#F3E8D5", "StudioBorderColor": "#DECDB0", "StudioTextColor": "#3C3022", "StudioMutedColor": "#7B6C55", "StudioAccentColor": "#9B651E", "StudioSecondaryColor": "#BD8437", "StudioPrimaryColor": "#9B651E", "StudioGradientStartColor": "#9B651E", "StudioTextGradientEndColor": "#BD8437"}, "dark": {"StudioBackgroundColor": "#211C16", "StudioSurfaceColor": "#2C251C", "StudioRaisedColor": "#3A3023", "StudioBorderColor": "#544630", "StudioTextColor": "#F7EDDB", "StudioMutedColor": "#C8B799", "StudioAccentColor": "#E6B96D", "StudioSecondaryColor": "#BD8437", "StudioPrimaryColor": "#9B651E", "StudioGradientStartColor": "#9B651E", "StudioTextGradientEndColor": "#F1D39E"}}, "Aquatic": {"light": {"StudioBackgroundColor": "#F4FCFC", "StudioSurfaceColor": "#EBF7F8", "StudioRaisedColor": "#DCEFF1", "StudioBorderColor": "#BFDCE0", "StudioTextColor": "#183B42", "StudioMutedColor": "#526F77", "StudioAccentColor": "#007D8F", "StudioSecondaryColor": "#159BA5", "StudioPrimaryColor": "#007D8F", "StudioGradientStartColor": "#007D8F", "StudioTextGradientEndColor": "#159BA5"}, "dark": {"StudioBackgroundColor": "#101B20", "StudioSurfaceColor": "#17262D", "StudioRaisedColor": "#20343D", "StudioBorderColor": "#35505B", "StudioTextColor": "#E6F6F7", "StudioMutedColor": "#A4C2C8", "StudioAccentColor": "#62D7DC", "StudioSecondaryColor": "#239DA9", "StudioPrimaryColor": "#007D8F", "StudioGradientStartColor": "#007D8F", "StudioTextGradientEndColor": "#9BE9EC"}}, "Dusk": {"light": {"StudioBackgroundColor": "#FAF8FE", "StudioSurfaceColor": "#F1EDF9", "StudioRaisedColor": "#E7E0F3", "StudioBorderColor": "#D3C7E6", "StudioTextColor": "#332841", "StudioMutedColor": "#786887", "StudioAccentColor": "#7052B5", "StudioSecondaryColor": "#9676CC", "StudioPrimaryColor": "#7052B5", "StudioGradientStartColor": "#7052B5", "StudioTextGradientEndColor": "#9676CC"}, "dark": {"StudioBackgroundColor": "#1C1725", "StudioSurfaceColor": "#272033", "StudioRaisedColor": "#342B43", "StudioBorderColor": "#4B3E5D", "StudioTextColor": "#F2EAFB", "StudioMutedColor": "#BEB0D0", "StudioAccentColor": "#BBA0EB", "StudioSecondaryColor": "#9676CC", "StudioPrimaryColor": "#7052B5", "StudioGradientStartColor": "#7052B5", "StudioTextGradientEndColor": "#D6C3F4"}}, "NightSky": {"light": {"StudioBackgroundColor": "#F6F9FF", "StudioSurfaceColor": "#EDF3FC", "StudioRaisedColor": "#DDE9F8", "StudioBorderColor": "#BED0E8", "StudioTextColor": "#20314A", "StudioMutedColor": "#62758E", "StudioAccentColor": "#235FAD", "StudioSecondaryColor": "#4B84C6", "StudioPrimaryColor": "#235FAD", "StudioGradientStartColor": "#235FAD", "StudioTextGradientEndColor": "#4B84C6"}, "dark": {"StudioBackgroundColor": "#101724", "StudioSurfaceColor": "#172235", "StudioRaisedColor": "#203047", "StudioBorderColor": "#344965", "StudioTextColor": "#E8F0FF", "StudioMutedColor": "#A8BCD8", "StudioAccentColor": "#79ADFF", "StudioSecondaryColor": "#4B84C6", "StudioPrimaryColor": "#235FAD", "StudioGradientStartColor": "#235FAD", "StudioTextGradientEndColor": "#B0CEFF"}}, "DotNet": {"light": {"StudioBackgroundColor": "#FFFFFF", "StudioSurfaceColor": "#F7F6FC", "StudioRaisedColor": "#EFEDF7", "StudioBorderColor": "#DDD8EC", "StudioTextColor": "#242036", "StudioMutedColor": "#6E6684", "StudioAccentColor": "#512BD4", "StudioSecondaryColor": "#7355DE", "StudioPrimaryColor": "#512BD4", "StudioGradientStartColor": "#512BD4", "StudioTextGradientEndColor": "#7355DE"}, "dark": {"StudioBackgroundColor": "#12111C", "StudioSurfaceColor": "#191724", "StudioRaisedColor": "#211E30", "StudioBorderColor": "#343044", "StudioTextColor": "#F3F0FC", "StudioMutedColor": "#AAA5C0", "StudioAccentColor": "#A78BFA", "StudioSecondaryColor": "#7654EA", "StudioPrimaryColor": "#512BD4", "StudioGradientStartColor": "#512BD4", "StudioTextGradientEndColor": "#BAA3FF"}}, "Aurora": {"light": {"StudioBackgroundColor": "#FFFFFF", "StudioSurfaceColor": "#F7F6FC", "StudioRaisedColor": "#EFEDF7", "StudioBorderColor": "#DDD8EC", "StudioTextColor": "#242036", "StudioMutedColor": "#6E6684", "StudioAccentColor": "#6745D6", "StudioSecondaryColor": "#1AAFA9", "StudioPrimaryColor": "#512BD4", "StudioGradientStartColor": "#8968FF", "StudioTextGradientEndColor": "#007C78"}, "dark": {"StudioBackgroundColor": "#101820", "StudioSurfaceColor": "#16212A", "StudioRaisedColor": "#20303A", "StudioBorderColor": "#2C3B48", "StudioTextColor": "#F3F0FC", "StudioMutedColor": "#AAA5C0", "StudioAccentColor": "#AE96FF", "StudioSecondaryColor": "#26D4CC", "StudioPrimaryColor": "#512BD4", "StudioGradientStartColor": "#8968FF", "StudioTextGradientEndColor": "#26D4CC"}}, "Ember": {"light": {"StudioBackgroundColor": "#FFFFFF", "StudioSurfaceColor": "#FCF7F3", "StudioRaisedColor": "#F4ECE5", "StudioBorderColor": "#DDCABC", "StudioTextColor": "#242036", "StudioMutedColor": "#6E6684", "StudioAccentColor": "#A94F36", "StudioSecondaryColor": "#D09566", "StudioPrimaryColor": "#A94F36", "StudioGradientStartColor": "#BD674D", "StudioTextGradientEndColor": "#A34C34"}, "dark": {"StudioBackgroundColor": "#1B1616", "StudioSurfaceColor": "#241D1B", "StudioRaisedColor": "#302522", "StudioBorderColor": "#443631", "StudioTextColor": "#F3F0FC", "StudioMutedColor": "#AAA5C0", "StudioAccentColor": "#E6A58F", "StudioSecondaryColor": "#E9BD87", "StudioPrimaryColor": "#A94F36", "StudioGradientStartColor": "#BD674D", "StudioTextGradientEndColor": "#E9BD87"}}};
+</script><script>/* ============================================================================
+   QuickApp 原型共享脚本（零依赖、离线可用）
+   提供：SVG 图标、演示数据、Dock 渲染、悬停气泡、Toast、右键菜单、更新提示。
+   index.html 为唯一页面；assets/app.js 管理各界面的共享状态与入口。
+   ========================================================================== */
+window.QA = (function(){
+  'use strict';
+
+  /* ---------------- 1. 图标 ---------------- */
+  const GLYPHS = {
+    globe:'<circle cx="12" cy="12" r="9"/><path d="M3.6 9h16.8M3.6 15h16.8"/><path d="M12 3c2.4 2.4 3.6 5.4 3.6 9s-1.2 6.6-3.6 9c-2.4-2.4-3.6-5.4-3.6-9S9.6 5.4 12 3z"/>',
+    chat:'<path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8z"/>',
+    play:'<circle cx="12" cy="12" r="9"/><path d="M10 8.5l6 3.5-6 3.5z"/>',
+    music:'<path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/>',
+    camera:'<rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 11l5-3v8l-5-3z"/>',
+    monitor:'<rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 20h8M12 17v3"/><path d="M9 10.5h6M12 7.5v6"/>',
+    'monitor-alt':'<rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 20h8M12 17v3"/>',
+    note:'<path d="M14 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3v5h5"/><path d="M8.5 13h7M8.5 16.5h4.5"/>',
+    cloud:'<path d="M7 18a4.5 4.5 0 0 1-.4-9A6 6 0 0 1 18 9.5a4 4 0 0 1 .5 8z"/>',
+    code:'<path d="M9 7l-5 5 5 5"/><path d="M15 7l5 5-5 5"/>',
+    rocket:'<path d="M12 2.5c2.8 2.2 4.2 5.2 4.2 8.5L12 15l-4.2-4c0-3.3 1.4-6.3 4.2-8.5z"/><path d="M7.8 11L5 18l4-1.5"/><path d="M16.2 11L19 18l-4-1.5"/>',
+    database:'<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/>',
+    shield:'<path d="M12 3l7 3v5.5c0 4.3-2.9 7.6-7 9.5-4.1-1.9-7-5.2-7-9.5V6z"/><path d="M9.5 12l1.8 1.8 3.5-3.6"/>',
+    record:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/>',
+    app:'<rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M3.5 8.5h17"/>',
+    ding:'<path d="M5 11.5a7 7 0 0 1 14 0v4l2 2H3l2-2z"/><path d="M9.5 20h5"/>',
+    terminal:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7.5 9.5l2.5 2.5-2.5 2.5"/><path d="M12.5 15h4"/>',
+    search:'<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
+    pencil:'<path d="M4 20l4-1 10-10-3-3L5 16z"/><path d="M14.5 5.5l3 3"/>',
+    plus:'<path d="M12 5v14M5 12h14"/>',
+    more:'<circle cx="5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.5" fill="currentColor" stroke="none"/>',
+    grid:'<rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/>',
+    pin:'<path d="M9.5 3h5l-.8 5.2 3.3 3.3H7L10.3 8.2z"/><path d="M12 11.5V21"/>',
+    'chevron-up':'<path d="M6 14l6-6 6 6"/>',
+    'chevron-down':'<path d="M6 10l6 6 6-6"/>',
+    'chevron-left':'<path d="M14 6l-6 6 6 6"/>',
+    'chevron-right':'<path d="M10 6l6 6-6 6"/>',
+    x:'<path d="M6 6l12 12M18 6L6 18"/>',
+    check:'<path d="M5 12.5l4.5 4.5L19 7"/>',
+    upload:'<path d="M12 15.5V4"/><path d="M8 8l4-4 4 4"/><path d="M5 15v3.5A1.5 1.5 0 0 0 6.5 20h11a1.5 1.5 0 0 0 1.5-1.5V15"/>',
+    download:'<path d="M12 4v11.5"/><path d="M8 12l4 4 4-4"/><path d="M5 19h14"/>',
+    undo:'<path d="M5 9h9a5 5 0 0 1 0 10H8"/><path d="M8.5 5.5L5 9l3.5 3.5"/>',
+    gear:'<circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.4M12 18.6V21M4.6 7.6l2 1.2M17.4 15.2l2 1.2M4.6 16.4l2-1.2M17.4 8.8l2-1.2"/>',
+    info:'<circle cx="12" cy="12" r="9"/><path d="M12 11.2v5"/><path d="M12 7.6v.2"/>',
+    trash:'<path d="M4 7h16"/><path d="M9.5 7V5h5v2"/><path d="M6.5 7l1 13h9l1-13"/><path d="M10.5 11v6M13.5 11v6"/>',
+    copy:'<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M15 9V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h3"/>',
+    folder:'<path d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4L10.5 8.5H18A1.5 1.5 0 0 1 19.5 10v1"/><path d="M3 10h17.2l-2.1 8H5z"/>',
+    power:'<path d="M12 3v9"/><path d="M7.6 6.6a7.5 7.5 0 1 0 8.8 0"/>',
+    list:'<path d="M4 6.5h16M4 12h16M4 17.5h16"/>',
+    refresh:'<path d="M20 11a8 8 0 1 0-2.3 6.3"/><path d="M20 5v6h-6"/>',
+    link:'<path d="M10 14a5 5 0 0 0 7.5.5l2-2a5 5 0 0 0-7-7l-1.2 1.1"/><path d="M14 10a5 5 0 0 0-7.5-.5l-2 2a5 5 0 0 0 7 7l1.2-1.1"/>'
+  };
+  /* 收起按钮箭头：指向 Dock 所在的边（点击即收进那条边） */
+  function collapseGlyph(edge){
+    return edge === 'bottom' ? 'chevron-down'
+         : edge === 'left' ? 'chevron-left'
+         : edge === 'right' ? 'chevron-right'
+         : 'chevron-up';
+  }
+  function setCollapseBtn(btn, edge){
+    if(btn) btn.innerHTML = svg(collapseGlyph(edge), 20);
+  }
+
+  function svg(name, size = 20, stroke = 1.75){
+    return '<svg viewBox="0 0 24 24" width="' + size + '" height="' + size + '" fill="none" stroke="currentColor"' +
+           ' stroke-width="' + stroke + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+           (GLYPHS[name] || GLYPHS.app) + '</svg>';
+  }
+  /* 把 data-icon 占位灌成 SVG */
+  function hydrateIcons(root = document){
+    root.querySelectorAll('[data-icon]').forEach(n => {
+      if(!n.innerHTML.trim()) n.innerHTML = svg(n.dataset.icon, n.classList.contains('chip-icon') ? 15 : 20);
+    });
+  }
+
+  /* ---------------- 2. 演示数据（取自 src/QuickApp/menu.json） ---------------- */
+  const SEED = [
+    {name:'Google Chrome',type:'app',target:'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',icon:'globe'},
+    {name:'Dotnet9',type:'web',target:'https://dotnet9.com/',icon:'globe'},
+    {name:'微信公众号',type:'web',target:'https://mp.weixin.qq.com/advanced/homepage',icon:'chat'},
+    {name:'json格式化',type:'web',target:'https://tool.lu/json/',icon:'globe'},
+    {name:'192.168.1.133',type:'cmd',target:'mstsc /v:192.168.1.133',icon:'monitor'},
+    {name:'KuLi',type:'app',target:'C:\\Program Files (x86)\\KuLi\\KuLi.exe',icon:'app'},
+    {name:'微信',type:'app',target:'I:\\Program Files (x86)\\Tencent\\WeChat\\WeChat.exe',icon:'chat'},
+    {name:'钉钉',type:'app',target:'I:\\Program Files (x86)\\DingDing\\DingtalkLauncher.exe',icon:'ding'},
+    {name:'腾讯QQ',type:'app',target:'I:\\Program Files (x86)\\Tencent\\QQ\\Bin\\QQScLauncher.exe',icon:'chat'},
+    {name:'腾讯视频',type:'app',target:'I:\\Program Files (x86)\\Tencent\\QQLive\\QQLive.exe',icon:'play'}
+  ];
+  /* Windows 开始菜单索引的静态样例（搜索页用） */
+  const INSTALLED = [
+    {id:'installed-typora',name:'Typora',type:'app',target:'C:\\Program Files\\Typora\\Typora.exe',icon:'note'},
+    {id:'installed-obsidian',name:'Obsidian',type:'app',target:'C:\\Users\\Public\\Obsidian\\Obsidian.exe',icon:'note'},
+    {id:'installed-vscode',name:'Visual Studio Code',type:'app',target:'I:\\Users\\Administrator\\AppData\\Local\\Programs\\Microsoft VS Code\\Code.exe',icon:'code'}
+  ];
+  /* 原型拼音词表只覆盖样例名称；正式实现使用通用拼音转换 */
+  const PINYIN = {微:'wei',信:'xin',公:'gong',众:'zhong',号:'hao',钉:'ding',腾:'teng',讯:'xun',视:'shi',频:'pin',格:'ge',式:'shi',化:'hua'};
+  const ALIAS = {'微信':'weixin wx','钉钉':'dingding dd','微信公众号':'weixin gongzhonghao wxgzh','腾讯视频':'tengxunshipin txsp'};
+  function pinyinForms(value){
+    const text = String(value).toLowerCase();
+    const full = [...text].map(ch => PINYIN[ch] || '').join('');
+    const initials = [...text].map(ch => PINYIN[ch] ? PINYIN[ch][0] : '').join('');
+    return [full, initials, ALIAS[value] || ''];
+  }
+  /* 搜索打分：名称前缀 > 拼音/别名 > 目标路径 */
+  function matchRank(it, token){
+    const name = it.name.toLowerCase();
+    if(name === token) return 0;
+    if(name.startsWith(token)) return 1;
+    if(pinyinForms(it.name).some(f => f && (f === token || f.startsWith(token)))) return 2;
+    if(pinyinForms(it.name).some(f => f && f.includes(token))) return 3;
+    if(it.target.toLowerCase().includes(token)) return 4;
+    return Infinity;
+  }
+  function searchItems(items, query){
+    const tokens = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if(!tokens.length) return items.slice();
+    return items.map((item, index) => ({item, index, rank:Math.min(...tokens.map(t => matchRank(item, t)))}))
+      .filter(row => Number.isFinite(row.rank))
+      .sort((a, b) => a.rank - b.rank || a.index - b.index)
+      .map(row => row.item);
+  }
+
+  /* ---------------- 3. 小工具 ---------------- */
+  function h(tag, attrs, ...kids){
+    const node = document.createElement(tag);
+    for(const [k, v] of Object.entries(attrs || {})){
+      if(v === null || v === false || v === undefined) continue;
+      if(k === 'class') node.className = v;
+      else if(k === 'text') node.textContent = v;
+      else if(k === 'html') node.innerHTML = v;
+      else if(k.startsWith('on')) node.addEventListener(k.slice(2), v);
+      else node.setAttribute(k, String(v));
+    }
+    for(const kid of kids.flat()) if(kid) node.append(kid);
+    return node;
+  }
+  function hueOf(str){
+    let hash = 0;
+    for(const ch of str) hash = (hash * 31 + ch.codePointAt(0)) % 360;
+    return hash;
+  }
+  const TYPE_LABEL = {app:'应用',web:'网页',cmd:'命令'};
+  const EDGE_LABEL = {top:'上',bottom:'下',left:'左',right:'右'};
+  function typeLabel(type){ return TYPE_LABEL[type] || '应用'; }
+  function targetSummary(it){
+    if(it.type === 'web'){
+      try{ return new URL(it.target).host; }catch(e){ return it.target; }
+    }
+    if(it.type === 'cmd') return it.target;
+    const parts = it.target.split(/[\\/]/).filter(Boolean);
+    return '…\\' + parts.slice(-2).join('\\');
+  }
+  const $ = (sel, root = document) => root.querySelector(sel);
+  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+
+  /* ---------------- 4. 外观 token 应用 ---------------- */
+  /* st: {themePref,wall,style,label,tileSize,radius,alpha,edge,searchOpen,edit,pinned} */
+  let lastSt = null;
+  const mqDark = window.matchMedia('(prefers-color-scheme: dark)');
+  mqDark.addEventListener('change', () => {
+    if(lastSt && lastSt.themePref === 'system') applyTokens(lastSt);
+  });
+
+  function applyTokens(st){
+    const root = document.documentElement;
+    root.dataset.theme = st.themePref === 'system'
+      ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+      : st.themePref;
+    if(st.wall && st.wall !== 'auto') root.dataset.wall = st.wall; else delete root.dataset.wall;
+    root.dataset.style = st.style;
+    root.dataset.label = st.label;
+    root.dataset.searchOpen = String(!!st.searchOpen);
+    root.dataset.edit = String(!!st.edit);
+    if(st.edge) root.dataset.edge = st.edge;
+    if(st.tileSize) root.style.setProperty('--tile-size', st.tileSize + 'px');
+    if(st.tileSize) root.style.setProperty('--items-window', (st.tileSize * 10 + 90) + 'px');
+    if(st.radius) root.style.setProperty('--dock-radius', st.radius + 'px');
+    if(st.alpha !== undefined) root.style.setProperty('--dock-alpha', String(st.alpha));
+    lastSt = st;
+  }
+
+  /* ---------------- 5. Dock 图标渲染 ---------------- */
+  /* 图标来源优先级：用户选择的本地图片(it.customUrl) > 类型占位图形。
+     程序不内置图标库——应用千奇百怪，内置列表永远填不满。 */
+  function tileNode(it, st, opts = {}){
+    const tile = h('button', {
+      class:'tile' + (it.type === 'app' && !it.customUrl ? ' app-icon' : ''), type:'button', 'data-id':it.id, title:it.name,
+      'aria-label':it.name + '，' + typeLabel(it.type)
+    });
+    if(it.customUrl){
+      tile.append(h('img', {class:'tile-img', src:it.customUrl, alt:'', draggable:'false'}));
+    }else{
+      const hue = hueOf(it.name);
+      if(it.type !== 'app') tile.style.background = 'linear-gradient(145deg,hsl(' + hue + ' 52% 46%),hsl(' + ((hue + 18) % 360) + ' 52% 34%))';
+      tile.append(h('span', {class:'tile-icon', html:svg(it.icon, Math.round((st.tileSize || 44) * (it.type === 'app' ? 0.9 : 0.5)))}));
+    }
+
+    const item = h('div', {class:'dock-item', role:'listitem', 'data-id':it.id, draggable:opts.edit ? 'true' : null}, tile);
+    if(st.label === 'iconText') item.append(h('span', {class:'tile-name', text:it.name, title:it.name}));
+    if(opts.edit) item.append(h('button', {
+      class:'remove', type:'button', 'data-id':it.id,
+      title:'移除 ' + it.name, 'aria-label':'移除 ' + it.name, html:svg('x', 12, 2.6)
+    }));
+    return item;
+  }
+  function renderTiles(container, items, st, opts = {}){
+    const frag = document.createDocumentFragment();
+    if(!items.length){
+      frag.append(h('div', {class:'dock-empty', role:'status', text:opts.emptyText || '右键空白处添加应用'}));
+    }else{
+      for(const it of items) frag.append(tileNode(it, st, opts));
+    }
+    container.replaceChildren(frag);
+  }
+
+  /* 滚动外观：两端渐隐 + 指示条（轴向随停靠边） */
+  function updateScrollChrome(itemsEl, fades){
+    const vertical = itemsEl.classList.contains('searching') || document.documentElement.dataset.edge === 'left' || document.documentElement.dataset.edge === 'right';
+    const sc = itemsEl;
+    const total = vertical ? sc.scrollHeight : sc.scrollWidth;
+    const view = vertical ? sc.clientHeight : sc.clientWidth;
+    const pos = vertical ? sc.scrollTop : sc.scrollLeft;
+    const maxScroll = Math.max(0, total - view);
+    const indicator = fades ? fades.indicator : null;
+    if(indicator){
+      indicator.hidden = !(maxScroll > 2);
+      if(maxScroll > 2){
+        const thumb = fades.thumb;
+        if(vertical){
+          const trackH = indicator.clientHeight;
+          const thumbH = Math.max(14, trackH * (view / total));
+          thumb.style.height = thumbH + 'px';thumb.style.width = 'auto';
+          thumb.style.transform = 'translateY(' + ((pos / maxScroll) * (trackH - thumbH)) + 'px)';
+        }else{
+          const trackW = indicator.clientWidth;
+          const thumbW = Math.max(14, trackW * (view / total));
+          thumb.style.width = thumbW + 'px';thumb.style.height = 'auto';
+          thumb.style.transform = 'translateX(' + ((pos / maxScroll) * (trackW - thumbW)) + 'px)';
+        }
+      }
+    }
+    if(fades){
+      fades.left.classList.toggle('show', pos > 2);
+      fades.right.classList.toggle('show', pos < maxScroll - 2);
+    }
+  }
+
+  /* ---------------- 6. 悬停气泡 ---------------- */
+  /* showName: label=iconText 时不弹气泡；返回 hide() */
+  function attachBubble(dockEl, itemsEl, bubbleEl, st, nameFn, targetFn){
+    function show(id){
+      if(st.label !== 'icon') return;
+      const it = (nameFn(id));
+      const itemNode = $('.dock-item[data-id="' + id + '"]', itemsEl);
+      if(!it || !itemNode) return;
+      const tile = $('.tile', itemNode);
+      const r = tile.getBoundingClientRect();
+      if(r.width === 0) return;
+      $('.bubble-name', bubbleEl).textContent = it.name + ' · ' + typeLabel(it.type);
+      $('.bubble-target', bubbleEl).textContent = targetFn ? targetFn(it) : targetSummary(it);
+      bubbleEl.hidden = false;
+      const w = bubbleEl.offsetWidth, bh = bubbleEl.offsetHeight;
+      const gap = 8, margin = 14;
+      const edge = document.documentElement.dataset.edge;
+      let pos = edge === 'top' ? 'below' : edge === 'bottom' ? 'above' : edge === 'left' ? 'right' : 'left';
+      if(pos === 'above' && r.top < bh + margin) pos = 'below';
+      else if(pos === 'below' && window.innerHeight - r.bottom < bh + margin) pos = 'above';
+      else if(pos === 'right' && window.innerWidth - r.right < w + margin) pos = 'left';
+      else if(pos === 'left' && r.left < w + margin) pos = 'right';
+      bubbleEl.dataset.pos = pos;
+      if(pos === 'above' || pos === 'below'){
+        const center = Math.min(Math.max(r.left + r.width / 2, w / 2 + 8), window.innerWidth - w / 2 - 8);
+        bubbleEl.style.left = center + 'px';
+        bubbleEl.style.top = (pos === 'above' ? r.top - gap : r.bottom + gap) + 'px';
+      }else{
+        const cy = Math.min(Math.max(r.top + r.height / 2, bh / 2 + 8), window.innerHeight - bh / 2 - 8);
+        bubbleEl.style.left = (pos === 'right' ? r.right + gap : r.left - gap - w) + 'px';
+        bubbleEl.style.top = cy + 'px';
+      }
+    }
+    function hide(){ bubbleEl.hidden = true; }
+    itemsEl.addEventListener('mouseover', e => {
+      const item = e.target.closest('.dock-item');
+      if(item) show(item.dataset.id);
+    });
+    itemsEl.addEventListener('mouseout', e => {
+      if(!e.relatedTarget || !e.relatedTarget.closest('.dock-item')) hide();
+    });
+    itemsEl.addEventListener('focusin', e => {
+      const tile = e.target.closest('.tile');
+      if(tile) show(tile.dataset.id);
+    });
+    itemsEl.addEventListener('focusout', hide);
+    window.addEventListener('resize', hide);
+    return hide;
+  }
+
+  /* ---------------- 7. Toast ---------------- */
+  let toastLayerOverride = null;
+  function setToastLayer(el){ toastLayerOverride = el; }
+  function toastLayer(){
+    if(toastLayerOverride && toastLayerOverride.isConnected) return toastLayerOverride;
+    let layer = $('.toast-layer');
+    if(!layer){
+      layer = h('div', {class:'toast-layer'});
+      document.body.append(layer);
+    }
+    return layer;
+  }
+  function toast(text, opts = {}){
+    const layer = toastLayer();
+    $$('.toast', layer).forEach(t => {
+      if(t.dataset.text === text && !t.classList.contains('hide')) t.remove();
+    });
+    const node = h('div', {class:'toast', role:'status', 'data-text':text}, h('span', {text}));
+    if(opts.progress !== undefined){
+      const progress = h('div', {class:'toast-progress'}, h('i'));
+      progress.firstElementChild.style.width = Math.max(0, Math.min(100, opts.progress)) + '%';
+      node.classList.add('toast-downloading');
+      node.append(progress);
+    }
+    if(opts.actionLabel){
+      node.append(h('button', {class:'toast-action', type:'button', text:opts.actionLabel, onclick:() => {
+        if(opts.onAction) opts.onAction();
+        dismiss();
+      }}));
+    }
+    layer.append(node);
+    const timer = setTimeout(dismiss, opts.duration || (opts.actionLabel ? 5000 : 2200));
+    function dismiss(){
+      if(!node.isConnected) return;
+      clearTimeout(timer);
+      node.classList.add('hide');
+      setTimeout(() => node.remove(), 200);
+    }
+    return dismiss;
+  }
+
+  /* ---------------- 8. 右键菜单（单例） ---------------- */
+  let menuEl = null;
+  function closeMenu(){
+    if(menuEl){ menuEl.remove(); menuEl = null; }
+    const btn = $('#btnMenu');
+    if(btn) btn.setAttribute('aria-expanded', 'false');
+  }
+  function menuRow(row){
+    if(row.sep) return h('div', {class:'menu-sep'});
+    if(row.title) return h('div', {class:'menu-title', text:row.title});
+    if(row.custom) return row.custom();
+    return h('button', {
+      class:'menu-item' + (row.danger ? ' danger' : ''), type:'button', role:'menuitem',
+      onclick:() => { closeMenu(); if(row.action) row.action(); }
+    },
+      h('span', {class:'mi-icon', html:svg(row.icon || 'app', 16)}),
+      h('span', {text:row.label}),
+      row.note ? h('span', {class:'mi-note', text:row.note}) : null
+    );
+  }
+  function openMenu(spec, x, y){
+    closeMenu();
+    menuEl = h('div', {class:'menu', role:'menu', 'aria-label':'菜单'});
+    for(const row of spec) menuEl.append(menuRow(row));
+    document.body.append(menuEl);
+    menuEl.addEventListener('keydown', e => {
+      if(!['ArrowUp','ArrowDown','Home','End'].includes(e.key)) return;
+      const entries = $$('button', menuEl);
+      const index = entries.indexOf(document.activeElement);
+      const next = e.key === 'Home' ? 0 : e.key === 'End' ? entries.length - 1
+        : (index + (e.key === 'ArrowUp' ? -1 : 1) + entries.length) % entries.length;
+      e.preventDefault(); entries[next]?.focus();
+    });
+    const rect = menuEl.getBoundingClientRect();
+    menuEl.style.left = Math.max(8, Math.min(x, window.innerWidth - rect.width - 8)) + 'px';
+    menuEl.style.top = Math.max(8, Math.min(y, window.innerHeight - rect.height - 8)) + 'px';
+    const btn = $('#btnMenu');
+    if(btn) btn.setAttribute('aria-expanded', 'true');
+    const opened = menuEl;
+    requestAnimationFrame(() => opened.isConnected && $('button', opened)?.focus());
+    return menuEl;
+  }
+  /* 菜单贴着 Dock 操作按钮弹出（方向随停靠边翻转） */
+  function openMenuAtButton(spec, anchorEl){
+    const menu = openMenu(spec, 8, 8);
+    const a = anchorEl.getBoundingClientRect();
+    const m = menu.getBoundingClientRect();
+    const edge = document.documentElement.dataset.edge;
+    const gap = 8;
+    let left, top;
+    if(edge === 'left'){ left = a.right + gap; top = a.top; }
+    else if(edge === 'right'){ left = a.left - m.width - gap; top = a.top; }
+    else if(edge === 'top'){ left = a.right - m.width; top = a.bottom + gap; }
+    else{ left = a.right - m.width; top = a.top - m.height - gap; }
+    menu.style.left = Math.max(8, Math.min(left, window.innerWidth - m.width - 8)) + 'px';
+    menu.style.top = Math.max(8, Math.min(top, window.innerHeight - m.height - 8)) + 'px';
+    return menu;
+  }
+  document.addEventListener('mousedown', e => {
+    if(menuEl && !e.target.closest('.menu')) closeMenu();
+  });
+  document.addEventListener('keydown', e => {
+    if(e.key === 'Escape' && menuEl){ closeMenu(); e.preventDefault(); }
+  });
+
+  /* 停靠位置四向选择器（桌面示意框） */
+  function dockEdgePicker(current, onPick){
+    const wrap = h('div', {class:'dock-pos', role:'group', 'aria-label':'停靠位置'});
+    ['top','right','bottom','left'].forEach(edge => {
+      wrap.append(h('button', {
+        class:'edge e-' + edge + (current === edge ? ' active' : ''), type:'button',
+        'aria-label':EDGE_LABEL[edge] + '边缘', title:EDGE_LABEL[edge] + '边缘',
+        onclick:() => onPick(edge)
+      }));
+    });
+    return wrap;
+  }
+
+  /* ---------------- 9. 更新提示构建器 ---------------- */
+  /* u: {phase:'found'|'noasset'|'downloading'|'ready', tag:'v0.2.5', progress:45, installer:boolean}
+     actions: {download,dismiss,install,cancel,openPage} */
+  function updateBarNode(u, actions){
+    const icon = h('span', {class:'update-icon' + (u.phase === 'ready' ? ' done' : ''),
+      html:svg(u.phase === 'ready' ? 'check' : u.phase === 'downloading' ? 'download' : 'upload', 16)});
+    const main = h('div', {class:'update-main'});
+    const line = h('div', {class:'update-line'});
+    if(u.phase === 'found'){
+      line.append(h('span', {class:'update-text', html:'发现新版本 <b>' + u.tag + '</b>'}));
+      line.append(h('span', {class:'update-actions'},
+        h('button', {class:'chip primary', type:'button', onclick:actions.download}, h('span', {class:'chip-icon', html:svg('download', 14, 2)}), h('span', {text:'下载'})),
+        h('button', {class:'chip', type:'button', onclick:actions.dismiss}, h('span', {text:'忽略'}))
+      ));
+    }else if(u.phase === 'noasset'){
+      line.append(h('span', {class:'update-text', html:'发现新版本 <b>' + u.tag + '</b> <span class="update-tag">· 暂无法获取当前系统的安装包</span>'}));
+      line.append(h('span', {class:'update-actions'},
+        h('button', {class:'chip primary', type:'button', onclick:actions.openPage}, h('span', {class:'chip-icon', html:svg('link', 14, 2)}), h('span', {text:'打开发布页'})),
+        h('button', {class:'chip', type:'button', onclick:actions.dismiss}, h('span', {text:'忽略'}))
+      ));
+    }else if(u.phase === 'downloading'){
+      line.append(h('span', {class:'update-text', html:'正在下载 <b>' + u.tag + '</b> <span class="update-tag">' + u.progress + '%</span>'}));
+      line.append(h('span', {class:'update-actions'},
+        h('button', {class:'chip', type:'button', onclick:actions.cancel}, h('span', {text:'取消'}))
+      ));
+    }else{
+      line.append(h('span', {class:'update-text', html:'<b>' + u.tag + '</b> 下载完成'}));
+      line.append(h('span', {class:'update-actions'},
+        h('button', {class:'chip primary', type:'button', onclick:actions.install}, h('span', {class:'chip-icon', html:svg('check', 14, 2.4)}), h('span', {text:u.installer === false ? '打开安装包' : '安装'})),
+        h('button', {class:'chip', type:'button', onclick:actions.dismiss}, h('span', {text:'忽略'}))
+      ));
+    }
+    main.append(line);
+    if(u.phase === 'downloading'){
+      const bar = h('div', {class:'update-progress' + (u.indeterminate ? ' indeterminate' : '')}, h('i'));
+      bar.firstElementChild.style.width = (u.indeterminate ? '' : u.progress + '%');
+      main.append(bar);
+    }
+    return h('div', {class:'update-bar', role:'status', 'aria-label':'软件更新'}, icon, main);
+  }
+
+  /* 竖排 Dock 的紧凑胶囊 */
+  function updatePillNode(onClick){
+    return h('button', {class:'update-pill', type:'button', title:'发现新版本，点击查看', onclick:onClick},
+      h('span', {class:'pill-dot'}), h('span', {text:'新版本'}));
+  }
+
+  /* 更新卡片（竖排弹出 / 通用悬浮详情） */
+  function updateCardNode(u, actions){
+    const titles = {found:'发现新版本', noasset:'发现新版本', downloading:'正在下载更新', ready:'更新已就绪'};
+    const descs = {
+      found:'已按当前系统与架构选定安装包，下载完成后需再次点击安装，程序不会静默替换。',
+      noasset:'暂无法获取当前系统的安装包，可以前往 Release 页面手动选择资产。',
+      downloading:'下载在后台进行，可随时取消；完成后 Dock 会提示安装。',
+      ready:'安装包已校验存放，点击安装后由系统安装器接管，程序随后退出。'
+    };
+    const card = h('div', {class:'update-card', role:'dialog', 'aria-label':'软件更新'},
+      h('div', {class:'update-head'},
+        h('span', {class:'update-head-icon' + (u.phase === 'ready' ? ' done' : ''), html:svg(u.phase === 'ready' ? 'check' : 'download', 17)}),
+        h('span', {text:titles[u.phase]}),
+        h('span', {class:'update-ver', text:u.tag})
+      ),
+      h('div', {class:'update-desc', text:descs[u.phase]})
+    );
+    const actionsRow = h('div', {class:'update-actions'});
+    if(u.phase === 'found'){
+      actionsRow.append(
+        h('button', {class:'chip primary', type:'button', onclick:actions.download}, h('span', {text:'下载'})),
+        h('button', {class:'chip', type:'button', onclick:actions.dismiss}, h('span', {text:'忽略'}))
+      );
+    }else if(u.phase === 'noasset'){
+      actionsRow.append(
+        h('button', {class:'chip primary', type:'button', onclick:actions.openPage}, h('span', {text:'打开发布页'})),
+        h('button', {class:'chip', type:'button', onclick:actions.dismiss}, h('span', {text:'忽略'}))
+      );
+    }else if(u.phase === 'downloading'){
+      actionsRow.append(h('button', {class:'chip', type:'button', onclick:actions.cancel}, h('span', {text:'取消'})));
+    }else{
+      actionsRow.append(
+        h('button', {class:'chip primary', type:'button', onclick:actions.install}, h('span', {text:u.installer === false ? '打开安装包' : '安装'})),
+        h('button', {class:'chip', type:'button', onclick:actions.dismiss}, h('span', {text:'忽略'}))
+      );
+    }
+    card.append(actionsRow);
+    if(u.phase === 'downloading'){
+      const bar = h('div', {class:'update-progress' + (u.indeterminate ? ' indeterminate' : '')}, h('i'));
+      bar.firstElementChild.style.width = (u.indeterminate ? '' : u.progress + '%');
+      card.append(bar);
+    }
+    return card;
+  }
+
+  /* ---------------- 10. 设置控件绑定 ---------------- */
+  /* [data-control] 分段按钮：state[key] = data-value，回调通知 */
+  function bindControls(root, state, onChange){
+    root.addEventListener('click', e => {
+      const sw = e.target.closest('[data-switch]');
+      if(sw){
+        const key = sw.dataset.switch;
+        state[key] = !state[key];
+        sw.setAttribute('aria-checked', String(state[key]));
+        if(onChange) onChange(key);
+        return;
+      }
+      const value = e.target.closest('[data-control] [data-value]');
+      if(value){
+        const key = value.closest('[data-control]').dataset.control;
+        const raw = value.dataset.value;
+        state[key] = raw === 'true' ? true : raw === 'false' ? false : raw;
+        syncControls(root, state);
+        if(onChange) onChange(key, state[key]);
+      }
+    });
+    syncControls(root, state);
+  }
+  function syncControls(root, state){
+    $$('[data-switch]', root).forEach(b => b.setAttribute('aria-checked', String(!!state[b.dataset.switch])));
+    $$('[data-control]', root).forEach(group => {
+      const key = group.dataset.control;
+      $$('[data-value]', group).forEach(b => b.classList.toggle('active', String(state[key]) === b.dataset.value));
+    });
+  }
+
+  return {
+    GLYPHS, svg, hydrateIcons,
+    SEED, INSTALLED, searchItems,
+    h, $, $$, hueOf, typeLabel, targetSummary, EDGE_LABEL,
+    applyTokens, tileNode, renderTiles, updateScrollChrome,
+    attachBubble, toast, setToastLayer,
+    closeMenu, openMenu, openMenuAtButton, menuRow, dockEdgePicker,
+    updateBarNode, updateCardNode, updatePillNode,
+    collapseGlyph, setCollapseBtn,
+    bindControls, syncControls
+  };
+})();
+</script><script>/* 单一原型入口：界面共用状态；系统启动、文件选择和安装以本地演示替代。 */
+(() => {
+  'use strict';
+  const {$, $$, h} = QA;
+  const storageKey = 'quickapp-prototype-v2';
+  const defaults = {themePref:'system', wall:'auto', style:'glass', label:'icon', tileSize:44, radius:18, alpha:1,
+    edge:'top', pinned:false, autoStart:true, edgeReveal:true, autoCollapse:true, checkUpdates:true,
+    autoHide:700, monitor:'display-1', portable:false, edgeOffsetRatio:0};
+  let stored;
+  try { stored = JSON.parse(localStorage.getItem(storageKey)); } catch (_) { /* 首次运行或存储不可用 */ }
+  const st = {...defaults, ...(stored?.settings || {}), dockVisible:true, searchOpen:false, edit:false, exited:false};
+  let items = stored?.items || QA.SEED.map((it, i) => ({...it, id:'i' + i}));
+  let savedConfig = {settings:{...st}, items:items.map(it => ({...it}))};
+  let configError = null;
+  const list = $('#dockItems'), fades = {left:$('#fadeLeft'), right:$('#fadeRight'), indicator:$('#scrollIndicator'), thumb:$('#scrollThumb')};
+  let draft = null, pendingIcon = null, dragId = null, picker = null;
+  const returnFocus = new Map();
+  let revealTimer, hideTimer, updateTimer, update = null, popoverOpen = false;
+  const rec = {id:'vex', name:'Vex · 维刻', version:'v1.5.1', phase:stored?.vexInstalled ? 'installed' : 'idle', progress:0};
+
+  function persist() {
+    if (configError) { QA.toast('配置读取失败，请先重新加载配置。'); return false; }
+    const settings = Object.fromEntries(Object.keys(defaults).map(key => [key, st[key]]));
+    savedConfig = {settings, items:items.map(it => ({...it}))};
+    try { localStorage.setItem(storageKey, JSON.stringify({...savedConfig, vexInstalled:rec.phase === 'installed'})); }
+    catch (_) { QA.toast('浏览器存储不可用，本次修改仅保留到关闭页面。'); }
+    return true;
+  }
+  function systemRows(query) {
+    if (!query.trim()) return [];
+    return QA.searchItems(QA.INSTALLED, query).filter(it => !items.some(x => x.target.toLowerCase() === it.target.toLowerCase()));
+  }
+  function renderSearch() {
+    const query = $('#searchInput').value, configured = QA.searchItems(items, query), installed = systemRows(query);
+    $('#searchCount').textContent = String(configured.length + installed.length);
+    const groups = [];
+    if (configured.length) groups.push(h('section', {class:'search-group'},
+      h('div', {class:'search-group-title'}, h('strong', {text:'已配置'}), h('span', {class:'search-group-count', text:configured.length})),
+      h('div', {class:'search-result-row'}, configured.map(it => QA.tileNode(it, st, {edit:st.edit})))));
+    if (installed.length) groups.push(h('section', {class:'search-group'},
+      h('div', {class:'search-group-title'}, h('strong', {text:'系统应用'}), h('span', {class:'search-group-count', text:installed.length})),
+      h('div', {class:'search-installed-list'}, installed.map(it => h('div', {class:'search-installed-item', 'data-system':it.id, tabindex:0, role:'button', 'aria-label':'运行 ' + it.name},
+        QA.tileNode(it, {...st, tileSize:36}).firstElementChild,
+        h('div', {class:'search-installed-copy'}, h('strong', {text:it.name}), h('span', {text:'开始菜单 · ' + QA.typeLabel(it.type)})),
+        h('button', {class:'search-result-add', type:'button', 'data-add':it.id, title:'添加到 Dock', 'aria-label':'添加 ' + it.name + ' 到 Dock', html:QA.svg('plus', 14)}))))));
+    if (!groups.length) groups.push(h('div', {class:'dock-empty', role:'status', text:configError ? '配置读取失败 · 设置中可重试' : '没有匹配的应用'}));
+    list.replaceChildren(...groups);
+  }
+  function refresh() {
+    QA.applyTokens(st);
+    document.body.classList.toggle('dock-visible', st.dockVisible && !st.exited);
+    document.body.classList.toggle('dock-pinned', st.pinned);
+    $('#dockHandle').hidden = st.exited;
+    $('#trayButton').hidden = st.exited;
+    $('#searchRow').hidden = !st.searchOpen;
+    $('#dockEditbar').hidden = !st.edit;
+    list.classList.toggle('searching', st.searchOpen);
+    $('#btnPin').classList.toggle('active', st.pinned);
+    $('#btnPin').setAttribute('aria-pressed', String(st.pinned));
+    $('#btnSearch').classList.toggle('active', st.searchOpen);
+    QA.setCollapseBtn($('#btnHide'), st.edge);
+    if (st.searchOpen) renderSearch();
+    else QA.renderTiles(list, items, st, {edit:st.edit, emptyText:configError ? '配置读取失败 · 设置中可重试' : st.edit ? '右键空白处添加应用' : '空空如也'});
+    renderUpdate();
+    renderRec();
+    syncSettings();
+    requestAnimationFrame(() => { positionDock(); QA.updateScrollChrome(list, fades); });
+  }
+  function positionDock() {
+    const dock = $('#dock'), handle = $('#dockHandle'), vertical = ['left', 'right'].includes(st.edge);
+    const width = dock.offsetWidth, height = dock.offsetHeight, workHeight = innerHeight - 40;
+    const ratio = Math.max(-1, Math.min(1, Number(st.edgeOffsetRatio) || 0));
+    const along = Math.max(0, ((vertical ? workHeight - height : innerWidth - width) / 2) * (1 + ratio));
+    const x = vertical ? st.edge === 'left' ? 10 : innerWidth - width - 10 : along;
+    const y = vertical ? along : st.edge === 'top' ? 10 : workHeight - height - 10;
+    Object.assign(dock.style, {left:x + 'px', top:y + 'px', right:'auto', bottom:'auto', margin:'0'});
+    const center = vertical ? y + height / 2 : x + width / 2;
+    Object.assign(handle.style, {left:vertical ? st.edge === 'left' ? '5px' : 'auto' : Math.max(27, Math.min(center, innerWidth - 27)) + 'px',
+      right:st.edge === 'right' ? '5px' : 'auto', top:vertical ? Math.max(27, Math.min(center, innerHeight - 27)) + 'px' : st.edge === 'top' ? '5px' : 'auto',
+      bottom:st.edge === 'bottom' ? '5px' : 'auto'});
+  }
+  function summonSearch() {
+    clearTimeout(hideTimer);
+    if (st.dockVisible && st.searchOpen && !st.pinned) { st.dockVisible = false; refresh(); return; }
+    search(true); $('#searchInput').select();
+  }
+  function showDock() { clearTimeout(hideTimer); st.exited = false; st.dockVisible = true; refresh(); }
+  function setEdge(edge) { st.edge = edge; list.scrollLeft = list.scrollTop = 0; persist(); refresh(); }
+  function search(open = !st.searchOpen) {
+    st.searchOpen = open; st.dockVisible = true;
+    if (!open) $('#searchInput').value = '';
+    refresh(); if (open) $('#searchInput').focus();
+  }
+  function edit(open = !st.edit) { st.edit = open; st.dockVisible = true; refresh(); }
+  function run(it) {
+    if (!it) return;
+    if (st.edit) { QA.toast('编辑中，点击「完成」后运行'); return; }
+    QA.toast('正在' + (it.type === 'cmd' ? '执行：' : '打开：') + it.name + (it.instances > 1 ? ' × ' + it.instances : ''));
+    if (st.autoCollapse && !st.pinned) { st.dockVisible = false; refresh(); }
+  }
+  function remove(it) {
+    const index = items.indexOf(it); if (index < 0 || configError) return;
+    items.splice(index, 1); persist(); refresh();
+    QA.toast('已移除 ' + it.name, {actionLabel:'撤销', onAction:() => {
+      if (!items.some(x => x.id === it.id)) items.splice(Math.min(index, items.length), 0, it);
+      persist(); refresh();
+    }});
+  }
+  function addPaths(paths, folder = false) {
+    if (configError) { QA.toast('配置读取失败，请先重新加载配置。'); return; }
+    let count = 0;
+    for (const target of paths) {
+      if (items.some(it => it.target.toLowerCase() === target.toLowerCase())) continue;
+      const name = target.replace(/[\\/]+$/, '').split(/[\\/]/).pop();
+      items.push({id:'i' + crypto.randomUUID(), type:'app', target, name:folder ? name : name.replace(/\.[^.]+$/, ''), icon:folder ? 'folder' : 'app'}); count++;
+    }
+    if (count) { persist(); refresh(); QA.toast('已添加 ' + count + ' 项'); }
+    else QA.toast('已在 Dock 中');
+  }
+  function clearItems() {
+    if (configError) return;
+    const backup = items; items = []; persist(); refresh();
+    QA.toast('已清空 ' + backup.length + ' 项', {actionLabel:'撤销', onAction:() => { items = [...backup, ...items.filter(it => !backup.some(x => x.id === it.id))]; persist(); refresh(); }});
+  }
+  function copy(text) {
+    navigator.clipboard?.writeText(text).then(() => QA.toast('已复制'), () => QA.toast('复制失败，请检查浏览器剪贴板权限'));
+  }
+  function commandText(it) { return it.type === 'cmd' ? it.target : (it.type === 'web' ? 'start "" ' : '') + '"' + it.target + '"' + (it.args ? ' ' + it.args : ''); }
+  function rename(it) {
+    st.edit = true; refresh();
+    const node = [...list.querySelectorAll('.dock-item')].find(el => el.dataset.id === it.id);
+    if (!node) return;
+    const input = h('input', {class:'rename-input', value:it.name, 'aria-label':'重命名 ' + it.name});
+    node.classList.add('renaming'); node.append(input); input.focus(); input.select();
+    let done = false;
+    function finish(save) { if (done) return; done = true; if (save && input.value.trim()) { it.name = input.value.trim(); persist(); } refresh(); }
+    input.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter' || e.key === 'Escape') { e.preventDefault(); finish(e.key === 'Enter'); } });
+    input.addEventListener('blur', () => finish(true));
+  }
+  function itemMenu(it) {
+    return [{label:'运行', icon:'play', action:() => run(it)}, {sep:true},
+      {label:'编辑…', icon:'pencil', action:() => openEditor(it)}, {label:'重命名', icon:'pencil', action:() => rename(it)},
+      {label:'更换图标…', icon:'upload', action:() => { pendingIcon = it; $('#iconFile').click(); }},
+      {label:'复制路径', icon:'copy', action:() => copy(it.target)}, {label:'复制命令', icon:'terminal', action:() => copy(commandText(it))},
+      {label:'打开位置', icon:'folder', action:() => QA.toast('正在打开位置：' + it.target)}, {sep:true},
+      {label:'移除', icon:'trash', danger:true, action:() => remove(it)}];
+  }
+  function dockMenu() {
+    return [{title:'添加'}, {label:'文件…', icon:'upload', action:() => choosePath(false, path => addPaths([path]))},
+      {label:'目录…', icon:'folder', action:() => choosePath(true, path => addPaths([path], true))},
+      {label:'网址…', icon:'globe', action:() => openEditor(null, 'web')}, {label:'命令行…', icon:'terminal', action:() => openEditor(null, 'cmd')},
+      {sep:true}, {title:'管理'}, {label:'编辑模式', icon:'pencil', action:() => edit()}, {label:'清空', icon:'trash', danger:true, action:clearItems},
+      {sep:true}, {title:'停靠'}, {custom:() => QA.dockEdgePicker(st.edge, edge => { QA.closeMenu(); setEdge(edge); })},
+      {sep:true}, {label:'设置', icon:'gear', action:openSettings}, {label:'关于', icon:'info', action:openStandaloneAbout}, {sep:true}, {label:'退出', icon:'power', danger:true, action:exit}];
+  }
+  function exit() {
+    persist(); clearTimeout(hideTimer); clearInterval(updateTimer); clearInterval(rec.timer); popoverOpen = false;
+    st.exited = true; st.dockVisible = false; closeLayer('settingsLayer'); refresh(); QA.toast('QuickApp 已退出');
+  }
+  function openLayer(id) {
+    QA.closeMenu(); clearTimeout(hideTimer);
+    returnFocus.set(id, document.activeElement); $('#' + id).hidden = false;
+    requestAnimationFrame(() => $('#' + id).querySelector('input,button,select')?.focus());
+  }
+  function closeLayer(id) { $('#' + id).hidden = true; returnFocus.get(id)?.focus(); }
+  function dialog(title, content, buttons) {
+    $('#dialogTitle').textContent = title;
+    $('#dialogBody').replaceChildren(...content, h('div', {class:'row dialog-actions'}, h('span', {class:'spacer'}), ...buttons));
+    openLayer('dialogLayer');
+  }
+  const chip = (label, action, primary = false) => h('button', {class:'chip' + (primary ? ' primary' : ''), type:'button', text:label, onclick:action});
+  function choosePath(folder, onChoose, initial = '') {
+    picker = onChoose;
+    const paths = folder ? ['C:\\Work', 'E:\\github\\Apps\\QuickApp', 'C:\\Users\\Public\\Documents'] : ['C:\\Program Files\\GitHub Desktop\\GitHubDesktop.exe', 'C:\\Windows\\System32\\notepad.exe', 'C:\\Work\\notes.txt'];
+    const input = h('input', {id:'pickerPath', value:initial || paths[0], 'aria-label':folder ? '目录路径' : '文件路径'});
+    dialog(folder ? '选择目录' : '选择程序或文件', [
+      h('div', {class:'picker-list'}, paths.map(path => h('button', {type:'button', onclick:() => input.value = path}, h('span', {html:QA.svg(folder ? 'folder' : 'app', 16)}), h('span', {text:path})))),
+      h('label', {for:'pickerPath', text:folder ? '目录' : '文件名'}), input],
+      [chip('取消', () => closeLayer('dialogLayer')), chip('选择', () => { if (!input.value.trim()) return; closeLayer('dialogLayer'); picker(input.value.trim().replace(/^"|"$/g, '')); }, true)]);
+  }
+  function inferName(target, type) {
+    if (type === 'web') { try { return new URL(target).host; } catch (_) { return target; } }
+    if (type === 'cmd') return target;
+    const name = target.replace(/[\\/]+$/, '').split(/[\\/]/).pop();
+    return name.replace(/\.(exe|lnk|app|bat|cmd)$/i, '') || target;
+  }
+  function openEditor(it, type = 'app') {
+    draft = it ? {...it} : {id:null, type, name:'', target:'', args:'', instances:1, cwd:'', hotkey:'', shell:'cmd', terminal:type === 'cmd'};
+    $('#editorTitle').textContent = it ? '编辑快捷项' : '添加快捷项'; $('#save').textContent = it ? '保存' : '添加';
+    for (const key of ['name', 'target', 'args', 'cwd', 'hotkey']) $('#' + key).value = draft[key] || '';
+    $('#instances').value = draft.instances || 1;
+    $('#kind').value = draft.type; $('#shell').value = draft.shell || 'cmd'; $('#terminal').checked = !!draft.terminal;
+    $('#error').hidden = true; syncEditor(); openLayer('editorLayer'); $('#name').focus();
+  }
+  function syncEditor() {
+    const type = $('#kind').value;
+    $('#argsRow').hidden = $('#instancesRow').hidden = $('#browse').hidden = $('#folder').hidden = type !== 'app';
+    $('#cwdRow').hidden = type === 'web'; $('#commandOptions').hidden = type !== 'cmd';
+    $('#targetLabel').textContent = type === 'cmd' ? '命令' : type === 'web' ? '网址' : '路径或程序名';
+    $('#target').placeholder = type === 'cmd' ? '例如：git status' : type === 'web' ? '例如：https://dotnet9.com' : '例如：C:\\Work 或 explorer.exe';
+  }
+  function error(message) { $('#error').textContent = message; $('#error').hidden = false; }
+  function gesture(e) {
+    return [e.ctrlKey ? 'Ctrl' : '', e.altKey ? 'Alt' : '', e.shiftKey ? 'Shift' : '', e.metaKey ? 'Win' : '',
+      e.key === ' ' ? 'Space' : e.key.length === 1 ? e.key.toUpperCase() : e.key].filter(Boolean).join('+');
+  }
+  function saveEditor(e) {
+    e.preventDefault();
+    if (configError) { error('配置读取失败，请先重新加载配置。'); return; }
+    const next = {...draft, type:$('#kind').value, target:$('#target').value.trim(), name:$('#name').value.trim(),
+      args:$('#args').value.trim(), instances:Math.min(99, Math.max(1, Math.round(Number($('#instances').value) || 1))), cwd:$('#cwd').value.trim(), hotkey:$('#hotkey').value, shell:$('#shell').value, terminal:$('#terminal').checked};
+    if (!next.target) { error('请填写目标。'); $('#target').focus(); return; }
+    if (next.type === 'web') {
+      if (!next.target.includes('://')) next.target = 'https://' + next.target;
+      try { const url = new URL(next.target); if (!['http:', 'https:'].includes(url.protocol) || !url.hostname) throw Error(); }
+      catch (_) { error('请填写有效的 HTTP 或 HTTPS 网址。'); return; }
+      next.args = next.cwd = '';
+    } else if (next.type === 'app') next.target = next.target.replace(/^"|"$/g, '');
+    if (next.type !== 'app') next.args = next.instances = 1;
+    if (next.type !== 'cmd') { next.shell = 'cmd'; next.terminal = false; }
+    if (next.hotkey === 'Ctrl+Alt+Space') { error('该快捷键已用于唤出 QuickApp。'); return; }
+    const conflict = next.hotkey && items.find(it => it.id !== next.id && it.hotkey === next.hotkey);
+    if (conflict) { error('该快捷键已用于「' + conflict.name + '」。'); return; }
+    next.name ||= inferName(next.target, next.type); next.icon ||= next.type === 'cmd' ? 'terminal' : next.type === 'web' ? 'globe' : 'app';
+    if (draft.target !== next.target || draft.type !== next.type) delete next.recId;
+    const index = items.findIndex(it => it.id === next.id);
+    if (index >= 0) items[index] = next; else { next.id = 'i' + crypto.randomUUID(); items.push(next); }
+    persist(); closeLayer('editorLayer'); refresh(); QA.toast((index >= 0 ? '已更新：' : '已添加：') + next.name);
+  }
+  function syncSettings() {
+    QA.syncControls($('.settings-card'), st);
+    for (const [id, key] of [['rgTile', 'tileSize'], ['rgRadius', 'radius'], ['rgAutoHide', 'autoHide']]) {
+      $('#' + id).value = st[key]; $('#out' + id.slice(2)).textContent = key === 'autoHide' ? st[key] ? st[key] + ' ms' : '不自动隐藏' : st[key];
+    }
+    $('#selMonitor').value = st.monitor;
+    $('#storageMode').textContent = st.portable ? '便携版 · 配置随程序目录' : '安装版 · 用户配置目录';
+    $('#configPath').textContent = st.portable ? 'QuickApp\\config.json' : '%LOCALAPPDATA%\\QuickApp\\config.json';
+    $('#switchStorage').textContent = st.portable ? '切换为安装版' : '切换为便携版';
+    $('#configError').hidden = !configError; $('#configError').textContent = configError || '';
+  }
+  function selectTab(key) {
+    $$('[data-tab]').forEach(tab => { const active = tab.dataset.tab === key; tab.classList.toggle('active', active); tab.setAttribute('aria-selected', String(active)); tab.tabIndex = active ? 0 : -1; });
+    $$('[data-panel]').forEach(panel => panel.hidden = panel.dataset.panel !== key);
+  }
+  function openSettings() { syncSettings(); openLayer('settingsLayer'); }
+  function openStandaloneAbout() { openLayer('aboutLayer'); }
+  function exportConfig() {
+    if (configError) { QA.toast('配置读取失败，请先重新加载配置。'); return; }
+    const kinds = {app:0, web:1, cmd:2}, edges = {top:0, bottom:1, left:2, right:3};
+    const config = {schemaVersion:1, settings:{theme:st.themePref, style:st.style, showLabels:st.label === 'iconText', edge:edges[st.edge], tileSize:st.tileSize, cornerRadius:st.radius, pinned:st.pinned, checkUpdates:st.checkUpdates,
+      autoStart:st.autoStart, revealOnEdgeTouch:st.edgeReveal, collapseAfterLaunch:st.autoCollapse, autoHideDelayMs:st.autoHide, hotkey:'Ctrl+Alt+Space', edgeOffsetRatio:st.edgeOffsetRatio},
+      items:items.map(it => ({id:it.id, name:it.name, kind:kinds[it.type], target:it.target, arguments:it.args || null, instanceCount:it.instances || 1, workingDirectory:it.cwd || null, hotkey:it.hotkey || null, usePowerShell:it.shell === 'powershell', runInTerminal:!!it.terminal}))};
+    const url = URL.createObjectURL(new Blob([JSON.stringify(config, null, 2)], {type:'application/json'}));
+    const anchor = h('a', {href:url, download:'QuickApp-config.json'}); anchor.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); QA.toast('已导出配置');
+  }
+  function importConfig(config) {
+    if (!config || !Array.isArray(config.items) || config.items.some(it => !it || typeof it.target !== 'string')) throw Error('不是有效的 QuickApp 配置文件');
+    const imported = config.items.map(it => ({id:it.id || 'i' + crypto.randomUUID(), name:it.name || inferName(it.target, 'app'), type:it.type || ['app', 'web', 'cmd'][it.kind] || 'app', target:it.target,
+      args:it.arguments || '', instances:Math.min(99, Math.max(1, Math.round(Number(it.instanceCount) || 1))), cwd:it.workingDirectory || '', hotkey:it.hotkey || '', shell:it.usePowerShell ? 'powershell' : 'cmd', terminal:!!it.runInTerminal, icon:it.kind === 2 ? 'terminal' : it.kind === 1 ? 'globe' : 'app'}));
+    dialog('导入配置', [h('p', {text:'导入将替换当前快捷项与设置。当前 ' + items.length + ' 项，导入后 ' + imported.length + ' 项。'})],
+      [chip('取消', () => closeLayer('dialogLayer')), chip('导入并替换', () => {
+        items = imported; configError = null;
+        const settings = config.settings || {};
+        Object.assign(st, defaults, {themePref:settings.theme || 'system', style:settings.style || 'glass', label:settings.showLabels ? 'iconText' : 'icon',
+          edge:['top', 'bottom', 'left', 'right'][settings.edge] || 'top', tileSize:settings.tileSize || 44, radius:settings.cornerRadius || 18, pinned:!!settings.pinned, checkUpdates:settings.checkUpdates !== false,
+          autoStart:!!settings.autoStart, edgeReveal:settings.revealOnEdgeTouch !== false, autoCollapse:settings.collapseAfterLaunch !== false, autoHide:settings.autoHideDelayMs ?? 700,
+          edgeOffsetRatio:Math.max(-1, Math.min(1, Number(settings.edgeOffsetRatio) || 0))});
+        st.edit = false; st.searchOpen = false; persist(); closeLayer('dialogLayer'); refresh(); QA.toast('已导入 ' + items.length + ' 个快捷项');
+      }, true)]);
+  }
+  function reloadConfig() {
+    try {
+      const config = JSON.parse(localStorage.getItem(storageKey)) || savedConfig;
+      if (!Array.isArray(config.items)) throw Error('快捷项列表无效');
+      items = config.items; Object.assign(st, defaults, config.settings); configError = null; refresh(); QA.toast('已重新加载 ' + items.length + ' 个快捷项');
+    } catch (e) { configError = '配置读取失败：' + e.message; refresh(); QA.toast(configError); }
+  }
+  function renderRec() {
+    const inDock = items.some(it => it.recId === rec.id);
+    const card = h('div', {class:'rec-card', 'data-rec':rec.id}, h('div', {class:'rec-head'},
+      h('span', {class:'rec-icon'}, h('img', {src:'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMjU2IiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+DQogIDwhLS0gVmV4IOWTgeeJjOagh+ivhu+8mua4kOWPmOWchuinkuaWueWdlyArIOWOmuWunuWchuWktCBW77yI5LiO5qCH6aKY5qCPIExvZ28gLyDlupTnlKjlm77moIflkIzmnoTvvIkgLS0+DQogIDxkZWZzPg0KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0idmV4LWdyYWQiIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj4NCiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzE2NzdGRiIvPg0KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjNjlCMUZGIi8+DQogICAgPC9saW5lYXJHcmFkaWVudD4NCiAgICA8Y2xpcFBhdGggaWQ9InZleC1yb3VuZGVkIj4NCiAgICAgIDxyZWN0IHdpZHRoPSIyNTYiIGhlaWdodD0iMjU2IiByeD0iNTYiIHJ5PSI1NiIvPg0KICAgIDwvY2xpcFBhdGg+DQogIDwvZGVmcz4NCiAgPGcgY2xpcC1wYXRoPSJ1cmwoI3ZleC1yb3VuZGVkKSI+DQogICAgPHJlY3Qgd2lkdGg9IjI1NiIgaGVpZ2h0PSIyNTYiIGZpbGw9InVybCgjdmV4LWdyYWQpIi8+DQogIDwvZz4NCiAgPHBhdGggZD0iTTY0IDYyIEwxMjggMTk4IEwxOTIgNjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI0ZGRkZGRiIgc3Ryb2tlLXdpZHRoPSI0NiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+DQo8L3N2Zz4NCg==', alt:'Vex 图标'})),
+      h('div', {class:'rec-info'}, h('div', {class:'rec-title'}, h('strong', {text:rec.name}), h('span', {class:'rec-ver', text:rec.version})),
+        h('div', {class:'rec-desc', text:'Markdown 编辑器：实时预览、大纲、统计与多格式导出。'}), h('div', {class:'rec-meta', text:'Vex-v1.5.1-win-x64-setup.exe · 40.7 MB'}))));
+    if (['downloading', 'installing'].includes(rec.phase)) card.append(h('div', {class:'rec-download'},
+      h('div', {class:'update-progress' + (rec.phase === 'installing' ? ' indeterminate' : '')}, h('i', {style:'width:' + rec.progress + '%'})),
+      h('span', {class:'rec-pct', text:rec.phase === 'installing' ? '安装中…' : rec.progress + '%'}),
+      rec.phase === 'downloading' ? chip('取消', () => { clearInterval(rec.timer); rec.phase = 'idle'; renderRec(); }) : null));
+    else card.append(h('div', {class:'rec-foot'}, h('div', {class:'rec-actions'},
+      rec.phase === 'installed' ? h('span', {class:'rec-badge', text:'已安装'}) : null,
+      chip(rec.phase === 'idle' ? '安装' : inDock ? '移出 Dock' : '加入 Dock', () => {
+        if (rec.phase === 'idle') installRec();
+        else if (inDock) remove(items.find(it => it.recId === rec.id)); else addRec();
+      }, rec.phase === 'idle'), chip('发布页', () => window.open('https://github.com/dotnet9/Vex/releases/latest', '_blank', 'noopener')))));
+    $('#recList').replaceChildren(card);
+  }
+  function addRec() {
+    if (configError) { QA.toast('配置读取失败，请先重新加载配置。'); return; }
+    if (!items.some(it => it.recId === rec.id)) items.push({id:'rec-vex', recId:rec.id, name:'Vex', type:'app', target:'C:\\Program Files\\Vex\\Vex.exe', customUrl:'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMjU2IiB2aWV3Qm94PSIwIDAgMjU2IDI1NiI+DQogIDwhLS0gVmV4IOWTgeeJjOagh+ivhu+8mua4kOWPmOWchuinkuaWueWdlyArIOWOmuWunuWchuWktCBW77yI5LiO5qCH6aKY5qCPIExvZ28gLyDlupTnlKjlm77moIflkIzmnoTvvIkgLS0+DQogIDxkZWZzPg0KICAgIDxsaW5lYXJHcmFkaWVudCBpZD0idmV4LWdyYWQiIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj4NCiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzE2NzdGRiIvPg0KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjNjlCMUZGIi8+DQogICAgPC9saW5lYXJHcmFkaWVudD4NCiAgICA8Y2xpcFBhdGggaWQ9InZleC1yb3VuZGVkIj4NCiAgICAgIDxyZWN0IHdpZHRoPSIyNTYiIGhlaWdodD0iMjU2IiByeD0iNTYiIHJ5PSI1NiIvPg0KICAgIDwvY2xpcFBhdGg+DQogIDwvZGVmcz4NCiAgPGcgY2xpcC1wYXRoPSJ1cmwoI3ZleC1yb3VuZGVkKSI+DQogICAgPHJlY3Qgd2lkdGg9IjI1NiIgaGVpZ2h0PSIyNTYiIGZpbGw9InVybCgjdmV4LWdyYWQpIi8+DQogIDwvZz4NCiAgPHBhdGggZD0iTTY0IDYyIEwxMjggMTk4IEwxOTIgNjIiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI0ZGRkZGRiIgc3Ryb2tlLXdpZHRoPSI0NiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+DQo8L3N2Zz4NCg=='});
+    persist(); refresh(); QA.toast('Vex 快捷方式已加入 Dock');
+  }
+  function installRec() {
+    rec.phase = 'downloading'; rec.progress = 0; renderRec();
+    rec.timer = setInterval(() => {
+      rec.progress = Math.min(100, rec.progress + 10); renderRec();
+      if (rec.progress === 100) {
+        clearInterval(rec.timer); rec.phase = 'installing'; renderRec();
+        rec.timer = setTimeout(() => { rec.phase = 'installed'; addRec(); }, 900);
+      }
+    }, 180);
+  }
+  const updateActions = {
+    download() { update.phase = 'downloading'; update.progress = 0; renderUpdate();
+      updateTimer = setInterval(() => { update.progress += 10; if (update.progress >= 100) { clearInterval(updateTimer); update.phase = 'ready'; } renderUpdate(); }, 180); },
+    cancel() { clearInterval(updateTimer); update.phase = 'found'; renderUpdate(); QA.toast('已取消下载'); },
+    dismiss() { clearInterval(updateTimer); update = null; popoverOpen = false; renderUpdate(); },
+    install() { QA.toast('正在打开安装程序'); updateActions.dismiss(); exit(); },
+    openPage() { window.open('https://github.com/dotnet9/QuickApp/releases/latest', '_blank', 'noopener'); }
+  };
+  function renderUpdate() {
+    const slot = $('#updateSlot'), popover = $('#updatePopover'); slot.replaceChildren(); popover.replaceChildren(); popover.hidden = !popoverOpen || !update || st.exited;
+    if (!update || st.exited) return;
+    if (st.edge === 'left' || st.edge === 'right') slot.append(QA.updatePillNode(() => { popoverOpen = !popoverOpen; renderUpdate(); }));
+    else { slot.append(QA.updateBarNode(update, updateActions)); popoverOpen = false; popover.hidden = true; }
+    if (popoverOpen) {
+      const card = QA.updateCardNode(update, updateActions); popover.append(card);
+      requestAnimationFrame(() => { const rect = $('#dock').getBoundingClientRect(); popover.style.left = Math.max(8, Math.min(st.edge === 'left' ? rect.right + 8 : rect.left - 338, innerWidth - 338)) + 'px'; popover.style.top = Math.max(8, Math.min(rect.bottom - 140, innerHeight - card.offsetHeight - 10)) + 'px'; });
+    }
+  }
+
+  QA.hydrateIcons();
+  QA.attachBubble($('#dock'), list, $('#bubble'), st, id => items.find(it => it.id === id) || QA.INSTALLED.find(it => it.id === id), it => QA.targetSummary(it) + (it.hotkey ? ' · ' + it.hotkey : ''));
+  $('#btnMenu').onclick = e => QA.openMenuAtButton(dockMenu(), e.currentTarget);
+  $('#dock').addEventListener('contextmenu', e => {
+    e.preventDefault(); const node = e.target.closest('[data-id]'), it = items.find(it => it.id === node?.dataset.id);
+    QA.openMenu(it ? itemMenu(it) : dockMenu(), e.clientX, e.clientY);
+  });
+  $('#btnSearch').onclick = () => search(); $('#searchInput').oninput = refresh;
+  $('#searchClear').onclick = () => { $('#searchInput').value = ''; refresh(); $('#searchInput').focus(); };
+  $('#btnPin').onclick = () => { st.pinned = !st.pinned; persist(); refresh(); };
+  $('#btnHide').onclick = () => { st.dockVisible = false; refresh(); };
+  $('#editDone').onclick = () => edit(false);
+  $('#launchApp').onclick = showDock; $('#dockHandle').onclick = showDock;
+  $('#dockHandle').onpointerenter = () => { if (st.edgeReveal) revealTimer = setTimeout(showDock, 300); };
+  $('#dockHandle').onpointerleave = () => clearTimeout(revealTimer);
+  $('#dock').onpointerenter = () => clearTimeout(hideTimer);
+  let dockDrag = null;
+  $('#dock').addEventListener('pointerdown', e => {
+    if (e.button !== 0 || e.target.closest('button,input,select,.dock-item,[data-system]')) return;
+    const rect = $('#dock').getBoundingClientRect();
+    dockDrag = {x:e.clientX, y:e.clientY, left:rect.left, top:rect.top, width:rect.width, height:rect.height, moved:false};
+    $('#dock').setPointerCapture(e.pointerId); clearTimeout(hideTimer);
+  });
+  $('#dock').addEventListener('pointermove', e => {
+    if (!dockDrag) return;
+    const dx = e.clientX - dockDrag.x, dy = e.clientY - dockDrag.y;
+    if (Math.abs(dx) + Math.abs(dy) < 6) return;
+    dockDrag.moved = true; $('#dock').style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+  });
+  $('#dock').addEventListener('pointerup', e => {
+    if (!dockDrag) return;
+    const drag = dockDrag; dockDrag = null; $('#dock').style.transform = '';
+    if ($('#dock').hasPointerCapture(e.pointerId)) $('#dock').releasePointerCapture(e.pointerId);
+    if (drag.moved) {
+      const workHeight = innerHeight - 40;
+      const x = drag.left + e.clientX - drag.x, y = drag.top + e.clientY - drag.y;
+      const centerX = x + drag.width / 2, centerY = y + drag.height / 2;
+      const edge = Object.entries({top:centerY, bottom:workHeight - centerY, left:centerX, right:innerWidth - centerX}).sort((a,b) => a[1] - b[1])[0][0];
+      const vertical = ['left', 'right'].includes(edge), free = vertical ? workHeight - drag.height : innerWidth - drag.width;
+      st.edgeOffsetRatio = free <= 0 ? 0 : Math.max(-1, Math.min(1, ((vertical ? y : x) - free / 2) / (free / 2)));
+      setEdge(edge);
+    }
+  });
+  $('#dock').addEventListener('pointercancel', () => { dockDrag = null; $('#dock').style.transform = ''; });
+  $('#dock').onpointerleave = () => {
+    if (st.pinned || st.edit || st.searchOpen || !st.autoHide || $('.menu') || $$('.modal-layer').some(el => !el.hidden)) return;
+    hideTimer = setTimeout(() => { st.dockVisible = false; refresh(); }, st.autoHide);
+  };
+  list.onclick = e => {
+    const add = e.target.closest('[data-add]');
+    if (add) {
+      if (configError) { QA.toast('配置读取失败，请先重新加载配置。'); return; }
+      const it = QA.INSTALLED.find(it => it.id === add.dataset.add);
+      items.push({...it, id:'i' + crypto.randomUUID()}); persist(); refresh(); QA.toast('已添加：' + it.name); return;
+    }
+    const system = e.target.closest('[data-system]');
+    if (system) { run(QA.INSTALLED.find(it => it.id === system.dataset.system)); return; }
+    const node = e.target.closest('[data-id]'); if (!node) return;
+    const it = items.find(it => it.id === node.dataset.id) || QA.INSTALLED.find(it => it.id === node.dataset.id);
+    if (e.target.closest('.remove')) remove(it); else if (!e.target.closest('input')) run(it);
+  };
+  list.ondblclick = e => { if (st.edit) { const it = items.find(it => it.id === e.target.closest('[data-id]')?.dataset.id); if (it) rename(it); } };
+  list.addEventListener('wheel', e => { const vertical = st.searchOpen || ['left', 'right'].includes(st.edge); list.scrollBy({[vertical ? 'top' : 'left']:Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX}); e.preventDefault(); }, {passive:false});
+  list.onscroll = () => QA.updateScrollChrome(list, fades);
+  list.ondragstart = e => { const node = e.target.closest('.dock-item'); if (!st.edit || !node) return; dragId = node.dataset.id; e.dataTransfer.setData('text/plain', dragId); node.classList.add('dragging'); };
+  list.ondragover = e => {
+    if (!st.edit || !dragId) return; e.preventDefault();
+    const node = e.target.closest('.dock-item'); if (!node) return;
+    const rect = node.getBoundingClientRect(), vertical = ['left', 'right'].includes(st.edge), line = $('#dropLine');
+    line.hidden = false; line.style.left = (vertical ? rect.left : rect.left - 4) + 'px'; line.style.top = (vertical ? rect.top - 4 : rect.top) + 'px'; line.style.width = (vertical ? rect.width : 2) + 'px'; line.style.height = (vertical ? 2 : rect.height) + 'px';
+  };
+  list.ondrop = e => {
+    e.preventDefault(); const targetId = e.target.closest('.dock-item')?.dataset.id;
+    const from = items.findIndex(it => it.id === dragId), to = items.findIndex(it => it.id === targetId);
+    if (from >= 0 && to >= 0 && from !== to) { const [it] = items.splice(from, 1); items.splice(to, 0, it); persist(); }
+    dragId = null; $('#dropLine').hidden = true; refresh();
+  };
+  list.ondragend = () => { dragId = null; $('#dropLine').hidden = true; $$('.dragging').forEach(el => el.classList.remove('dragging')); };
+  $('#iconFile').onchange = async e => { const file = e.target.files[0]; if (file && pendingIcon) {
+    const reader = new FileReader(); reader.onload = () => { pendingIcon.customUrl = reader.result; persist(); refresh(); }; reader.readAsDataURL(file);
+  } e.target.value = ''; };
+  $('#kind').onchange = syncEditor; $('#editor').onsubmit = saveEditor;
+  $('#name').onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); $('#target').focus(); } };
+  $('#hotkey').onkeydown = e => {
+    if (e.key === 'Tab' || e.key === 'Escape') return;
+    e.preventDefault(); e.stopPropagation();
+    if (['Control', 'Alt', 'Shift', 'Meta'].includes(e.key)) return;
+    if (!e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey) { if (['Backspace', 'Delete'].includes(e.key)) $('#hotkey').value = ''; else error('快捷键需要 Ctrl、Alt、Shift 或 Win 修饰键。'); return; }
+    $('#hotkey').value = gesture(e); $('#error').hidden = true;
+  };
+  $('#clearKey').onclick = () => $('#hotkey').value = '';
+  $('#browse').onclick = () => choosePath(false, path => $('#target').value = path, $('#target').value);
+  $('#folder').onclick = () => choosePath(true, path => $('#target').value = path, $('#target').value);
+  $('#browseCwd').onclick = () => choosePath(true, path => $('#cwd').value = path, $('#cwd').value);
+  $('#cancel').onclick = $('#close').onclick = () => closeLayer('editorLayer');
+  $('#settingsClose').onclick = () => closeLayer('settingsLayer');
+  $('#standaloneAboutClose').onclick = () => closeLayer('aboutLayer');
+  $('#standaloneCheckUpdate').onclick = () => {
+    $('#standaloneUpdateStatus').textContent='正在检查…';$('#standaloneCheckUpdate').disabled=true;
+    setTimeout(()=>{update={phase:'found',tag:'v0.9.1',progress:0,installer:true,notes:'维护更新'};$('#standaloneUpdateStatus').textContent='发现新版本 v0.9.1';$('#standaloneCheckUpdate').disabled=false;openUpdateNotes();},500);
+  }; $('#dialogClose').onclick = () => closeLayer('dialogLayer');
+  $$('[data-dismiss]').forEach(el => el.onclick = () => closeLayer(el.dataset.dismiss));
+  $$('[data-tab]').forEach((tab, i, tabs) => {
+    tab.onclick = () => selectTab(tab.dataset.tab);
+    tab.onkeydown = e => { if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return; e.preventDefault(); const next = tabs[(i + (['ArrowUp', 'ArrowLeft'].includes(e.key) ? -1 : 1) + tabs.length) % tabs.length]; selectTab(next.dataset.tab); next.focus(); };
+  });
+  QA.bindControls($('.settings-card'), st, () => { persist(); refresh(); });
+  for (const [id, key] of [['rgTile', 'tileSize'], ['rgRadius', 'radius'], ['rgAutoHide', 'autoHide']]) $('#' + id).oninput = e => { st[key] = Number(e.target.value); persist(); refresh(); };
+  $('#selMonitor').onchange = e => { st.monitor = e.target.value; persist(); QA.toast('Dock 已迁移至' + e.target.selectedOptions[0].textContent); };
+  $('#switchStorage').onclick = () => { st.portable = !st.portable; persist(); syncSettings(); QA.toast('已切换并迁移配置'); };
+  $('#btnExport').onclick = exportConfig; $('#btnReloadConfig').onclick = reloadConfig;
+  $('#btnOpenConfig').onclick = () => QA.toast('正在打开配置文件夹');
+  $('#btnImport').onclick = () => $('#importFile').click();
+  $('#importFile').onchange = async e => { try { if (e.target.files[0]) importConfig(JSON.parse(await e.target.files[0].text())); } catch (err) { QA.toast('导入失败：' + err.message); } e.target.value = ''; };
+  $('#aboutLicense').onclick = () => dialog('许可证', [h('h3', {text:'MIT License'}), h('p', {text:'Copyright (c) QuickApp contributors'}), h('p', {text:'Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files, to deal in the Software without restriction.'}), h('p', {text:'THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND.'})], [chip('关闭', () => closeLayer('dialogLayer'), true)]);
+  $('#aboutCheckUpdate').onclick = () => {
+    $('#aboutCheckResult').textContent = '正在检查…'; $('#aboutCheckUpdate').disabled = true;
+    setTimeout(() => { update = {phase:'found', tag:'v0.9.1', progress:0, installer:true, notes:'## 应用多开（启动数量）\n\n- 程序 / 文件 / 目录条目可填写「启动数量」，一次点击连续启动多个实例。\n- 旧配置没有该字段即为 1，导入导出与存储模式切换一并保留。\n- 在「关于」检查到新版本时直接弹出版本说明。'}; $('#aboutCheckResult').textContent = '发现新版本 v0.9.1'; $('#aboutCheckUpdate').disabled = false; closeLayer('settingsLayer'); openUpdateNotes(); }, 500);
+  };
+  /* 版本说明卡片：已安装版本 / 最新版本 / 更新说明；按钮在 下载 → 安装 之间切换 */
+  function openUpdateNotes() {
+    const notes = h('div', {class:'stack'},
+      h('div', {class:'row'}, h('span', {class:'row-label', text:'已安装版本'}), h('span', {class:'spacer'}), h('span', {class:'row-note', text:'v0.9.0'})),
+      h('div', {class:'row'}, h('span', {class:'row-label', text:'最新版本'}), h('span', {class:'spacer'}), h('span', {class:'row-note update-notes-version', text:update.tag})),
+      h('label', {text:'更新说明'}), h('pre', {class:'update-notes-text', text:update.notes}));
+    const install = chip(update.phase === 'ready' ? '安装' : '下载', () => {
+      if (update.phase === 'ready') { updateActions.install(); closeLayer('dialogLayer'); return; }
+      // 下载完成后卡片原地变成「安装」，与客户端一致
+      update.phase = 'ready'; openUpdateNotes(); showDock(); renderUpdate();
+    }, true);
+    dialog('发现新版本', [notes], [chip('取消', () => { closeLayer('dialogLayer'); updateActions.dismiss(); }), install]);
+  }
+  $('#trayButton').onclick = e => QA.openMenuAtButton([
+    {label:st.dockVisible ? '收起 Dock' : '显示 Dock', icon:'grid', action:() => { st.dockVisible = !st.dockVisible; refresh(); }},
+    {label:'开机启动', icon:'power', note:st.autoStart ? '✓' : '', action:() => { st.autoStart = !st.autoStart; persist(); refresh(); }},
+    {label:'钉住 Dock', icon:'pin', note:st.pinned ? '✓' : '', action:() => { st.pinned = !st.pinned; persist(); refresh(); }},
+    {sep:true}, {label:'设置', icon:'gear', action:openSettings}, {label:'关于', icon:'info', action:openStandaloneAbout}, {sep:true}, {label:'退出', icon:'power', danger:true, action:exit}], e.currentTarget);
+  document.addEventListener('keydown', e => {
+    if (e.defaultPrevented) return;
+    const layers = ['dialogLayer', 'editorLayer', 'aboutLayer', 'settingsLayer'], active = layers.find(id => !$('#' + id).hidden);
+    if (active) {
+      if (e.key === 'Escape') { e.preventDefault(); closeLayer(active); }
+      if (e.key === 'Enter' && e.ctrlKey && active === 'editorLayer') saveEditor(e);
+      if (e.key === 'Tab') {
+        const focusable = $$('button,input,select,a[href]', $('#' + active)).filter(el => el.getClientRects().length && !el.disabled);
+        if (e.shiftKey && document.activeElement === focusable[0]) { e.preventDefault(); focusable.at(-1).focus(); }
+        else if (!e.shiftKey && document.activeElement === focusable.at(-1)) { e.preventDefault(); focusable[0].focus(); }
+      }
+      return;
+    }
+    if (st.exited) return;
+    if (e.ctrlKey && e.altKey && e.code === 'Space') { e.preventDefault(); summonSearch(); return; }
+    const bound = items.find(it => it.hotkey && it.hotkey === gesture(e));
+    if (bound && !st.exited) { e.preventDefault(); run(bound); return; }
+    if (e.key === 'Escape') { if (popoverOpen) { popoverOpen = false; renderUpdate(); } else if (st.searchOpen) search(false); else if (st.edit) edit(false); else { st.dockVisible = false; refresh(); } return; }
+    if (e.target.closest('input,select,textarea')) { if (e.key === 'Enter' && e.target.id === 'searchInput') { e.preventDefault(); run(QA.searchItems(items, e.target.value)[0] || systemRows(e.target.value)[0]); } return; }
+    if (e.key === 'Enter' && e.target.closest('[data-system]')) { e.preventDefault(); run(QA.INSTALLED.find(it => it.id === e.target.closest('[data-system]').dataset.system)); return; }
+    if (e.key.toLowerCase() === 's' || e.ctrlKey && e.key.toLowerCase() === 'k') { e.preventDefault(); search(); }
+    else if (e.key.toLowerCase() === 'e') edit();
+    else if (/^[1-9]$/.test(e.key)) run(items[Number(e.key) - 1]);
+    else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+      const tiles = $$('.tile', list), index = tiles.indexOf(document.activeElement), step = ['ArrowLeft', 'ArrowUp'].includes(e.key) ? -1 : 1;
+      e.preventDefault(); tiles[(index + step + tiles.length) % tiles.length]?.focus();
+    }
+  });
+  document.addEventListener('pointerdown', e => { if (popoverOpen && !e.target.closest('#updatePopover,.update-pill')) { popoverOpen = false; renderUpdate(); } });
+  window.addEventListener('resize', () => { QA.closeMenu(); positionDock(); QA.updateScrollChrome(list, fades); renderUpdate(); });
+  new ResizeObserver(() => { positionDock(); QA.updateScrollChrome(list, fades); }).observe($('#dock'));
+  $('#clock').textContent = new Date().toLocaleTimeString('zh-CN', {hour:'2-digit', minute:'2-digit'});
+  selectTab('general'); refresh();
+})();
+</script>
+<script>/* 原型复用宿主资源与共享令牌，系统调用继续使用受控演示。 */
+(() => {
+  const root=document.documentElement, dictionary=window.QUICKAPP_RESOURCES;
+  const stored=JSON.parse(localStorage.getItem('quickapp-appearance')||'{}');
+  let language=stored.language||'zh-CN',palette=stored.palette||'DotNet';
+  const source=new WeakMap(),last=new WeakMap();
+  const paletteNames={Default:'DefaultPalette',Desert:'DesertPalette',Aquatic:'AquaticPalette',Dusk:'DuskPalette',NightSky:'NightSkyPalette',DotNet:'DotNetPalette',Aurora:'AuroraPalette',Ember:'EmberPalette'};
+  const t=key=>dictionary[language].QuickApp.Text[key];
+  const translations=Object.entries(dictionary['zh-CN'].QuickApp.Text).filter(([,value])=>value.length>1);
+  function translate(value){
+    if(language==='zh-CN')return value;
+    const match=translations.find(([,original])=>original.trim()===value.trim());
+    if(match)return value.replace(value.trim(),t(match[0]).trim());
+    return value.replace(/^显示器 (\d+) · 左侧$/,'Monitor $1 · Left').replace(/^显示器 (\d+) · 右侧$/,'Monitor $1 · Right').replace('Vex · 维刻','Vex');
+  }
+  function localize(){
+    root.lang=language;
+    const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+    for(let node=walker.nextNode();node;node=walker.nextNode()){
+      if(['SCRIPT','STYLE'].includes(node.parentElement?.tagName))continue;
+      if(!source.has(node)||node.nodeValue!==last.get(node))source.set(node,node.nodeValue);
+      const next=translate(source.get(node));last.set(node,next);if(node.nodeValue!==next)node.nodeValue=next;
+    }
+    for(const element of document.querySelectorAll('[placeholder],[title],[aria-label]')){
+      for(const attr of ['placeholder','title','aria-label'])if(element.hasAttribute(attr)){
+        const key='source'+attr.replace('-','');element.dataset[key]||=element.getAttribute(attr);
+        const next=translate(element.dataset[key]);if(element.getAttribute(attr)!==next)element.setAttribute(attr,next);
+      }
+    }
+  }
+  function apply(){
+    const tokens=QUICKAPP_PALETTES[palette][root.dataset.theme==='light'?'light':'dark'];
+    for(const [css,key] of Object.entries({'--accent':'StudioAccentColor','--text':'StudioTextColor','--text-dim':'StudioMutedColor','--line':'StudioBorderColor','--hover':'StudioRaisedColor','--active':'StudioRaisedColor','--menu-bg':'StudioSurfaceColor','--bubble-bg':'StudioSurfaceColor','--menu-hover':'StudioRaisedColor'}))root.style.setProperty(css,tokens[key]);
+    const hex=tokens.StudioSurfaceColor.replace('#','');root.style.setProperty('--surface',[0,2,4].map(i=>parseInt(hex.slice(i,i+2),16)).join(','));
+    root.style.setProperty('--accent-ink','#ffffff');
+    localStorage.setItem('quickapp-appearance',JSON.stringify({language,palette}));
+    const picker=document.getElementById('qaPalette');
+    for(const option of picker.options)option.textContent=t(paletteNames[option.value]);
+    localize();
+  }
+  const palettePicker=document.getElementById('qaPalette');
+  for(const key of Object.keys(paletteNames))palettePicker.add(new Option(t(paletteNames[key]),key));
+  palettePicker.value=palette;palettePicker.onchange=()=>{palette=palettePicker.value;apply();};
+  const languagePicker=document.getElementById('qaLanguage');languagePicker.value=language;
+  languagePicker.onchange=()=>{language=languagePicker.value;apply();};
+  new MutationObserver(()=>localize()).observe(document.body,{childList:true,subtree:true,characterData:true});
+  new MutationObserver(apply).observe(root,{attributes:true,attributeFilter:['data-theme']});
+  apply();
+})();
+</script></body></html>

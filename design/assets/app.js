@@ -151,7 +151,7 @@
       {label:'网址…', icon:'globe', action:() => openEditor(null, 'web')}, {label:'命令行…', icon:'terminal', action:() => openEditor(null, 'cmd')},
       {sep:true}, {title:'管理'}, {label:'编辑模式', icon:'pencil', action:() => edit()}, {label:'清空', icon:'trash', danger:true, action:clearItems},
       {sep:true}, {title:'停靠'}, {custom:() => QA.dockEdgePicker(st.edge, edge => { QA.closeMenu(); setEdge(edge); })},
-      {sep:true}, {label:'设置', icon:'gear', action:openSettings}, {sep:true}, {label:'退出', icon:'power', danger:true, action:exit}];
+      {sep:true}, {label:'设置', icon:'gear', action:openSettings}, {label:'关于', icon:'info', action:openStandaloneAbout}, {sep:true}, {label:'退出', icon:'power', danger:true, action:exit}];
   }
   function exit() {
     persist(); clearTimeout(hideTimer); clearInterval(updateTimer); clearInterval(rec.timer); popoverOpen = false;
@@ -243,6 +243,7 @@
     $$('[data-panel]').forEach(panel => panel.hidden = panel.dataset.panel !== key);
   }
   function openSettings() { syncSettings(); openLayer('settingsLayer'); }
+  function openStandaloneAbout() { openLayer('aboutLayer'); }
   function exportConfig() {
     if (configError) { QA.toast('配置读取失败，请先重新加载配置。'); return; }
     const kinds = {app:0, web:1, cmd:2}, edges = {top:0, bottom:1, left:2, right:3};
@@ -279,7 +280,7 @@
     const card = h('div', {class:'rec-card', 'data-rec':rec.id}, h('div', {class:'rec-head'},
       h('span', {class:'rec-icon'}, h('img', {src:'assets/vex-logo.svg', alt:'Vex 图标'})),
       h('div', {class:'rec-info'}, h('div', {class:'rec-title'}, h('strong', {text:rec.name}), h('span', {class:'rec-ver', text:rec.version})),
-        h('div', {class:'rec-desc', text:'跨平台 Markdown 编辑器：实时预览、大纲导航、文档统计及导出。'}), h('div', {class:'rec-meta', text:'Vex-v1.5.1-win-x64-setup.exe · 40.7 MB'}))));
+        h('div', {class:'rec-desc', text:'Markdown 编辑器：实时预览、大纲、统计与多格式导出。'}), h('div', {class:'rec-meta', text:'Vex-v1.5.1-win-x64-setup.exe · 40.7 MB'}))));
     if (['downloading', 'installing'].includes(rec.phase)) card.append(h('div', {class:'rec-download'},
       h('div', {class:'update-progress' + (rec.phase === 'installing' ? ' indeterminate' : '')}, h('i', {style:'width:' + rec.progress + '%'})),
       h('span', {class:'rec-pct', text:rec.phase === 'installing' ? '安装中…' : rec.progress + '%'}),
@@ -421,7 +422,12 @@
   $('#folder').onclick = () => choosePath(true, path => $('#target').value = path, $('#target').value);
   $('#browseCwd').onclick = () => choosePath(true, path => $('#cwd').value = path, $('#cwd').value);
   $('#cancel').onclick = $('#close').onclick = () => closeLayer('editorLayer');
-  $('#settingsClose').onclick = () => closeLayer('settingsLayer'); $('#dialogClose').onclick = () => closeLayer('dialogLayer');
+  $('#settingsClose').onclick = () => closeLayer('settingsLayer');
+  $('#standaloneAboutClose').onclick = () => closeLayer('aboutLayer');
+  $('#standaloneCheckUpdate').onclick = () => {
+    $('#standaloneUpdateStatus').textContent='正在检查…';$('#standaloneCheckUpdate').disabled=true;
+    setTimeout(()=>{update={phase:'found',tag:'v0.9.1',progress:0,installer:true,notes:'维护更新'};$('#standaloneUpdateStatus').textContent='发现新版本 v0.9.1';$('#standaloneCheckUpdate').disabled=false;openUpdateNotes();},500);
+  }; $('#dialogClose').onclick = () => closeLayer('dialogLayer');
   $$('[data-dismiss]').forEach(el => el.onclick = () => closeLayer(el.dataset.dismiss));
   $$('[data-tab]').forEach((tab, i, tabs) => {
     tab.onclick = () => selectTab(tab.dataset.tab);
@@ -438,12 +444,12 @@
   $('#aboutLicense').onclick = () => dialog('许可证', [h('h3', {text:'MIT License'}), h('p', {text:'Copyright (c) QuickApp contributors'}), h('p', {text:'Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files, to deal in the Software without restriction.'}), h('p', {text:'THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND.'})], [chip('关闭', () => closeLayer('dialogLayer'), true)]);
   $('#aboutCheckUpdate').onclick = () => {
     $('#aboutCheckResult').textContent = '正在检查…'; $('#aboutCheckUpdate').disabled = true;
-    setTimeout(() => { update = {phase:'found', tag:'v0.8.0', progress:0, installer:true, notes:'## 应用多开（启动数量）\n\n- 程序 / 文件 / 目录条目可填写「启动数量」，一次点击连续启动多个实例。\n- 旧配置没有该字段即为 1，导入导出与存储模式切换一并保留。\n- 在「关于」检查到新版本时直接弹出版本说明。'}; $('#aboutCheckResult').textContent = '发现新版本 v0.8.0'; $('#aboutCheckUpdate').disabled = false; closeLayer('settingsLayer'); openUpdateNotes(); }, 500);
+    setTimeout(() => { update = {phase:'found', tag:'v0.9.1', progress:0, installer:true, notes:'## 应用多开（启动数量）\n\n- 程序 / 文件 / 目录条目可填写「启动数量」，一次点击连续启动多个实例。\n- 旧配置没有该字段即为 1，导入导出与存储模式切换一并保留。\n- 在「关于」检查到新版本时直接弹出版本说明。'}; $('#aboutCheckResult').textContent = '发现新版本 v0.9.1'; $('#aboutCheckUpdate').disabled = false; closeLayer('settingsLayer'); openUpdateNotes(); }, 500);
   };
   /* 版本说明卡片：已安装版本 / 最新版本 / 更新说明；按钮在 下载 → 安装 之间切换 */
   function openUpdateNotes() {
     const notes = h('div', {class:'stack'},
-      h('div', {class:'row'}, h('span', {class:'row-label', text:'已安装版本'}), h('span', {class:'spacer'}), h('span', {class:'row-note', text:'v0.7.3'})),
+      h('div', {class:'row'}, h('span', {class:'row-label', text:'已安装版本'}), h('span', {class:'spacer'}), h('span', {class:'row-note', text:'v0.9.0'})),
       h('div', {class:'row'}, h('span', {class:'row-label', text:'最新版本'}), h('span', {class:'spacer'}), h('span', {class:'row-note update-notes-version', text:update.tag})),
       h('label', {text:'更新说明'}), h('pre', {class:'update-notes-text', text:update.notes}));
     const install = chip(update.phase === 'ready' ? '安装' : '下载', () => {
@@ -457,10 +463,10 @@
     {label:st.dockVisible ? '收起 Dock' : '显示 Dock', icon:'grid', action:() => { st.dockVisible = !st.dockVisible; refresh(); }},
     {label:'开机启动', icon:'power', note:st.autoStart ? '✓' : '', action:() => { st.autoStart = !st.autoStart; persist(); refresh(); }},
     {label:'钉住 Dock', icon:'pin', note:st.pinned ? '✓' : '', action:() => { st.pinned = !st.pinned; persist(); refresh(); }},
-    {sep:true}, {label:'设置', icon:'gear', action:openSettings}, {sep:true}, {label:'退出', icon:'power', danger:true, action:exit}], e.currentTarget);
+    {sep:true}, {label:'设置', icon:'gear', action:openSettings}, {label:'关于', icon:'info', action:openStandaloneAbout}, {sep:true}, {label:'退出', icon:'power', danger:true, action:exit}], e.currentTarget);
   document.addEventListener('keydown', e => {
     if (e.defaultPrevented) return;
-    const layers = ['dialogLayer', 'editorLayer', 'settingsLayer'], active = layers.find(id => !$('#' + id).hidden);
+    const layers = ['dialogLayer', 'editorLayer', 'aboutLayer', 'settingsLayer'], active = layers.find(id => !$('#' + id).hidden);
     if (active) {
       if (e.key === 'Escape') { e.preventDefault(); closeLayer(active); }
       if (e.key === 'Enter' && e.ctrlKey && active === 'editorLayer') saveEditor(e);
