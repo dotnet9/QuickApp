@@ -37,6 +37,8 @@
     <PackageReference Include="CodeWF.Avalonia.Controls" />
     <PackageReference Include="CodeWF.Avalonia.Lang" />
     <PackageReference Include="Semi.Avalonia" />
+    <PackageReference Include="Irihi.Ursa" />
+    <PackageReference Include="Irihi.Ursa.Themes.Semi" />
     <PackageReference Include="ReactiveUI" />
     <PackageReference Include="ReactiveUI.Avalonia" />
     <PackageReference Include="System.Reactive" />

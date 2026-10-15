@@ -6,6 +6,7 @@
              RequestedThemeVariant="Default">
   <Application.Styles>
     <semi:SemiTheme Locale="zh-CN" />
+    <semi:UrsaSemiTheme />
     <codewf:ACSemiTheme />
     <codewf:StudioTheme />
     <StyleInclude Source="avares://QuickApp/Styles/Common.axaml" />

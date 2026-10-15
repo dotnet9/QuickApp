@@ -5,6 +5,8 @@ using Avalonia.Headless;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Avalonia.Interactivity;
+using Ursa.Controls;
 using CodeWF.Avalonia.Controls.Themes;
 using CodeWF.Toolkit.Core.UpdateChecking;
 using CodeWF.Toolkit.Lang;
@@ -41,9 +43,18 @@ var tray=new TrayViewModel(model,()=>{},()=>{});
 var traySettings=new NativeMenuItem { Header=tray.SettingsText };
 tray.PropertyChanged+=(_,e)=>{if(string.IsNullOrEmpty(e.PropertyName)||e.PropertyName==nameof(tray.SettingsText))traySettings.Header=tray.SettingsText;};
 Check(vm.PaletteOptions.Count==8 && vm.LanguageOptions.Count==2,"Eight palettes and two languages");
+var paletteSelector=settings.GetVisualDescendants().OfType<ListBox>().Single(control=>control.Classes.Contains("title-palettes"));
+Check(paletteSelector.Items.Count==8,"Title bar exposes all eight palette dots");
+var themeToggle=settings.GetVisualDescendants().OfType<ThemeToggleButton>().Single();
+vm.ThemeMode=StudioThemeMode.System;Pump();
+foreach(var expected in new[]{StudioThemeMode.Light,StudioThemeMode.Dark,StudioThemeMode.System})
+{
+    themeToggle.GetVisualDescendants().OfType<Button>().Single(button=>button.Name=="PART_ThemeButton").RaiseEvent(new RoutedEventArgs(Button.ClickEvent));Pump();
+    Check(vm.ThemeMode==expected && store.Load().Settings.Theme==expected.ToString().ToLowerInvariant(),"Actual Ursa theme click persists "+expected);
+}
 foreach(var palette in vm.PaletteOptions.ToArray())
 {
-    vm.SelectedPalette=palette;
+    paletteSelector.SelectedItem=palette;
     foreach(var dark in new[]{false,true})
     {
         vm.SetThemeCommand.Execute(dark?"dark":"light");settings.ShowTab("appearance");Pump();
@@ -62,13 +73,24 @@ var about=new AboutWindow { DataContext=vm };about.Show();Pump();
 foreach(var culture in new[]{"en-US","zh-CN"})
 {
     var selectedPalette=model.Settings.Palette;
-    vm.SelectedLanguage=vm.LanguageOptions.Single(option=>option.Key==culture);Pump();
+    var languageButton=settings.GetVisualDescendants().OfType<Button>().Single(button=>button.Flyout is MenuFlyout);
+    var languageMenu=(MenuFlyout)languageButton.Flyout!;languageMenu.ShowAt(languageButton);Pump();
+    var languageItem=languageMenu.ItemsSource!.Cast<AppearanceOption>().Single(option=>option.Key==culture);
+    Check(languageMenu.IsOpen && languageItem.SelectCommand is not null,"Language popup opens with the actual language catalog");
+    languageItem.SelectCommand!.Execute(null);languageMenu.Hide();Pump();
+    foreach(var mode in new[]{StudioThemeMode.Light,StudioThemeMode.Dark,StudioThemeMode.System})
+    {
+        vm.ThemeMode=mode;Pump();
+        var key=mode switch{StudioThemeMode.Light=>Language.LightTheme,StudioThemeMode.Dark=>Language.DarkTheme,_=>Language.SystemTheme};
+        var themeButton=themeToggle.GetVisualDescendants().OfType<Button>().Single(button=>button.Name=="PART_ThemeButton");
+        Check(ToolTip.GetTip(themeButton) is TextBlock text && text.Text==AppText.Get(key),"Actual Ursa tooltip follows "+culture+" / "+mode);
+    }
     Check(model.Settings.Palette==selectedPalette,"Changing language preserves selected palette");
     Check(App.ThemeController.Palette==StudioPalette.DotNet,"Language changes preserve the actual shared palette");
     Check(store.Load().Settings.Language==culture,"Host language preference survives reload");
     Check(about.Title==AppText.Get(Language.About),"Existing about window changes language");
     Check(traySettings.Header==AppText.Get(Language.Settings),"Existing tray menu changes language");
-    Check(vm.PlatformText.Contains(".NET 10") && vm.VersionText.Contains("0.9.2"),"About shows actual app metadata");
+    Check(vm.PlatformText.Contains(".NET 10") && vm.VersionText.Contains("0.9.3"),"About shows actual app metadata");
     Capture(about,$"about-{culture}.png");
     foreach(var tab in new[]{"general","appearance","data","recommend","about"})
     {
@@ -125,7 +147,7 @@ void Capture(Window window,string name){Pump();window.CaptureRenderedFrame()!.Sa
 sealed class FakeUpdates(string root):IUpdateService
 {
     public UpdateServiceOptions Options {get;}=new(){Repository="QuickApp",ProductName="QuickApp"};
-    public Version CurrentVersion=>new(0,9,2);public string CurrentVersionText=>"0.9.2";public int InstallCalls; public string Mode="available"; public bool DelayDownload;
+    public Version CurrentVersion=>new(0,9,3);public string CurrentVersionText=>"0.9.3";public int InstallCalls; public string Mode="available"; public bool DelayDownload;
     public Task<UpdateCheckResult> CheckAsync(Version? current=null,CancellationToken cancellationToken=default)
         => Task.FromResult(Mode switch
         {

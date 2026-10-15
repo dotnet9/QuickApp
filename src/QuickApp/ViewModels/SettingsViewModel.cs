@@ -11,7 +11,10 @@ using ReactiveUI;
 namespace QuickApp.ViewModels;
 
 public sealed record MonitorOption(int Index, string Label);
-public sealed record AppearanceOption(string Key, string Text, IBrush Swatch);
+public sealed record AppearanceOption(string Key, string Text, IBrush Swatch)
+{
+    public ICommand? SelectCommand { get; set; }
+}
 
 /// <summary>
 /// 设置窗口的视图模型：每个 setter 直接改 Dock 的设置并即时生效，关闭窗口时统一存盘。
@@ -26,6 +29,7 @@ public sealed class SettingsViewModel : ViewModelBase
     {
         _dock = dock;
         RebuildPaletteOptions();
+        foreach (var language in LanguageOptions) language.SelectCommand = ReactiveCommand.Create(() => SelectedLanguage = language);
         CheckUpdateCommand = ReactiveCommand.CreateFromTask(async () =>
         {
             await _dock.CheckUpdateAsync();
@@ -95,6 +99,23 @@ public sealed class SettingsViewModel : ViewModelBase
             ApplyChange(palette: true, size: false);
             _dock.Save();
             this.RaisePropertyChanged();
+        }
+    }
+    public CodeWF.Avalonia.Controls.Themes.StudioThemeMode ThemeMode
+    {
+        get => Settings.Theme switch
+        {
+            "dark" => CodeWF.Avalonia.Controls.Themes.StudioThemeMode.Dark,
+            "light" => CodeWF.Avalonia.Controls.Themes.StudioThemeMode.Light,
+            _ => CodeWF.Avalonia.Controls.Themes.StudioThemeMode.System
+        };
+        set
+        {
+            var key = value.ToString().ToLowerInvariant();
+            if (Settings.Theme == key) return;
+            Settings.Theme = key;
+            ApplyChange(palette: true, size: false);
+            _dock.Save();
         }
     }
     public AppearanceOption? SelectedLanguage
@@ -443,6 +464,7 @@ public sealed class SettingsViewModel : ViewModelBase
     /// <summary>导入完整配置后刷新当前设置窗口的所有绑定值。</summary>
     public void RefreshFromDock()
     {
+        this.RaisePropertyChanged(nameof(ThemeMode));
         this.RaisePropertyChanged(nameof(HasConfigLoadError));
         this.RaisePropertyChanged(nameof(ConfigLoadStatus));
         this.RaisePropertyChanged(nameof(HasUpdate));
@@ -518,6 +540,7 @@ public sealed class SettingsViewModel : ViewModelBase
         this.RaisePropertyChanged(nameof(IsThemeSystem));
         this.RaisePropertyChanged(nameof(IsThemeDark));
         this.RaisePropertyChanged(nameof(IsThemeLight));
+        this.RaisePropertyChanged(nameof(ThemeMode));
         this.RaisePropertyChanged(nameof(IsStyleGlass));
         this.RaisePropertyChanged(nameof(IsStyleFlat));
         this.RaisePropertyChanged(nameof(IsLabelsOnly));

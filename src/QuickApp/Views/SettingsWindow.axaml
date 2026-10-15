@@ -5,6 +5,7 @@
         xmlns:codewf="https://codewf.com"
         xmlns:vm="clr-namespace:QuickApp.ViewModels"
         xmlns:icons="clr-namespace:QuickApp.Theme"
+        xmlns:ursa="https://irihi.tech/ursa"
         x:Class="QuickApp.Views.SettingsWindow"
         x:DataType="vm:SettingsViewModel"
         Title="{l:I18n {x:Static q:Language.SettingsTitle}}"
@@ -13,13 +14,34 @@
         CanResize="True"
         MinWidth="720" MinHeight="540"
         ShowInTaskbar="True"
-        IsMinimizeButtonVisible="False"
         WindowCornerRadius="14"
         WindowStartupLocation="CenterScreen"
         Background="{Binding BackgroundBrush}"
         BorderBrush="{Binding PanelBorderBrush}"
         BorderThickness="1"
         TitleBarForeground="{Binding TextBrush}">
+  <codewf:CodeWFWindow.RightContent>
+    <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,0,8,0" VerticalAlignment="Center">
+      <ListBox Classes="title-palettes" ItemsSource="{Binding PaletteOptions}" SelectedItem="{Binding SelectedPalette}" Height="28" Padding="0" BorderThickness="0" Background="Transparent" ToolTip.Tip="{l:I18n {x:Static q:Language.Palette}}">
+        <ListBox.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ListBox.ItemsPanel>
+        <ListBox.ItemTemplate><DataTemplate x:DataType="vm:AppearanceOption"><Ellipse Width="14" Height="14" Fill="{Binding Swatch}" ToolTip.Tip="{Binding Text}" AutomationProperties.Name="{Binding Text}" /></DataTemplate></ListBox.ItemTemplate>
+      </ListBox>
+      <ThemeVariantScope x:Name="TitleBarThemeScope" RequestedThemeVariant="{Binding ThemeMode, Mode=TwoWay, Converter={x:Static codewf:StudioThemeModeConverter.Instance}}">
+        <ThemeVariantScope.Resources>
+          <TextBlock x:Key="STRING_THEME_TOGGLE_SYSTEM" Text="{l:I18n {x:Static q:Language.SystemTheme}}" />
+          <TextBlock x:Key="STRING_THEME_TOGGLE_LIGHT" Text="{l:I18n {x:Static q:Language.LightTheme}}" />
+          <TextBlock x:Key="STRING_THEME_TOGGLE_DARK" Text="{l:I18n {x:Static q:Language.DarkTheme}}" />
+        </ThemeVariantScope.Resources>
+        <ursa:ThemeToggleButton Width="30" Height="30" IsThreeState="True" TargetScope="{Binding #TitleBarThemeScope}" ToolTip.Tip="{l:I18n {x:Static q:Language.Theme}}" />
+      </ThemeVariantScope>
+      <Button Width="30" Height="30" Padding="6" Background="Transparent" ToolTip.Tip="{l:I18n {x:Static q:Language.InterfaceLanguage}}" AutomationProperties.Name="{l:I18n {x:Static q:Language.InterfaceLanguage}}">
+        <PathIcon Width="17" Height="17" Data="{StaticResource SemiIconLanguage}" />
+        <Button.Flyout><MenuFlyout ItemsSource="{Binding LanguageOptions}"><MenuFlyout.ItemContainerTheme>
+          <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vm:AppearanceOption"><Setter Property="Header" Value="{Binding Text}" /><Setter Property="Command" Value="{Binding SelectCommand}" /></ControlTheme>
+        </MenuFlyout.ItemContainerTheme></MenuFlyout></Button.Flyout>
+      </Button>
+    </StackPanel>
+  </codewf:CodeWFWindow.RightContent>
 
   <!--
     与原型 design/index.html 的 .settings-* 逐项对齐：
@@ -27,6 +49,8 @@
     行 min-height 34 左标签（可带 11px 行内说明）右控件、分组 h3 12px 淡色。
   -->
   <Window.Styles>
+    <Style Selector="ListBox.title-palettes ListBoxItem"><Setter Property="Width" Value="24" /><Setter Property="Height" Value="28" /><Setter Property="Padding" Value="4" /><Setter Property="CornerRadius" Value="14" /><Setter Property="Background" Value="Transparent" /><Setter Property="BorderBrush" Value="Transparent" /><Setter Property="BorderThickness" Value="1" /></Style>
+    <Style Selector="ListBox.title-palettes ListBoxItem:selected"><Setter Property="BorderBrush" Value="{DynamicResource QAAccentBrush}" /></Style>
     <Style Selector="Slider">
       <Setter Property="Width" Value="130" />
       <Setter Property="VerticalAlignment" Value="Center" />
@@ -286,28 +310,6 @@
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled">
                   <StackPanel>
                     <TextBlock Classes="section" Text="{l:I18n {x:Static q:Language.InterfaceDisplay}}" />
-                    <Grid Classes="row" ColumnDefinitions="*,Auto">
-                      <TextBlock Classes="row" Text="{l:I18n {x:Static q:Language.InterfaceLanguage}}" />
-                      <ComboBox Grid.Column="1" MinWidth="180" HorizontalContentAlignment="Left" ItemsSource="{Binding LanguageOptions}" SelectedItem="{Binding SelectedLanguage}">
-                        <ComboBox.ItemTemplate><DataTemplate x:DataType="vm:AppearanceOption"><TextBlock Text="{Binding Text}" /></DataTemplate></ComboBox.ItemTemplate>
-                      </ComboBox>
-                    </Grid>
-                    <Grid Classes="row" ColumnDefinitions="*,Auto">
-                      <TextBlock Classes="row" Text="{l:I18n {x:Static q:Language.Palette}}" />
-                      <ComboBox Grid.Column="1" MinWidth="180" HorizontalContentAlignment="Left" ItemsSource="{Binding PaletteOptions}" SelectedItem="{Binding SelectedPalette}">
-                        <ComboBox.ItemTemplate><DataTemplate x:DataType="vm:AppearanceOption"><StackPanel Orientation="Horizontal" Spacing="8"><Ellipse Width="12" Height="12" Fill="{Binding Swatch}" /><TextBlock Text="{Binding Text}" /></StackPanel></DataTemplate></ComboBox.ItemTemplate>
-                      </ComboBox>
-                    </Grid>
-                    <Grid Classes="row" ColumnDefinitions="*,Auto">
-                      <TextBlock Classes="row" Text="{l:I18n {x:Static q:Language.Theme}}" />
-                      <Border Grid.Column="1" Background="{DynamicResource QAHoverBrush}" CornerRadius="9" Padding="2">
-                        <StackPanel Orientation="Horizontal" Spacing="2">
-                          <Button Theme="{StaticResource Segment}" Content="{l:I18n {x:Static q:Language.SystemTheme}}" Classes.active="{Binding IsThemeSystem}" Command="{Binding SetThemeCommand}" CommandParameter="system" />
-                          <Button Theme="{StaticResource Segment}" Content="{l:I18n {x:Static q:Language.DarkTheme}}" Classes.active="{Binding IsThemeDark}" Command="{Binding SetThemeCommand}" CommandParameter="dark" />
-                          <Button Theme="{StaticResource Segment}" Content="{l:I18n {x:Static q:Language.LightTheme}}" Classes.active="{Binding IsThemeLight}" Command="{Binding SetThemeCommand}" CommandParameter="light" />
-                        </StackPanel>
-                      </Border>
-                    </Grid>
                     <Grid Classes="row" ColumnDefinitions="*,Auto">
                       <TextBlock Classes="row" Text="{l:I18n {x:Static q:Language.Style}}" />
                       <Border Grid.Column="1" Background="{DynamicResource QAHoverBrush}" CornerRadius="9" Padding="2">

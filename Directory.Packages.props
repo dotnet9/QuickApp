@@ -13,13 +13,15 @@
   <ItemGroup>
     <PackageVersion Include="Avalonia" Version="$(AvaloniaVersion)" />
     <PackageVersion Include="Avalonia.Desktop" Version="$(AvaloniaVersion)" />
-    <PackageVersion Include="CodeWF.Avalonia.Controls" Version="12.1.4.20" />
+    <PackageVersion Include="CodeWF.Avalonia.Controls" Version="12.1.4.21" />
     <PackageVersion Include="CodeWF.Toolkit.Core" Version="1.0.0.19" />
     <PackageVersion Include="CodeWF.Toolkit.Lang" Version="1.0.0.19" />
-    <PackageVersion Include="CodeWF.Avalonia.Lang" Version="12.1.4.20" />
+    <PackageVersion Include="CodeWF.Avalonia.Lang" Version="12.1.4.21" />
     <PackageVersion Include="Avalonia.Headless" Version="$(AvaloniaVersion)" />
     <PackageVersion Include="Avalonia.Skia" Version="$(AvaloniaVersion)" />
     <PackageVersion Include="Semi.Avalonia" Version="12.1.0.1" />
+    <PackageVersion Include="Irihi.Ursa" Version="2.2.0" />
+    <PackageVersion Include="Irihi.Ursa.Themes.Semi" Version="2.2.0" />
 
     <PackageVersion Include="ReactiveUI" Version="$(ReactiveUIVersion)" />
     <PackageVersion Include="ReactiveUI.Avalonia" Version="$(ReactiveUIAvaloniaVersion)" />
