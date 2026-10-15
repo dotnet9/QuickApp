@@ -27,9 +27,23 @@ const { pathToFileURL } = require('node:url');
   // 入场动画会缩放渲染边界，设计尺寸应检查布局值。
   const frame=await page.locator('.settings-card').evaluate(element=>({border:parseFloat(getComputedStyle(element).borderTopWidth),title:parseFloat(getComputedStyle(element.querySelector('.modal-head')).height),buttons:element.querySelector('.window-controls').children.length}));
   if(frame.border<1||frame.title!==32||frame.buttons!==3)throw new Error('Desktop settings frame is incomplete: '+JSON.stringify(frame));
+  if(await page.locator('.settings-card .window-controls > button:last-child').getAttribute('id')!=='settingsClose' || await page.locator('.settings-card .title-appearance > #qaTheme').count()!==1)throw new Error('Theme toggle must stay separate from the standard caption buttons');
+  const paletteOrder=await page.locator('#qaPalette button[data-palette]').evaluateAll(buttons=>buttons.map(button=>button.dataset.palette));
+  if(JSON.stringify(paletteOrder)!==JSON.stringify(['DotNet','Aurora','Ember','Default','Aquatic','Desert','Dusk','NightSky']))throw new Error('Palette order differs from the native title bar');
+  const swatches=await page.locator('#qaPalette button i').evaluateAll(dots=>dots.map(dot=>[getComputedStyle(dot).backgroundColor,getComputedStyle(dot).backgroundImage]));
+  if(swatches[0][0]!=='rgb(81, 43, 212)' || !swatches[1][1].startsWith('linear-gradient('))throw new Error('Fixed .NET and Aurora swatches differ from the native title bar');
+  await page.locator('.settings-card [data-window-action="minimize"]').click();
+  if(!(await page.locator('.settings-card').evaluate(element=>element.classList.contains('is-minimized'))) || await page.locator('.settings-layout').isVisible())throw new Error('Minimizing settings must hide its content');
+  await page.locator('.settings-card [data-window-action="minimize"]').click();
+  if(!(await page.locator('.settings-layout').isVisible()))throw new Error('Minimized settings cannot be restored');
   await page.locator('.settings-card [data-window-action="maximize"]').click();
-  if(!(await page.locator('.settings-card').evaluate(element=>element.classList.contains('is-maximized'))))throw new Error('Window maximize control is inactive');
+  if(!(await page.locator('.settings-card').evaluate(element=>element.classList.contains('is-maximized') && element.getBoundingClientRect().width>720)))throw new Error('Window maximize control does not change the layout');
   await page.locator('.settings-card [data-window-action="maximize"]').click();
+  if(Math.abs(await page.locator('.settings-card').evaluate(element=>element.getBoundingClientRect().width)-720)>2)throw new Error('Window restore does not recover the settings layout');
+  await page.locator('#settingsClose').click();
+  if(await page.locator('#settingsLayer').isVisible())throw new Error('Settings close button does not close its window');
+  await page.locator('#btnMenu').click();await page.getByRole('menuitem',{name:'设置',exact:true}).click();
+  if(!(await page.locator('.settings-card').isVisible()))throw new Error('Closed settings cannot be reopened');
   let routes=0;
   for(const language of ['zh-CN','en-US']){
     await page.locator('[data-tab="appearance"]').click();await setLanguage(language);
@@ -38,6 +52,7 @@ const { pathToFileURL } = require('node:url');
       await setPalette(palette);
       for(const mode of ['light','dark']){
         await setMode(mode);
+        if(JSON.stringify(await page.locator('#qaPalette button i').evaluateAll(dots=>dots.map(dot=>[getComputedStyle(dot).backgroundColor,getComputedStyle(dot).backgroundImage])))!==JSON.stringify(swatches))throw new Error('Palette swatches must remain stable across theme modes');
         const properties=await page.locator('.settings-card').evaluate(element=>({width:element.getBoundingClientRect().width,height:element.getBoundingClientRect().height,text:getComputedStyle(element).color}));
         if(Math.abs(properties.width-720)>2||Math.abs(properties.height-620)>2)throw new Error('Settings viewport differs: '+JSON.stringify(properties));
         if(await page.locator('#qaPalette [data-palette]').count()!==8)throw new Error('Palette catalog differs');

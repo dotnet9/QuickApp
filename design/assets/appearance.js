@@ -4,9 +4,9 @@
   const stored=JSON.parse(localStorage.getItem('quickapp-appearance')||'{}');
   let language=stored.language||'zh-CN',palette=stored.palette||'DotNet';
   const source=new WeakMap(),last=new WeakMap();
-  const paletteNames={Default:'DefaultPalette',Desert:'DesertPalette',Aquatic:'AquaticPalette',Dusk:'DuskPalette',NightSky:'NightSkyPalette',DotNet:'DotNetPalette',Aurora:'AuroraPalette',Ember:'EmberPalette'};
+  const paletteNames={DotNet:'DotNetPalette',Aurora:'AuroraPalette',Ember:'EmberPalette',Default:'DefaultPalette',Aquatic:'AquaticPalette',Desert:'DesertPalette',Dusk:'DuskPalette',NightSky:'NightSkyPalette'};
   for(const head of document.querySelectorAll('.modal-head')){
-    const card=head.closest('.modal-card'),close=head.querySelector('button');
+    const card=head.closest('.modal-card'),close=head.querySelector(':scope > button');
     const controls=document.createElement('div');controls.className='window-controls';
     for(const [action,symbol,label] of [['minimize','−','Minimize'],['maximize','□','Maximize']]){
       const button=document.createElement('button');button.type='button';button.className='caption-button';button.dataset.windowAction=action;button.textContent=symbol;button.setAttribute('aria-label',label);
@@ -49,7 +49,7 @@
     const hex=tokens.StudioSurfaceColor.replace('#','');root.style.setProperty('--surface',[0,2,4].map(i=>parseInt(hex.slice(i,i+2),16)).join(','));
     root.style.setProperty('--accent-ink','#ffffff');
     localStorage.setItem('quickapp-appearance',JSON.stringify({language,palette}));
-    document.getElementById('qaPalette').innerHTML=Object.keys(paletteNames).map(key=>`<button class="palette-dot" role="option" data-palette="${key}" aria-selected="${key===palette}" title="${t(paletteNames[key])}" aria-label="${t(paletteNames[key])}"><i style="background:${QUICKAPP_PALETTES[key][root.dataset.theme==='light'?'light':'dark'].StudioAccentColor}"></i></button>`).join('');
+    document.getElementById('qaPalette').innerHTML=Object.keys(paletteNames).map(key=>`<button class="palette-dot" role="option" data-palette="${key}" aria-selected="${key===palette}" title="${t(paletteNames[key])}" aria-label="${t(paletteNames[key])}"><i style="background:${QUICKAPP_PALETTES[key].swatch}"></i></button>`).join('');
     const mode=QUICKAPP_THEME.get(),toggle=document.getElementById('qaTheme');toggle.dataset.mode=mode;toggle.textContent=mode==='light'?'☀':mode==='dark'?'☾':'◐';toggle.title=t(mode==='light'?'LightTheme':mode==='dark'?'DarkTheme':'SystemTheme');toggle.setAttribute('aria-label',toggle.title);
     const languageButton=document.getElementById('qaLanguage');languageButton.title=t('InterfaceLanguage');languageButton.setAttribute('aria-label',languageButton.title);
     localize();
