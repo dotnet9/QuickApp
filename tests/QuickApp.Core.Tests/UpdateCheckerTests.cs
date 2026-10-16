@@ -8,6 +8,7 @@ using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using QuickApp.Core.I18n;
 using QuickApp.Core.Services;
 using CodeWF.Toolkit.Lang.Json;
 using ToolkitResources = CodeWF.Toolkit.Core.I18n.ResourceKeys;
@@ -18,6 +19,12 @@ namespace QuickApp.Core.Tests;
 public sealed class UpdateCheckerTests
 {
     private static readonly JsonLocalizer ToolkitText = new(typeof(UpdateChecker).Assembly);
+
+    public UpdateCheckerTests()
+    {
+        // 先初始化共享语言，避免其他测试首次加载 AppText 时在异步调用与断言之间切换文案。
+        AppText.Initialize();
+    }
 
     [Fact]
     public async Task Selects_current_platform_asset_and_prefers_windows_installer()
