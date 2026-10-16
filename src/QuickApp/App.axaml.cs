@@ -52,7 +52,9 @@ public partial class App : Application
         {
             ("QATextBrush", "StudioText"), ("QATextDimBrush", "StudioMuted"), ("QALineBrush", "StudioBorder"),
             ("QAHoverBrush", "StudioRaised"), ("QAActiveBrush", "StudioRaised"), ("QAMenuHoverBrush", "StudioRaised"),
-            ("QAMenuBrush", "StudioSurface"), ("QAAccentBrush", "StudioAccent"), ("QAAccentInkBrush", "ButtonSolidForeground"),
+            ("QAMenuBrush", "StudioSurface"), ("QAAccentBrush", "StudioAccent"), ("QAAccentInkBrush", "StudioOnPrimary"),
+            ("QAPrimaryBrush", "StudioPrimary"), ("QAPrimaryHoverBrush", "StudioPrimaryHover"),
+            ("QAPrimaryPressedBrush", "StudioPrimaryPressed"),
             ("QADangerBrush", "SemiColorDanger"), ("QARemoveBgBrush", "StudioSurface"), ("QATileShadowBrush", "StudioBorder"),
             ("QAResultRowBrush", "StudioRaised"), ("QAAccentSoftBorderBrush", "StudioBorder"),
             ("MenuFlyoutBackground", "StudioSurface"), ("MenuFlyoutBorderBrush", "StudioBorder"),

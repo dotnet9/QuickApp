@@ -190,7 +190,7 @@
       <Setter Property="Background" Value="{DynamicResource QAHoverBrush}" />
     </Style>
     <Style Selector="^.active /template/ Border#PART_Bg">
-      <Setter Property="Background" Value="{DynamicResource QAAccentBrush}" />
+      <Setter Property="Background" Value="{DynamicResource QAPrimaryBrush}" />
     </Style>
     <Style Selector="^.active">
       <Setter Property="Foreground" Value="{DynamicResource QAAccentInkBrush}" />
@@ -218,10 +218,19 @@
       <Setter Property="Background" Value="{DynamicResource QAActiveBrush}" />
     </Style>
     <Style Selector="^.primary /template/ Border#PART_Bg">
-      <Setter Property="Background" Value="{DynamicResource QAAccentBrush}" />
+      <Setter Property="Background" Value="{DynamicResource QAPrimaryBrush}" />
+    </Style>
+    <Style Selector="^.primary:pointerover /template/ Border#PART_Bg">
+      <Setter Property="Background" Value="{DynamicResource QAPrimaryHoverBrush}" />
+    </Style>
+    <Style Selector="^.primary:pressed /template/ Border#PART_Bg">
+      <Setter Property="Background" Value="{DynamicResource QAPrimaryPressedBrush}" />
     </Style>
     <Style Selector="^.primary">
       <Setter Property="Foreground" Value="{DynamicResource QAAccentInkBrush}" />
+    </Style>
+    <Style Selector="^:disabled">
+      <Setter Property="Opacity" Value="0.45" />
     </Style>
   </ControlTheme>
 
@@ -258,8 +267,8 @@
       <Setter Property="Background" Value="{DynamicResource QAActiveBrush}" />
     </Style>
     <Style Selector="^:checked /template/ Border#PART_Track">
-      <Setter Property="Background" Value="{DynamicResource QAAccentBrush}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource QAAccentBrush}" />
+      <Setter Property="Background" Value="{DynamicResource QAPrimaryBrush}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource QAPrimaryBrush}" />
     </Style>
     <Style Selector="^:checked /template/ Ellipse#PART_Knob">
       <Setter Property="Fill" Value="White" />
@@ -301,7 +310,7 @@
       <Setter Property="Foreground" Value="{DynamicResource QATextBrush}" />
     </Style>
     <Style Selector="^:selected /template/ Border#PART_Bg">
-      <Setter Property="Background" Value="{DynamicResource QAAccentBrush}" />
+      <Setter Property="Background" Value="{DynamicResource QAPrimaryBrush}" />
     </Style>
     <Style Selector="^:selected /template/ Border#PART_Notch">
       <Setter Property="IsVisible" Value="True" />
@@ -382,7 +391,7 @@
       <Setter Property="Foreground" Value="{DynamicResource QATextBrush}" />
     </Style>
     <Style Selector="^.active /template/ Border#PART_Bg">
-      <Setter Property="Background" Value="{DynamicResource QAAccentBrush}" />
+      <Setter Property="Background" Value="{DynamicResource QAPrimaryBrush}" />
     </Style>
     <Style Selector="^.active">
       <Setter Property="Foreground" Value="{DynamicResource QAAccentInkBrush}" />

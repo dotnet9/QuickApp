@@ -25,6 +25,8 @@ AppBuilder.Configure<App>().UseSkia().UseReactiveUI(_=>{}).With(new FontManagerO
 {
     FontFallbacks = [new FontFallback { FontFamily = new FontFamily("Microsoft YaHei UI") }]
 }).UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false }).SetupWithoutStarting();
+ButtonPaletteVerification.Run(App.ThemeController, output,
+    ("primary", new Button { Theme = (global::Avalonia.Styling.ControlTheme)Application.Current!.FindResource("LinkButton")!, Classes = { "primary" } }));
 var fixture = Path.Combine(output, "fixture");
 Directory.CreateDirectory(fixture);
 File.WriteAllText(Path.Combine(fixture,"portable.txt"), "");

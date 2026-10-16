@@ -202,16 +202,13 @@
     </Style>
     <!-- 推荐 · 安装按钮（强调色实底，原型 .chip.primary） -->
     <Style Selector="Button.rec-install">
-      <Setter Property="Background" Value="{DynamicResource QAAccentBrush}" />
+      <Setter Property="Theme" Value="{DynamicResource SolidButton}" />
+      <Setter Property="Background" Value="{DynamicResource QAPrimaryBrush}" />
       <Setter Property="Foreground" Value="{DynamicResource QAAccentInkBrush}" />
       <Setter Property="Padding" Value="14,5" />
       <Setter Property="CornerRadius" Value="8" />
       <Setter Property="FontSize" Value="12" />
       <Setter Property="MinHeight" Value="26" />
-    </Style>
-    <Style Selector="Button.rec-install:pointerover /template/ ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource QAAccentBrush}" />
-      <Setter Property="Opacity" Value="0.92" />
     </Style>
   </Window.Styles>
 

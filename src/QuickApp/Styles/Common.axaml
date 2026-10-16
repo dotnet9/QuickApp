@@ -140,7 +140,7 @@
     <Setter Property="CornerRadius" Value="9" />
   </Style>
   <Style Selector="Button.add-btn:pointerover /template/ Border#PART_Bg">
-    <Setter Property="Background" Value="{DynamicResource QAAccentBrush}" />
+    <Setter Property="Background" Value="{DynamicResource QAPrimaryBrush}" />
   </Style>
   <Style Selector="Button.add-btn:pointerover /template/ ContentPresenter Path">
     <Setter Property="Stroke" Value="{DynamicResource QAAccentInkBrush}" />
