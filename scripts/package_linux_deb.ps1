@@ -1,4 +1,4 @@
-[CmdletBinding()]
+﻿[CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
     [ValidateSet("linux-x64", "linux-arm64")]
@@ -46,21 +46,28 @@ New-Item -ItemType Directory -Path $outputPath -Force | Out-Null
 New-Item -ItemType Directory -Path $appPath, $binPath, $desktopPath, $controlPath -Force | Out-Null
 
 try {
-    Get-ChildItem -LiteralPath $sourcePath -Force | ForEach-Object {
-        Copy-Item -LiteralPath $_.FullName -Destination $appPath -Recurse -Force
+    Get-ChildItem -LiteralPath $sourcePath -Recurse -File -Force | ForEach-Object {
+        $relative = [IO.Path]::GetRelativePath($sourcePath, $_.FullName)
+        if ($_.Extension -in '.pdb', '.dbg' -or $relative -match '(^|[\\/])[^\\/]+\.dSYM([\\/]|$)') { return }
+        $destination = Join-Path $appPath $relative
+        New-Item -ItemType Directory -Path (Split-Path -Parent $destination) -Force | Out-Null
+        Copy-Item -LiteralPath $_.FullName -Destination $destination -Force
     }
 
     $executable = Join-Path $appPath "QuickApp"
     if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
         throw "Published executable was not produced: $executable"
     }
-    & chmod +x $executable
+    if ($IsLinux) {
+        & chmod 755 $executable
+        if ($LASTEXITCODE -ne 0) { throw '无法设置程序启动权限。' }
+    }
 
-    @(
-        "#!/bin/sh",
-        'exec /usr/lib/quickapp/QuickApp "$@"'
-    ) | Set-Content -LiteralPath (Join-Path $binPath "quickapp") -Encoding ascii
-    & chmod +x (Join-Path $binPath "quickapp")
+    [IO.File]::WriteAllText((Join-Path $binPath 'quickapp'), "#!/bin/sh`n" + 'exec /usr/lib/quickapp/QuickApp "$@"' + "`n")
+    if ($IsLinux) {
+        & chmod 755 (Join-Path $binPath 'quickapp')
+        if ($LASTEXITCODE -ne 0) { throw '无法设置启动入口权限。' }
+    }
 
     @(
         "[Desktop Entry]",
@@ -87,11 +94,14 @@ try {
     if (Test-Path -LiteralPath $packagePath) {
         Remove-Item -LiteralPath $packagePath -Force
     }
+    # 补齐独立安装包的图标、品牌和软件管理器元数据。
+    & (Join-Path $scriptRoot 'installer/linux/Write-LinuxPackageMetadata.ps1') -StagingDirectory $stageRoot -RepositoryRoot $repositoryRoot -Version $cleanVersion
     & dpkg-deb --build --root-owner-group $stageRoot $packagePath
     if ($LASTEXITCODE -ne 0) {
         throw "dpkg-deb failed with exit code $LASTEXITCODE."
     }
 
+    if (-not (Test-Path -LiteralPath $packagePath -PathType Leaf)) { throw "安装包未生成：$packagePath" }
     $sha = (Get-FileHash -LiteralPath $packagePath -Algorithm SHA256).Hash.ToLowerInvariant()
     "$sha  $packageName" | Set-Content -LiteralPath "$packagePath.sha256" -Encoding ascii
     Write-Host "Package: $packagePath"

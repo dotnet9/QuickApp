@@ -1,0 +1,15 @@
+{
+  "id": "com.codewf.quickapp",
+  "package": "quickapp",
+  "command": "quickapp",
+  "name": "QuickApp",
+  "chineseName": "快捷应用",
+  "summary": "Open applications, files and common commands",
+  "chineseSummary": "快速打开软件、文件和常用命令",
+  "description": "A desktop launcher for applications, files, folders, links and commands.",
+  "chineseDescription": "用于快速打开软件、文件、目录、网址与常用命令的桌面启动器。",
+  "categories": [
+    "Utility"
+  ],
+  "homepage": "https://github.com/dotnet9/QuickApp"
+}
