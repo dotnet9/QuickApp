@@ -14,6 +14,7 @@
 #endif
 
 [Setup]
+LicenseFile=..\LICENSE
 AppId={{B3D0D6A4-4F1A-4CB9-9D8C-2EEA8CE2F4A6}
 AppName=QuickApp
 AppVersion={#AppVersion}
@@ -38,10 +39,11 @@ UninstallDisplayIcon={app}\QuickApp.exe
 WizardStyle=modern
 
 [Languages]
+Name: "english"; MessagesFile: "compiler:Default.isl"
 Name: "chinesesimplified"; MessagesFile: "Languages\ChineseSimplified.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
 Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -51,4 +53,6 @@ Name: "{autoprograms}\QuickApp"; Filename: "{app}\QuickApp.exe"; WorkingDir: "{a
 Name: "{autodesktop}\QuickApp"; Filename: "{app}\QuickApp.exe"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\QuickApp.exe"; Description: "Launch QuickApp"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\QuickApp.exe"; Description: "{cm:LaunchProgram,QuickApp}"; Flags: nowait postinstall skipifsilent
+
+#include "installer\CodeWF.Setup.iss"
