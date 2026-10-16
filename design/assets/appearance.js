@@ -46,9 +46,9 @@
   }
   function apply(){
     const tokens=QUICKAPP_PALETTES[palette][root.dataset.theme==='light'?'light':'dark'];
-    for(const [css,key] of Object.entries({'--accent':'StudioAccentColor','--text':'StudioTextColor','--text-dim':'StudioMutedColor','--line':'StudioBorderColor','--hover':'StudioRaisedColor','--active':'StudioRaisedColor','--menu-bg':'StudioSurfaceColor','--bubble-bg':'StudioSurfaceColor','--menu-hover':'StudioRaisedColor'}))root.style.setProperty(css,tokens[key]);
+    for(const [css,key] of Object.entries({'--primary':'StudioPrimaryColor','--primary-hover':'StudioPrimaryHoverColor','--primary-pressed':'StudioPrimaryPressedColor','--accent':'StudioAccentColor','--text':'StudioTextColor','--text-dim':'StudioMutedColor','--line':'StudioBorderColor','--hover':'StudioRaisedColor','--active':'StudioRaisedColor','--menu-bg':'StudioSurfaceColor','--bubble-bg':'StudioSurfaceColor','--menu-hover':'StudioRaisedColor'}))root.style.setProperty(css,tokens[key]);
     const hex=tokens.StudioSurfaceColor.replace('#','');root.style.setProperty('--surface',[0,2,4].map(i=>parseInt(hex.slice(i,i+2),16)).join(','));
-    root.style.setProperty('--accent-ink','#ffffff');
+    root.style.setProperty('--accent-ink',tokens.StudioOnPrimaryColor);
     localStorage.setItem('quickapp-appearance',JSON.stringify({language,palette}));
     document.getElementById('qaPalette').innerHTML=Object.keys(paletteNames).map(key=>`<button class="palette-dot" role="option" data-palette="${key}" aria-selected="${key===palette}" title="${t(paletteNames[key])}" aria-label="${t(paletteNames[key])}"><i style="background:${QUICKAPP_PALETTES[key].swatch}"></i></button>`).join('');
     const mode=QUICKAPP_THEME.get(),toggle=document.getElementById('qaTheme');toggle.dataset.mode=mode;toggle.textContent=mode==='light'?'☀':mode==='dark'?'☾':'◐';toggle.title=t(mode==='light'?'LightTheme':mode==='dark'?'DarkTheme':'SystemTheme');toggle.setAttribute('aria-label',toggle.title);

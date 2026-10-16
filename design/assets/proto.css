@@ -1,4 +1,4 @@
-/* ============================================================================
+﻿/* ============================================================================
    QuickApp 原型共享样式（零依赖、离线可用）
    design/index.html 的各界面共用这份 token 与组件。
    Avalonia 实现以这里的尺寸、圆角、颜色和状态为准。
@@ -113,7 +113,7 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 .dock-handle::before{content:"";position:absolute;inset:-8px -12px}
 body:not(.dock-visible):not(.dock-pinned) .dock-handle{opacity:.68;pointer-events:auto}
 .dock-handle:hover,.dock-handle:focus-visible{
-  opacity:1;background:var(--accent);box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 36%,transparent),0 2px 8px rgba(0,0,0,.24);
+  opacity:1;background:var(--primary);box-shadow:0 0 0 1px color-mix(in srgb,var(--accent) 36%,transparent),0 2px 8px rgba(0,0,0,.24);
   transform:translateX(-50%) scaleX(1.12);outline:none;
 }
 body.dock-pinned .dock-handle{display:none}
@@ -181,7 +181,7 @@ html[data-search-open="true"] .dock-items.searching{
   display:grid;place-items:center;background:var(--hover);color:var(--accent);
   transition:background 140ms linear,transform 140ms var(--ease-pop);
 }
-.search-result-add:hover{background:var(--accent);color:var(--accent-ink);transform:scale(1.08)}
+.search-result-add:hover{background:var(--primary);color:var(--accent-ink);transform:scale(1.08)}
 .search-result-add:active{transform:scale(.94)}
 .dock-items.searching .dock-empty{align-self:stretch;min-height:64px;display:grid;place-items:center;padding:12px 18px;text-align:center}
 
@@ -249,7 +249,7 @@ html[data-edit="true"] .dock-tools{
 
 /* 滚动进度限制在应用图标区域 */
 .scroll-indicator{position:absolute;left:18px;right:18px;bottom:4px;height:2px;margin:0;border-radius:2px;background:var(--hover);overflow:hidden;z-index:3}
-.scroll-indicator i{position:absolute;top:0;bottom:0;left:0;border-radius:2px;background:var(--accent);opacity:.65}
+.scroll-indicator i{position:absolute;top:0;bottom:0;left:0;border-radius:2px;background:var(--primary);opacity:.65}
 
 /* 搜索行 */
 .dock-search{display:flex;align-items:center;gap:6px;padding:4px 6px 2px;border-bottom:1px solid var(--line);margin-bottom:2px}
@@ -273,8 +273,10 @@ html[data-edit="true"] .dock-tools{
   background:var(--hover);color:var(--text);font-size:12px;transition:background 140ms linear;
 }
 .chip:hover{background:var(--active)}
-.chip.primary{background:var(--accent);color:var(--accent-ink)}
-.chip.primary:hover{filter:brightness(1.08)}
+.chip.primary{background:var(--primary);color:var(--accent-ink)}
+.chip.primary:hover{background:var(--primary-hover)}
+.chip.primary:active{background:var(--primary-pressed)}
+.chip.primary:disabled{opacity:.45;pointer-events:none}
 .chip-icon{line-height:0;display:grid;place-items:center}
 
 /* ============================ 4. 更新提示（本次新增规范） ============================ */
@@ -297,7 +299,7 @@ html[data-edit="true"] .dock-tools{
 .update-actions .chip{height:24px;padding:0 9px;font-size:11.5px}
 /* 下载中：进度条在文本下方，占满文本区 */
 .update-progress{position:relative;height:4px;border-radius:2px;background:var(--active);overflow:hidden}
-.update-progress i{position:absolute;top:0;bottom:0;left:0;width:40%;border-radius:inherit;background:var(--accent);transition:width 220ms linear}
+.update-progress i{position:absolute;top:0;bottom:0;left:0;width:40%;border-radius:inherit;background:var(--primary);transition:width 220ms linear}
 .update-progress.indeterminate i{width:34%;animation:updateSlide 1.1s linear infinite}
 @keyframes updateSlide{from{left:-34%}to{left:100%}}
 
@@ -343,7 +345,7 @@ html[data-edit="true"] .dock-tools{
 .bubble-name{font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bubble-target{font-size:11px;color:var(--text-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-.drop-line{position:fixed;width:3px;border-radius:2px;background:var(--accent);box-shadow:0 0 8px var(--accent);z-index:305}
+.drop-line{position:fixed;width:3px;border-radius:2px;background:var(--primary);box-shadow:0 0 8px var(--accent);z-index:305}
 .rename-input{
   position:fixed;height:32px;padding:0 10px;border-radius:8px;pointer-events:auto;z-index:320;
   background:var(--menu-bg);color:var(--text);border:1px solid var(--accent);outline:none;
@@ -379,7 +381,7 @@ html[data-edit="true"] .dock-tools{
 .dock-pos .e-bottom{left:20px;right:20px;bottom:5px;height:20px}
 .dock-pos .e-left{top:30px;bottom:30px;left:5px;width:20px}
 .dock-pos .e-right{top:30px;bottom:30px;right:5px;width:20px}
-.dock-pos .edge.active{background:var(--accent);color:var(--accent-ink)}
+.dock-pos .edge.active{background:var(--primary);color:var(--accent-ink)}
 
 .tray-preview{
   position:fixed;top:12px;right:12px;z-index:320;border-radius:11px;overflow:hidden;
@@ -421,7 +423,7 @@ html[data-edit="true"] .dock-tools{
 .settings-tab .tab-icon{width:16px;height:16px;margin-right:9px;display:grid;place-items:center;line-height:0}
 .settings-tab .tab-icon svg{width:16px;height:16px}
 .settings-tab:hover{background:var(--active);color:var(--text)}
-.settings-tab.active{background:var(--accent);color:var(--accent-ink);font-weight:600}
+.settings-tab.active{background:var(--primary);color:var(--accent-ink);font-weight:600}
 .settings-tab.active::before{content:"";position:absolute;left:0;top:7px;bottom:7px;width:3px;border-radius:0 3px 3px 0;background:currentColor;opacity:.7}
 .settings-content{flex:1;min-width:0;overflow:auto;padding:4px 18px 18px}
 .settings-panel .group:first-child{padding-top:12px}
@@ -495,12 +497,12 @@ output{font-size:11px;color:var(--text-dim);font-variant-numeric:tabular-nums;mi
   position:relative;flex:0 0 auto;transition:background 160ms linear,border-color 160ms linear;
 }
 .switch i{position:absolute;left:2px;top:2px;width:16px;height:16px;border-radius:50%;background:var(--text-dim);transition:transform 180ms var(--ease-pop),background 160ms linear}
-.switch[aria-checked="true"]{background:var(--accent);border-color:var(--accent)}
+.switch[aria-checked="true"]{background:var(--primary);border-color:var(--accent)}
 .switch[aria-checked="true"] i{transform:translateX(16px);background:#fff}
 
 .seg{display:flex;gap:2px;padding:2px;border-radius:9px;background:var(--hover);flex:0 0 auto}
 .seg button{height:26px;padding:0 10px;border-radius:7px;font-size:12px;color:var(--text-dim)}
-.seg button.active{background:var(--accent);color:var(--accent-ink)}
+.seg button.active{background:var(--primary);color:var(--accent-ink)}
 .seg.sm button{height:22px;padding:0 8px;font-size:11px}
 
 /* ============================ 8. Toast ============================ */
@@ -516,7 +518,7 @@ output{font-size:11px;color:var(--text-dim);font-variant-numeric:tabular-nums;mi
 }
 .toast-downloading{position:relative;padding-bottom:13px}
 .toast-progress{position:absolute;left:14px;right:14px;bottom:5px;height:2px;border-radius:2px;background:var(--hover);overflow:hidden}
-.toast-progress i{display:block;height:100%;border-radius:inherit;background:var(--accent);transition:width 220ms linear}
+.toast-progress i{display:block;height:100%;border-radius:inherit;background:var(--primary);transition:width 220ms linear}
 @keyframes toastIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .toast .toast-action{color:var(--accent);font-size:12.5px;flex:0 0 auto}
 .toast.hide{opacity:0;transform:translateY(6px);transition:opacity 160ms linear,transform 160ms linear}
