@@ -169,10 +169,10 @@ try {
     if (Test-Path -LiteralPath $dmgPath) {
         Remove-Item -LiteralPath $dmgPath -Force
     }
-    # DMF 根目录只放 .app 与 Applications 软链；图标已烤进 .app/Contents/Resources
-    & hdiutil create -volname "QuickApp" -srcfolder $stageRoot -ov -format UDZO $dmgPath
+    # 品牌背景和 Finder 布局由仓内助手写入，复制与权限仍由系统 Finder 处理。
+    & bash (Join-Path $scriptRoot 'installer/macos/create-branded-dmg.sh') $stageRoot 'QuickApp' $dmgPath 'QuickApp'
     if ($LASTEXITCODE -ne 0) {
-        throw "hdiutil failed with exit code $LASTEXITCODE."
+        throw "Branded DMG creation failed with exit code $LASTEXITCODE."
     }
 
     $sha = (Get-FileHash -LiteralPath $dmgPath -Algorithm SHA256).Hash.ToLowerInvariant()
