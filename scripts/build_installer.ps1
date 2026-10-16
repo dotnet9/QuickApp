@@ -29,7 +29,7 @@ if (-not (Test-Path -LiteralPath $outputPath -PathType Container)) {
 }
 
 if ([string]::IsNullOrWhiteSpace($InnoSetupCompiler)) {
-    $command = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+    $command = Get-Command ISCC.exe -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($null -ne $command) {
         $InnoSetupCompiler = $command.Source
     }
