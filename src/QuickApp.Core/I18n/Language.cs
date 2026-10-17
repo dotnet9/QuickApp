@@ -274,6 +274,9 @@ public static class Language
     public const string ReleaseNotes = "QuickApp.Text.ReleaseNotes";
     public const string CannotDownloadHint = "QuickApp.Text.CannotDownloadHint";
     public const string InstallConfirmHint = "QuickApp.Text.InstallConfirmHint";
+    public const string CheckingUpdates = "QuickApp.Text.CheckingUpdates";
+    public const string StartingInstaller = "QuickApp.Text.StartingInstaller";
+    public const string Close = "QuickApp.Text.Close";
     public const string PackageFallbackHint = "QuickApp.Text.PackageFallbackHint";
     public const string NoReleaseNotes = "QuickApp.Text.NoReleaseNotes";
     public const string UnsupportedPlatformHotkeySuffix = "QuickApp.Text.UnsupportedPlatformHotkeySuffix";

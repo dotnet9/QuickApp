@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.ComponentModel;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -8,15 +8,11 @@ using QuickApp.ViewModels;
 
 namespace QuickApp.Views;
 
-/// <summary>
-/// 发现新版本后的更新说明卡片：已安装版本 / 最新版本 / 更新说明正文，
-/// 底部「安装」按当前状态显示为 下载 → 下载中（带进度）→ 安装；
-/// 没有匹配本机安装包时按钮变成「打开发布页」，不会下载错平台的文件。
-/// </summary>
+/// <summary>共用的检查、下载和安装窗口。关闭窗口保留后台下载及已下载的安装包。</summary>
 public partial class UpdateNotesWindow : CodeWFWindow
 {
+    private static UpdateNotesWindow? _current;
     private DockViewModel? _vm;
-    private bool _closing;
 
     public UpdateNotesWindow()
     {
@@ -33,42 +29,24 @@ public partial class UpdateNotesWindow : CodeWFWindow
         };
     }
 
-    /// <summary>由 Dock 或设置窗口在检查结束后弹出；没有可安装的版本时不打开。</summary>
     public static void ShowFor(Window owner, DockViewModel dock)
     {
-        if (!dock.UpdateAvailable)
+        if (_current is not null)
         {
+            _current.Activate();
             return;
         }
 
         var window = new UpdateNotesWindow();
-        window.Attach(dock);
+        window._vm = dock;
+        window.DataContext = dock;
+        dock.PropertyChanged += window.OnDockPropertyChanged;
+        window.UpdateState();
+        _current = window;
         window.ShowDialog(owner);
     }
 
-    private void Attach(DockViewModel dock)
-    {
-        _vm = dock;
-        DataContext = dock;
-        NotesText.Text = string.IsNullOrWhiteSpace(dock.UpdateNotesText)
-            ? AppText.Get(Language.NoReleaseNotes)
-            : dock.UpdateNotesText;
-        dock.PropertyChanged += OnDockPropertyChanged;
-        UpdateState();
-    }
-
-    private void OnDockPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (string.IsNullOrEmpty(e.PropertyName) || e.PropertyName is nameof(DockViewModel.IsDownloadingUpdate)
-            or nameof(DockViewModel.IsUpdateReady)
-            or nameof(DockViewModel.DownloadProgress)
-            or nameof(DockViewModel.DownloadProgressText)
-            or nameof(DockViewModel.CanDownloadUpdate)
-            or nameof(DockViewModel.NeedsUpdatePage))
-        {
-            UpdateState();
-        }
-    }
+    private void OnDockPropertyChanged(object? sender, PropertyChangedEventArgs e) => UpdateState();
 
     protected override void OnClosed(EventArgs e)
     {
@@ -77,75 +55,51 @@ public partial class UpdateNotesWindow : CodeWFWindow
             _vm.PropertyChanged -= OnDockPropertyChanged;
             _vm = null;
         }
-
+        if (ReferenceEquals(_current, this)) _current = null;
         base.OnClosed(e);
     }
 
     private void UpdateState()
     {
-        if (_vm is null)
-        {
-            return;
-        }
+        if (_vm is null) return;
 
+        bool checking = _vm.IsCheckingUpdate;
+        bool installing = _vm.IsInstallingUpdate;
         bool ready = _vm.IsUpdateReady;
         bool unsupported = _vm.NeedsUpdatePage;
         bool downloading = _vm.IsDownloadingUpdate;
-        bool canDownload = _vm.CanDownloadUpdate;
 
-        InstallButton.Content = ready ? _vm.UpdateInstallButtonText : unsupported ? AppText.Get(Language.OpenReleasePage) : AppText.Get(Language.Download);
-        InstallButton.IsEnabled = !downloading && (ready || canDownload || unsupported);
-        InstallBar.IsVisible = downloading || _vm.DownloadProgress > 0 || ready;
-        DownloadBar.IsVisible = !ready;
+        Title = AppText.Get(Language.CheckUpdates);
+        StatusText.Text = installing ? AppText.Get(Language.StartingInstaller) : _vm.UpdateResultText;
+        CheckingBar.IsVisible = checking || installing;
+        ReleaseDetails.IsVisible = _vm.UpdateAvailable && !checking;
+        NotesText.Text = string.IsNullOrWhiteSpace(_vm.UpdateNotesText)
+            ? AppText.Get(Language.NoReleaseNotes) : _vm.UpdateNotesText;
+        InstallButton.Content = installing ? AppText.Get(Language.StartingInstaller)
+            : ready ? _vm.UpdateInstallButtonText
+            : unsupported ? AppText.Get(Language.OpenReleasePage)
+            : _vm.UpdateAvailable ? AppText.Get(Language.Download) : AppText.Get(Language.CheckNow);
+        InstallButton.IsEnabled = !checking && !installing && !downloading;
+        CancelButton.IsEnabled = !installing;
+        InstallBar.IsVisible = downloading || ready;
+        DownloadBar.IsVisible = downloading;
+        DownloadBar.IsIndeterminate = downloading && _vm.DownloadProgress <= 0;
         ProgressText.Text = _vm.DownloadProgressText;
         DownloadBar.Value = _vm.DownloadProgress;
-        DownloadError.IsVisible = !downloading && !ready && !unsupported && !canDownload;
-        InstallNote.IsVisible = !ready && !unsupported;
+        DownloadError.Text = _vm.UpdateActionError;
+        DownloadError.IsVisible = !string.IsNullOrWhiteSpace(_vm.UpdateActionError);
+        InstallNote.IsVisible = !unsupported;
         FallbackNote.IsVisible = unsupported;
     }
 
     private void OnInstallClick(object? sender, RoutedEventArgs e)
     {
-        if (_vm is null)
-        {
-            return;
-        }
-
-        if (_vm.IsDownloadingUpdate)
-        {
-            return;
-        }
-
-        if (_vm.IsUpdateReady)
-        {
-            // 打开安装程序后主程序会退出，先把卡片收掉，避免它跟着一起消失得突兀
-            _closing = true;
-            Close();
-            _vm.InstallUpdateCommand.Execute(null);
-            return;
-        }
-
-        if (_vm.NeedsUpdatePage)
-        {
-            Close();
-            _vm.OpenUpdateCommand.Execute(null);
-            return;
-        }
-
-        if (_vm.CanDownloadUpdate)
-        {
-            _vm.DownloadUpdateCommand.Execute(null);
-        }
-    }
-
-    protected override void OnClosing(WindowClosingEventArgs e)
-    {
-        // 关掉卡片等于放弃这次更新：停掉下载 / 打开安装程序时不算取消
-        if (!_closing)
-        {
-            _vm?.CancelUpdateDownloadCommand.Execute(null);
-        }
-
-        base.OnClosing(e);
+        // 安装命令执行期间保留窗口及其视图模型，成功启动安装器后由宿主退出应用。
+        var dock = _vm;
+        if (dock is null || dock.IsCheckingUpdate || dock.IsInstallingUpdate || dock.IsDownloadingUpdate) return;
+        if (dock.IsUpdateReady) dock.InstallUpdateCommand.Execute(null);
+        else if (dock.NeedsUpdatePage) dock.OpenUpdateCommand.Execute(null);
+        else if (dock.CanDownloadUpdate) dock.DownloadUpdateCommand.Execute(null);
+        else dock.CheckUpdateCommand.Execute(null);
     }
 }

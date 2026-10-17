@@ -83,6 +83,8 @@ public sealed class DockViewModel : ViewModelBase
     private double _downloadProgress;
     private string? _downloadedUpdatePath;
     private CancellationTokenSource? _downloadCancellation;
+    private bool _isInstallingUpdate;
+    private string? _updateActionError;
 
     public DockViewModel(
         ConfigStore store,
@@ -337,7 +339,7 @@ public sealed class DockViewModel : ViewModelBase
 
     public string UpdateText => _pendingUpdate is null ? string.Empty : AppText.Get(Language.NewVersionPrefix) + _pendingUpdate.Tag;
 
-    public string UpdateResultText => IsCheckingUpdate ? AppText.Get(Language.CheckUpdates) : _updateError is not null ? AppText.Get(Language.UpdateErrorPrefix) + _updateError : !_hasChecked ? AppText.Get(Language.NotChecked) : _pendingUpdate is not null ? UpdateText : AppText.Get(Language.CurrentVersionPrefix) + VersionText;
+    public string UpdateResultText => IsCheckingUpdate ? AppText.Get(Language.CheckingUpdates) : _updateError is not null ? AppText.Get(Language.UpdateErrorPrefix) + _updateError : !_hasChecked ? AppText.Get(Language.NotChecked) : _pendingUpdate is not null ? UpdateText : AppText.Get(Language.CurrentVersionPrefix) + VersionText;
 
     /// <summary>已安装版本（设置 · 关于的版本行与更新说明对话框共用）。</summary>
     public string CurrentVersionText => VersionText;
@@ -345,11 +347,23 @@ public sealed class DockViewModel : ViewModelBase
     /// <summary>更新说明对话框的请求：视图弹出，Dock 与设置窗口都走这一个入口。</summary>
     public event Action? UpdateNotesRequested;
 
-    /// <summary>通知视图弹出更新说明（已检查结束、确认有新版本时）。</summary>
+    /// <summary>所有手动更新入口共用同一个窗口，检查中和没有新版本时也可打开。</summary>
     public void RequestUpdateNotes() => UpdateNotesRequested?.Invoke();
 
 
     public bool IsDownloadingUpdate => _isDownloadingUpdate;
+
+    public bool IsInstallingUpdate
+    {
+        get => _isInstallingUpdate;
+        private set => Set(ref _isInstallingUpdate, value);
+    }
+
+    public string? UpdateActionError
+    {
+        get => _updateActionError;
+        private set => Set(ref _updateActionError, value);
+    }
 
     public bool IsUpdateReady => !string.IsNullOrWhiteSpace(_downloadedUpdatePath) &&
         File.Exists(_downloadedUpdatePath);
@@ -1429,7 +1443,8 @@ public sealed class DockViewModel : ViewModelBase
 
     public async Task CheckUpdateAsync(bool silent = false)
     {
-        if (IsCheckingUpdate)
+        if (!silent) RequestUpdateNotes();
+        if (IsCheckingUpdate || IsDownloadingUpdate || IsInstallingUpdate)
         {
             return;
         }
@@ -1437,11 +1452,11 @@ public sealed class DockViewModel : ViewModelBase
         // 手动检查防抖：短时间重复点击不重复请求（限流恢复期间尤其不该放大流量）
         if (!silent && DateTime.UtcNow - _lastUpdateCheckAt < TimeSpan.FromSeconds(15))
         {
-            Toast(AppText.Get(Language.JustChecked));
             return;
         }
 
         IsCheckingUpdate = true;
+        UpdateActionError = null;
         try
         {
             Version current = UpdateVersion.Current(typeof(DockViewModel).Assembly);
@@ -1453,11 +1468,6 @@ public sealed class DockViewModel : ViewModelBase
                 _updateError = result.Error ?? AppText.Get(Language.UpdateCheckFailed);
                 _hasChecked = true;
                 this.RaisePropertyChanged(nameof(UpdateResultText));
-                if (!silent)
-                {
-                    Toast(UpdateResultText);
-                }
-
                 return;
             }
 
@@ -1469,39 +1479,26 @@ public sealed class DockViewModel : ViewModelBase
             {
                 ClearDownloadedUpdate(cancel: true);
                 _pendingUpdate = null;
-                this.RaisePropertyChanged(nameof(UpdateAvailable));
-                this.RaisePropertyChanged(nameof(UpdateText));
-                this.RaisePropertyChanged(nameof(UpdateDisplayText));
-                this.RaisePropertyChanged(nameof(UpdateNoteText));
-                this.RaisePropertyChanged(nameof(UpdateIconBrush));
-                this.RaisePropertyChanged(nameof(ShowUpdateBar));
-                this.RaisePropertyChanged(nameof(ShowUpdatePill));
-                RaiseDownloadStateChanged();
-                this.RaisePropertyChanged(nameof(UpdateResultText));
-                if (!silent)
-                {
-                    Toast(UpdateResultText);
-                }
-
+                RaiseUpdateStateChanged();
                 return;
             }
 
-            ClearDownloadedUpdate(cancel: true);
+            // 同一安装包的重复检查只刷新说明，保留下载结果。
+            bool samePackage = _pendingUpdate is not null &&
+                _pendingUpdate.Tag == info.Tag && _pendingUpdate.AssetName == info.AssetName &&
+                _pendingUpdate.AssetUrl == info.AssetUrl && _pendingUpdate.ChecksumUrl == info.ChecksumUrl;
+            if (!samePackage) ClearDownloadedUpdate(cancel: true);
             _pendingUpdate = info;
-            this.RaisePropertyChanged(nameof(UpdateAvailable));
-            this.RaisePropertyChanged(nameof(UpdateText));
-            this.RaisePropertyChanged(nameof(UpdateDisplayText));
-            this.RaisePropertyChanged(nameof(UpdateNoteText));
-            this.RaisePropertyChanged(nameof(UpdateIconBrush));
-            this.RaisePropertyChanged(nameof(ShowUpdateBar));
-            this.RaisePropertyChanged(nameof(ShowUpdatePill));
-            RaiseDownloadStateChanged();
-            this.RaisePropertyChanged(nameof(UpdateResultText));
-            Toast(AppText.Get(Language.NewVersionPrefix) + info.Tag + AppText.Get(Language.ViewUpdateHintSuffix), AppText.Get(Language.View), ShowUpdateNotesCommand, 10000);
+            RaiseUpdateStateChanged();
+            if (silent && !samePackage)
+                Toast(AppText.Get(Language.NewVersionPrefix) + info.Tag + AppText.Get(Language.ViewUpdateHintSuffix), AppText.Get(Language.View), ShowUpdateNotesCommand, 10000);
         }
         catch (Exception ex)
         {
             AppLog.Error("检查更新失败", ex);
+            _updateError = ex.Message;
+            _hasChecked = true;
+            this.RaisePropertyChanged(nameof(UpdateResultText));
         }
         finally
         {
@@ -1544,48 +1541,52 @@ public sealed class DockViewModel : ViewModelBase
 
     private async Task DownloadUpdateAsync()
     {
-        if (IsDownloadingUpdate)
+        if (IsCheckingUpdate || IsDownloadingUpdate || IsInstallingUpdate || IsUpdateReady)
         {
             return;
         }
 
-        if (_pendingUpdate?.AssetUrl is null)
+        UpdateInfo? update = _pendingUpdate;
+        if (update is null || !CanDownloadUpdate)
         {
             OpenUpdatePage();
             return;
         }
 
         _downloadCancellation?.Dispose();
-        _downloadCancellation = new CancellationTokenSource();
+        var cancellation = new CancellationTokenSource();
+        _downloadCancellation = cancellation;
         _downloadProgress = 0;
         _isDownloadingUpdate = true;
+        UpdateActionError = null;
         RaiseDownloadStateChanged();
 
         try
         {
             var progress = new Progress<UpdateDownloadProgress>(value =>
             {
+                if (!ReferenceEquals(_downloadCancellation, cancellation) || cancellation.IsCancellationRequested) return;
                 _downloadProgress = value.Percentage ?? _downloadProgress;
                 RaiseDownloadStateChanged();
-                Toast(AppText.Get(Language.DownloadingPrefix) + _downloadProgress.ToString("0") + "%", AppText.Get(Language.Cancel), CancelUpdateDownloadCommand, 5000, _downloadProgress);
             });
             UpdateDownloadResult result = await _updates.DownloadAsync(
-                _pendingUpdate,
+                update,
                 progress,
-                _downloadCancellation.Token).ConfigureAwait(true);
+                cancellation.Token).ConfigureAwait(true);
 
+            cancellation.Token.ThrowIfCancellationRequested();
             _downloadedUpdatePath = result.FilePath;
             _downloadProgress = 100;
-            Toast(AppText.Get(Language.DownloadReadyPrefix) + UpdateInstallButtonText);
         }
         catch (OperationCanceledException)
         {
-            Toast(AppText.Get(Language.DownloadCanceled));
+            _downloadProgress = 0;
         }
         catch (Exception ex)
         {
             AppLog.Error("下载更新失败", ex);
-            Toast(AppText.Get(Language.DownloadFailed));
+            _downloadProgress = 0;
+            UpdateActionError = AppText.Get(Language.DownloadFailed) + " · " + ex.Message;
         }
         finally
         {
@@ -1600,23 +1601,35 @@ public sealed class DockViewModel : ViewModelBase
 
     private async Task InstallDownloadedUpdateAsync()
     {
+        if (IsCheckingUpdate || IsDownloadingUpdate || IsInstallingUpdate) return;
         string? path = _downloadedUpdatePath;
         if (string.IsNullOrWhiteSpace(path) || !File.Exists(path))
         {
             ClearDownloadedUpdate(cancel: false);
-            Toast(AppText.Get(Language.PackageMissing));
+            UpdateActionError = AppText.Get(Language.PackageMissing);
             return;
         }
+        IsInstallingUpdate = true;
+        UpdateActionError = null;
         try
         {
             var result = await _updates.InstallAsync(new UpdateDownloadResult(path, Path.GetFileName(path), new FileInfo(path).Length));
-            Toast(result.Message);
-            if (result.ShouldExitApplication) _host?.Exit();
+            AppLog.Info("更新安装结果：" + result.Kind + " · " + result.Message);
+            if (result.Kind is UpdateInstallKind.Launched or UpdateInstallKind.OpenedFolder)
+            {
+                if (result.Kind == UpdateInstallKind.Launched && result.ShouldExitApplication) _host?.Exit();
+                else Toast(result.Message);
+            }
+            else UpdateActionError = result.Message;
         }
         catch (Exception ex)
         {
             AppLog.Error(AppText.Get(Language.OpenPackageFailed), ex);
-            Toast(AppText.Get(Language.OpenPackageFailed));
+            UpdateActionError = AppText.Get(Language.OpenPackageFailed) + " · " + ex.Message;
+        }
+        finally
+        {
+            IsInstallingUpdate = false;
         }
     }
 
@@ -1647,6 +1660,16 @@ public sealed class DockViewModel : ViewModelBase
         this.RaisePropertyChanged(nameof(UpdateIconGlyph));
         this.RaisePropertyChanged(nameof(ShowUpdateBar));
         this.RaisePropertyChanged(nameof(ShowUpdatePill));
+    }
+
+    private void RaiseUpdateStateChanged()
+    {
+        this.RaisePropertyChanged(nameof(UpdateAvailable));
+        this.RaisePropertyChanged(nameof(UpdateText));
+        this.RaisePropertyChanged(nameof(UpdateTag));
+        this.RaisePropertyChanged(nameof(UpdateNotesText));
+        this.RaisePropertyChanged(nameof(UpdateResultText));
+        RaiseDownloadStateChanged();
     }
 
     private void OpenUpdatePage()
@@ -1914,8 +1937,6 @@ public sealed class DockViewModel : ViewModelBase
     {
         ClearDownloadedUpdate(cancel: true);
         _pendingUpdate = null;
-        this.RaisePropertyChanged(nameof(UpdateAvailable));
-        this.RaisePropertyChanged(nameof(UpdateText));
-        RaiseDownloadStateChanged();
+        RaiseUpdateStateChanged();
     }
 }

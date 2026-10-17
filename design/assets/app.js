@@ -16,7 +16,7 @@
   const list = $('#dockItems'), fades = {left:$('#fadeLeft'), right:$('#fadeRight'), indicator:$('#scrollIndicator'), thumb:$('#scrollThumb')};
   let draft = null, pendingIcon = null, dragId = null, picker = null;
   const returnFocus = new Map();
-  let revealTimer, hideTimer, updateTimer, update = null, popoverOpen = false;
+  let revealTimer, hideTimer, updateTimer, update = null, updateDialogOpen = false, updateChecking = false;
   const rec = {id:'vex', name:'Vex · 维刻', version:'v1.5.1', phase:stored?.vexInstalled ? 'installed' : 'idle', progress:0};
 
   function persist() {
@@ -152,10 +152,10 @@
       {label:'网址…', icon:'globe', action:() => openEditor(null, 'web')}, {label:'命令行…', icon:'terminal', action:() => openEditor(null, 'cmd')},
       {sep:true}, {title:'管理'}, {label:'编辑模式', icon:'pencil', action:() => edit()}, {label:'清空', icon:'trash', danger:true, action:clearItems},
       {sep:true}, {title:'停靠'}, {custom:() => QA.dockEdgePicker(st.edge, edge => { QA.closeMenu(); setEdge(edge); })},
-      {sep:true}, {label:'设置', icon:'gear', action:openSettings}, {label:'关于', icon:'info', action:openStandaloneAbout}, {sep:true}, {label:'退出', icon:'power', danger:true, action:exit}];
+      {sep:true}, {label:'设置', icon:'gear', action:openSettings}, {label:'检查更新', icon:'download', action:checkUpdates}, {label:'关于', icon:'info', action:openStandaloneAbout}, {sep:true}, {label:'退出', icon:'power', danger:true, action:exit}];
   }
   function exit() {
-    persist(); clearTimeout(hideTimer); clearInterval(updateTimer); clearInterval(rec.timer); popoverOpen = false;
+    persist(); clearTimeout(hideTimer); clearInterval(updateTimer); clearInterval(rec.timer);
     st.exited = true; st.dockVisible = false; closeLayer('settingsLayer'); refresh(); QA.toast('QuickApp 已退出');
   }
   function openLayer(id) {
@@ -163,11 +163,11 @@
     returnFocus.set(id, document.activeElement); $('#' + id).hidden = false;
     requestAnimationFrame(() => $('#' + id).querySelector('input,button,select')?.focus());
   }
-  function closeLayer(id) { $('#' + id).hidden = true; returnFocus.get(id)?.focus(); }
+  function closeLayer(id) { if (id === 'dialogLayer') updateDialogOpen = false; $('#' + id).hidden = true; returnFocus.get(id)?.focus(); }
   function dialog(title, content, buttons) {
     $('#dialogTitle').textContent = title;
     $('#dialogBody').replaceChildren(...content, h('div', {class:'row dialog-actions'}, h('span', {class:'spacer'}), ...buttons));
-    openLayer('dialogLayer');
+    if ($('#dialogLayer').hidden) openLayer('dialogLayer');
   }
   const chip = (label, action, primary = false) => h('button', {class:'chip' + (primary ? ' primary' : ''), type:'button', text:label, onclick:action});
   function choosePath(folder, onChoose, initial = '') {
@@ -313,19 +313,16 @@
     download() { update.phase = 'downloading'; update.progress = 0; renderUpdate();
       updateTimer = setInterval(() => { update.progress += 10; if (update.progress >= 100) { clearInterval(updateTimer); update.phase = 'ready'; } renderUpdate(); }, 180); },
     cancel() { clearInterval(updateTimer); update.phase = 'found'; renderUpdate(); QA.toast('已取消下载'); },
-    dismiss() { clearInterval(updateTimer); update = null; popoverOpen = false; renderUpdate(); },
+    dismiss() { clearInterval(updateTimer); update = null; renderUpdate(); },
     install() { QA.toast('正在打开安装程序'); updateActions.dismiss(); exit(); },
     openPage() { window.open('https://github.com/dotnet9/QuickApp/releases/latest', '_blank', 'noopener'); }
   };
   function renderUpdate() {
-    const slot = $('#updateSlot'), popover = $('#updatePopover'); slot.replaceChildren(); popover.replaceChildren(); popover.hidden = !popoverOpen || !update || st.exited;
+    if (updateDialogOpen) renderUpdateDialog();
+    const slot = $('#updateSlot'); slot.replaceChildren();
     if (!update || st.exited) return;
-    if (st.edge === 'left' || st.edge === 'right') slot.append(QA.updatePillNode(() => { popoverOpen = !popoverOpen; renderUpdate(); }));
-    else { slot.append(QA.updateBarNode(update, updateActions)); popoverOpen = false; popover.hidden = true; }
-    if (popoverOpen) {
-      const card = QA.updateCardNode(update, updateActions); popover.append(card);
-      requestAnimationFrame(() => { const rect = $('#dock').getBoundingClientRect(); popover.style.left = Math.max(8, Math.min(st.edge === 'left' ? rect.right + 8 : rect.left - 338, innerWidth - 338)) + 'px'; popover.style.top = Math.max(8, Math.min(rect.bottom - 140, innerHeight - card.offsetHeight - 10)) + 'px'; });
-    }
+    if (st.edge === 'left' || st.edge === 'right') slot.append(QA.updatePillNode(openUpdateNotes));
+    else slot.append(QA.updateBarNode(update, {view:openUpdateNotes, dismiss:updateActions.dismiss}));
   }
 
   QA.hydrateIcons();
@@ -425,10 +422,8 @@
   $('#cancel').onclick = $('#close').onclick = () => closeLayer('editorLayer');
   $('#settingsClose').onclick = () => closeLayer('settingsLayer');
   $('#standaloneAboutClose').onclick = () => closeLayer('aboutLayer');
-  $('#standaloneCheckUpdate').onclick = () => {
-    $('#standaloneUpdateStatus').textContent='正在检查…';$('#standaloneCheckUpdate').disabled=true;
-    setTimeout(()=>{update={phase:'found',tag:'v__UPDATE_VERSION__',progress:0,installer:true,notes:'维护更新'};$('#standaloneUpdateStatus').textContent='发现新版本 v__UPDATE_VERSION__';$('#standaloneCheckUpdate').disabled=false;openUpdateNotes();},500);
-  }; $('#dialogClose').onclick = () => closeLayer('dialogLayer');
+  $('#standaloneCheckUpdate').onclick = checkUpdates;
+  $('#dialogClose').onclick = () => closeLayer('dialogLayer');
   $$('[data-dismiss]').forEach(el => el.onclick = () => closeLayer(el.dataset.dismiss));
   $$('[data-tab]').forEach((tab, i, tabs) => {
     tab.onclick = () => selectTab(tab.dataset.tab);
@@ -443,28 +438,45 @@
   $('#btnImport').onclick = () => $('#importFile').click();
   $('#importFile').onchange = async e => { try { if (e.target.files[0]) importConfig(JSON.parse(await e.target.files[0].text())); } catch (err) { QA.toast('导入失败：' + err.message); } e.target.value = ''; };
   $('#aboutLicense').onclick = () => dialog('许可证', [h('h3', {text:'MIT License'}), h('p', {text:'Copyright (c) QuickApp contributors'}), h('p', {text:'Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files, to deal in the Software without restriction.'}), h('p', {text:'THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND.'})], [chip('关闭', () => closeLayer('dialogLayer'), true)]);
-  $('#aboutCheckUpdate').onclick = () => {
-    $('#aboutCheckResult').textContent = '正在检查…'; $('#aboutCheckUpdate').disabled = true;
-    setTimeout(() => { update = {phase:'found', tag:'v__UPDATE_VERSION__', progress:0, installer:true, notes:'## 应用多开（启动数量）\n\n- 程序 / 文件 / 目录条目可填写「启动数量」，一次点击连续启动多个实例。\n- 旧配置没有该字段即为 1，导入导出与存储模式切换一并保留。\n- 在「关于」检查到新版本时直接弹出版本说明。'}; $('#aboutCheckResult').textContent = '发现新版本 v__UPDATE_VERSION__'; $('#aboutCheckUpdate').disabled = false; closeLayer('settingsLayer'); openUpdateNotes(); }, 500);
-  };
-  /* 版本说明卡片：已安装版本 / 最新版本 / 更新说明；按钮在 下载 → 安装 之间切换 */
+  $('#aboutCheckUpdate').onclick = checkUpdates;
+  function checkUpdates() {
+    openUpdateNotes();
+    if (updateChecking || update?.phase === 'downloading' || update?.phase === 'ready') return;
+    updateChecking = true; renderUpdate();
+    setTimeout(() => {
+      updateChecking = false;
+      update = {phase:'found', tag:'v__UPDATE_VERSION__', progress:0, installer:true, notes:'统一检查、下载和安装更新；修复安装按钮导致程序提前退出的问题。'};
+      $('#standaloneUpdateStatus').textContent = $('#aboutCheckResult').textContent = '发现新版本 ' + update.tag;
+      renderUpdate();
+    }, 500);
+  }
   function openUpdateNotes() {
+    updateDialogOpen = true;
+    renderUpdateDialog();
+  }
+  function renderUpdateDialog() {
     const notes = h('div', {class:'stack'},
       h('div', {class:'row'}, h('span', {class:'row-label', text:'已安装版本'}), h('span', {class:'spacer'}), h('span', {class:'row-note', text:'v__APP_VERSION__'})),
+      h('p', {role:'status', text:updateChecking ? '正在检查更新…' : update?.phase === 'downloading' ? '正在下载更新 · ' + update.progress + '%' : update?.phase === 'ready' ? '下载完成' : update ? '发现新版本 ' + update.tag : '尚未检查'}));
+    if (update && !updateChecking) notes.append(
       h('div', {class:'row'}, h('span', {class:'row-label', text:'最新版本'}), h('span', {class:'spacer'}), h('span', {class:'row-note update-notes-version', text:update.tag})),
-      h('label', {text:'更新说明'}), h('pre', {class:'update-notes-text', text:update.notes}));
-    const install = chip(update.phase === 'ready' ? '安装' : '下载', () => {
-      if (update.phase === 'ready') { updateActions.install(); closeLayer('dialogLayer'); return; }
-      // 下载完成后卡片原地变成「安装」，与客户端一致
-      update.phase = 'ready'; openUpdateNotes(); showDock(); renderUpdate();
-    }, true);
-    dialog('发现新版本', [notes], [chip('取消', () => { closeLayer('dialogLayer'); updateActions.dismiss(); }), install]);
+      h('label', {text:'更新说明'}), h('pre', {class:'update-notes-text', text:update.notes}),
+      h('p', {class:'row-note', text:'下载完成后请点击安装；安装程序成功启动后 QuickApp 才会退出。'}));
+    const buttons = [chip('关闭', () => closeLayer('dialogLayer'))];
+    if (!updateChecking && update) {
+      if (update.phase === 'downloading') buttons.push(chip('取消', updateActions.cancel));
+      else buttons.push(chip(update.phase === 'ready' ? '安装' : '下载', () => {
+        if (update.phase === 'ready') { closeLayer('dialogLayer'); updateActions.install(); }
+        else updateActions.download();
+      }, true));
+    }
+    dialog('检查更新', [notes], buttons);
   }
   $('#trayButton').onclick = e => QA.openMenuAtButton([
     {label:st.dockVisible ? '收起 Dock' : '显示 Dock', icon:'grid', action:() => { st.dockVisible = !st.dockVisible; refresh(); }},
     {label:'开机启动', icon:'power', note:st.autoStart ? '✓' : '', action:() => { st.autoStart = !st.autoStart; persist(); refresh(); }},
     {label:'钉住 Dock', icon:'pin', note:st.pinned ? '✓' : '', action:() => { st.pinned = !st.pinned; persist(); refresh(); }},
-    {sep:true}, {label:'设置', icon:'gear', action:openSettings}, {label:'关于', icon:'info', action:openStandaloneAbout}, {sep:true}, {label:'退出', icon:'power', danger:true, action:exit}], e.currentTarget);
+    {sep:true}, {label:'设置', icon:'gear', action:openSettings}, {label:'检查更新', icon:'download', action:checkUpdates}, {label:'关于', icon:'info', action:openStandaloneAbout}, {sep:true}, {label:'退出', icon:'power', danger:true, action:exit}], e.currentTarget);
   document.addEventListener('keydown', e => {
     if (e.defaultPrevented) return;
     const layers = ['dialogLayer', 'editorLayer', 'aboutLayer', 'settingsLayer'], active = layers.find(id => !$('#' + id).hidden);
@@ -482,7 +494,7 @@
     if (e.ctrlKey && e.altKey && e.code === 'Space') { e.preventDefault(); summonSearch(); return; }
     const bound = items.find(it => it.hotkey && it.hotkey === gesture(e));
     if (bound && !st.exited) { e.preventDefault(); run(bound); return; }
-    if (e.key === 'Escape') { if (popoverOpen) { popoverOpen = false; renderUpdate(); } else if (st.searchOpen) search(false); else if (st.edit) edit(false); else { st.dockVisible = false; refresh(); } return; }
+    if (e.key === 'Escape') { if (st.searchOpen) search(false); else if (st.edit) edit(false); else { st.dockVisible = false; refresh(); } return; }
     if (e.target.closest('input,select,textarea')) { if (e.key === 'Enter' && e.target.id === 'searchInput') { e.preventDefault(); run(QA.searchItems(items, e.target.value)[0] || systemRows(e.target.value)[0]); } return; }
     if (e.key === 'Enter' && e.target.closest('[data-system]')) { e.preventDefault(); run(QA.INSTALLED.find(it => it.id === e.target.closest('[data-system]').dataset.system)); return; }
     if (e.key.toLowerCase() === 's' || e.ctrlKey && e.key.toLowerCase() === 'k') { e.preventDefault(); search(); }
@@ -493,7 +505,6 @@
       e.preventDefault(); tiles[(index + step + tiles.length) % tiles.length]?.focus();
     }
   });
-  document.addEventListener('pointerdown', e => { if (popoverOpen && !e.target.closest('#updatePopover,.update-pill')) { popoverOpen = false; renderUpdate(); } });
   window.addEventListener('resize', () => { QA.closeMenu(); positionDock(); QA.updateScrollChrome(list, fades); renderUpdate(); });
   new ResizeObserver(() => { positionDock(); QA.updateScrollChrome(list, fades); }).observe($('#dock'));
   $('#clock').textContent = new Date().toLocaleTimeString('zh-CN', {hour:'2-digit', minute:'2-digit'});

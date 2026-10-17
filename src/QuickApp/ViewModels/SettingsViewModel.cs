@@ -30,22 +30,8 @@ public sealed class SettingsViewModel : ViewModelBase
         _dock = dock;
         RebuildPaletteOptions();
         foreach (var language in LanguageOptions) language.SelectCommand = ReactiveCommand.Create(() => SelectedLanguage = language);
-        CheckUpdateCommand = ReactiveCommand.CreateFromTask(async () =>
-        {
-            await _dock.CheckUpdateAsync();
-
-            // 有新版本就直接弹出版本说明卡片（已安装版本 / 最新版本 / 更新说明 + 安装、取消），
-            // 不再只靠设置页那一行文字提示
-            if (_dock.UpdateAvailable)
-            {
-                _dock.RequestUpdateNotes();
-            }
-
-            this.RaisePropertyChanged(nameof(CheckResult));
-            this.RaisePropertyChanged(nameof(HasUpdate));
-        });
+        CheckUpdateCommand = _dock.CheckUpdateCommand;
         OpenConfigFolderCommand = ReactiveCommand.Create<string>(OpenConfigFolder);
-        ShowUpdateNotesCommand = ReactiveCommand.Create(_dock.RequestUpdateNotes);
 
         SetThemeCommand = ReactiveCommand.Create<string>(value =>
         {
@@ -419,14 +405,6 @@ public sealed class SettingsViewModel : ViewModelBase
 
     public string HotkeyText => Settings.Hotkey.Replace("+", " + ");
 
-    public string CheckResult => _dock.UpdateResultText;
-
-    /// <summary>已发现新版本：关于页显示「查看新版本」入口，随时能再打开更新说明卡片。</summary>
-    public bool HasUpdate => _dock.UpdateAvailable;
-
-    /// <summary>打开更新说明卡片（Dock 更新条与本次检查弹出的都是同一张）。</summary>
-    public ICommand ShowUpdateNotesCommand { get; }
-
     // ---------------- 数据 ----------------
 
     public string ConfigFilePath => _dock.ConfigFilePath;
@@ -474,7 +452,6 @@ public sealed class SettingsViewModel : ViewModelBase
         this.RaisePropertyChanged(nameof(ThemeMode));
         this.RaisePropertyChanged(nameof(HasConfigLoadError));
         this.RaisePropertyChanged(nameof(ConfigLoadStatus));
-        this.RaisePropertyChanged(nameof(HasUpdate));
         this.RaisePropertyChanged(nameof(BackgroundBrush));
         this.RaisePropertyChanged(nameof(TextBrush));
         this.RaisePropertyChanged(nameof(TextDimBrush));
@@ -504,7 +481,6 @@ public sealed class SettingsViewModel : ViewModelBase
         this.RaisePropertyChanged(nameof(CheckUpdates));
         this.RaisePropertyChanged(nameof(HotkeyText));
         this.RaisePropertyChanged(nameof(ConfigFilePath));
-        this.RaisePropertyChanged(nameof(CheckResult));
     }
 
     private static void OpenConfigFolder(string? path)

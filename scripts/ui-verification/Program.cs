@@ -154,21 +154,76 @@ Check(kindBox.SelectedItem as string==AppText.Get(Language.Command) && kindBox.S
 Capture(editor,"editor-en-US.png");editor.Close();dock.Close();model.AttachHost(host);
 model.SearchQuery="missing";model.IsSearchOpen=true;Pump();Check(model.Items.Count==0,"Actual search filters shortcuts");
 model.SearchQuery="README";Pump();Check(model.Items.Count==1,"Actual search restores matching shortcut");
-Complete(model.CheckUpdateAsync(silent:true));Check(model.UpdateAvailable && model.CanDownloadUpdate,"Check exposes matching verified package");
+Window updateOwner=about;
+model.UpdateNotesRequested+=()=>UpdateNotesWindow.ShowFor(updateOwner,model);
+updates.CheckGate=new TaskCompletionSource();
+ClickButton(about,"CheckUpdateButton");Pump();
+var releaseNotes=about.OwnedWindows.OfType<UpdateNotesWindow>().Single();
+Check(model.IsCheckingUpdate && releaseNotes.FindControl<ProgressBar>("CheckingBar")!.IsVisible,"About immediately opens the shared checking window");
+Capture(releaseNotes,"update-checking.png");
 UpdateNotesWindow.ShowFor(settings,model);Pump();
-var releaseNotes=settings.OwnedWindows.OfType<UpdateNotesWindow>().Single();
+Check(about.OwnedWindows.OfType<UpdateNotesWindow>().Single()==releaseNotes && !settings.OwnedWindows.OfType<UpdateNotesWindow>().Any(),"Repeated entries activate one existing update window");
+updates.CheckGate.SetResult();Until(()=>!model.IsCheckingUpdate);updates.CheckGate=null;
+Check(model.UpdateAvailable && model.CanDownloadUpdate,"Check exposes matching verified package");
 Capture(releaseNotes,"release-notes.png");releaseNotes.Close();
+updateOwner=settings;settings.ShowTab("about");Pump();
+ClickButton(settings,"CheckUpdateButton");Pump();
+releaseNotes=settings.OwnedWindows.OfType<UpdateNotesWindow>().Single();
+Check(ReferenceEquals(vm.CheckUpdateCommand,model.CheckUpdateCommand) && updates.CheckCalls==1,"Settings shares the manual check command and cached result");
 Check(about.GetVisualDescendants().OfType<TextBlock>().Any(text=>text.Text==model.UpdateResultText),"Actual about text leaves checking state");
 Capture(about,"update-available.png");
-model.DownloadUpdateCommand.Execute(null);Pump();Check(model.IsUpdateReady,"Download goes through injected Toolkit facade");
-Capture(about,"update-downloaded.png");
-model.InstallUpdateCommand.Execute(null);Pump();Check(updates.InstallCalls==1 && host.ExitCalls==0,"Controlled installation honors service exit policy");
+ClickButton(releaseNotes,"InstallButton");Pump();Check(model.IsUpdateReady && updates.DownloadCalls==1,"Actual download button goes through the injected Toolkit facade");
+Complete(model.CheckUpdateAsync(silent:true));Check(model.IsUpdateReady && updates.DownloadCalls==1,"Rechecking the same release preserves the downloaded package");
+Capture(releaseNotes,"update-downloaded.png");
+updates.InstallGate=new TaskCompletionSource<UpdateInstallResult>();
+ClickButton(releaseNotes,"InstallButton");Pump();
+Check(updates.InstallCalls==1 && host.ExitCalls==0 && model.IsInstallingUpdate && releaseNotes.IsVisible,"Actual install button starts the service before any window closes or application exit");
+ClickButton(releaseNotes,"InstallButton");Pump();
+Check(updates.InstallCalls==1,"Repeated install clicks cannot start duplicate installers");
+Capture(releaseNotes,"update-installing.png");
+updates.InstallGate.SetResult(new UpdateInstallResult(UpdateInstallKind.Manual,"Controlled UAC cancellation") { ShouldExitApplication=true });
+Until(()=>!model.IsInstallingUpdate);updates.InstallGate=null;
+Check(host.ExitCalls==0 && releaseNotes.IsVisible && releaseNotes.FindControl<TextBlock>("DownloadError")!.Text=="Controlled UAC cancellation","Launch failure or cancellation stays visible, retains the package, and never exits");
+Capture(releaseNotes,"update-install-failed.png");
+updates.ThrowInstall=true;
+ClickButton(releaseNotes,"InstallButton");Pump();
+Check(host.ExitCalls==0 && model.IsUpdateReady && releaseNotes.FindControl<TextBlock>("DownloadError")!.Text!.Contains("controlled launch failure"),"Thrown launch failures are visible and retryable");
+updates.ThrowInstall=false;
+updates.InstallResult=new UpdateInstallResult(UpdateInstallKind.Launched,"Controlled successful launch") { ShouldExitApplication=false };
+ClickButton(releaseNotes,"InstallButton");Pump();
+Check(host.ExitCalls==0,"Successful non-Windows handoff honors the service exit policy");
+updates.InstallResult=updates.InstallResult with { ShouldExitApplication=true };
+ClickButton(releaseNotes,"InstallButton");Pump();
+Check(host.ExitCalls==1 && updates.InstallCalls==4,"Successful installer handoff requests application exit exactly once");
+releaseNotes.Close();
 updates.Mode="latest";Complete(model.CheckUpdateAsync(silent:true));Check(!model.UpdateAvailable && model.UpdateResultText.Contains(model.VersionText),"Current version clears obsolete update actions");
-updates.Mode="failure";Complete(model.CheckUpdateAsync(silent:true));Check(model.UpdateResultText.Contains("controlled network failure"),"Network failure is visible and distinct from current version");
+model.CheckUpdateCommand.Execute(null);Pump();releaseNotes=settings.OwnedWindows.OfType<UpdateNotesWindow>().Single();
+Check(releaseNotes.FindControl<TextBlock>("StatusText")!.Text==model.UpdateResultText && !releaseNotes.FindControl<StackPanel>("ReleaseDetails")!.IsVisible,"Already-current results use the same update window");
+Capture(releaseNotes,"update-current.png");
+updates.Mode="failure";Complete(model.CheckUpdateAsync(silent:true));Check(releaseNotes.FindControl<TextBlock>("StatusText")!.Text!.Contains("controlled network failure"),"Network failure appears inside the shared window");
+Capture(releaseNotes,"update-check-failed.png");
+updates.Mode="throw";Complete(model.CheckUpdateAsync(silent:true));Check(model.UpdateResultText.Contains("controlled check exception"),"Unexpected check exceptions leave a visible result and reset the checking state");
 updates.Mode="unsupported";Complete(model.CheckUpdateAsync(silent:true));Check(model.NeedsUpdatePage && !model.CanDownloadUpdate,"Unsupported platform offers release page instead of unsafe download");
-updates.Mode="available";Complete(model.CheckUpdateAsync(silent:true));updates.DelayDownload=true;
-model.DownloadUpdateCommand.Execute(null);Pump();Check(model.IsDownloadingUpdate,"Pending download exposes progress and cancel");
-model.CancelUpdateDownloadCommand.Execute(null);Pump();Check(!model.IsDownloadingUpdate && !model.IsUpdateReady,"Cancellation returns to a retryable state");
+Capture(releaseNotes,"update-unsupported.png");
+updates.Mode="available";Complete(model.CheckUpdateAsync(silent:true));updates.ThrowDownload=true;
+ClickButton(releaseNotes,"InstallButton");Pump();
+Check(releaseNotes.FindControl<TextBlock>("DownloadError")!.Text!.Contains("controlled download failure") && model.CanDownloadUpdate,"Download failure is visible and retryable in the same window");
+updates.ThrowDownload=false;updates.DelayDownload=true;
+ClickButton(releaseNotes,"InstallButton");Pump();Check(model.IsDownloadingUpdate,"Pending download exposes progress and cancel");
+Capture(releaseNotes,"update-downloading.png");releaseNotes.Close();
+Check(model.IsDownloadingUpdate,"Closing the shared window preserves its background download");
+model.CheckUpdateCommand.Execute(null);Pump();releaseNotes=settings.OwnedWindows.OfType<UpdateNotesWindow>().Single();
+Check(model.IsDownloadingUpdate && releaseNotes.FindControl<Button>("CancelDownloadButton")!.IsVisible,"Reopening resumes the shared download view");
+ClickButton(releaseNotes,"CancelDownloadButton");Until(()=>!model.IsDownloadingUpdate);
+Check(!model.IsUpdateReady && model.CanDownloadUpdate,"Explicit cancellation returns to a retryable state");
+releaseNotes.Close();updates.DelayDownload=false;
+var updateDock=new DockWindow();model.Settings.Pinned=true;updateDock.Attach(model);updateDock.Show();Pump();
+model.SetEdgeCommand.Execute(DockEdge.Left);Pump();ClickButton(updateDock,"UpdatePillButton");Pump();
+releaseNotes=settings.OwnedWindows.OfType<UpdateNotesWindow>().Single();
+Check(releaseNotes.DataContext==model,"Vertical Dock capsule opens the same update window");releaseNotes.Close();
+model.SetEdgeCommand.Execute(DockEdge.Top);Pump();ClickButton(updateDock,"ViewUpdateButton");Pump();
+releaseNotes=settings.OwnedWindows.OfType<UpdateNotesWindow>().Single();
+Check(releaseNotes.DataContext==model,"Horizontal Dock banner opens the same update window");releaseNotes.Close();updateDock.Close();model.AttachHost(host);
 Check(File.Exists(store.ConfigFile),"Isolated settings remain intact");
 about.Close();settings.Close();
 I18nManager.Instance.Culture=CultureInfo.GetCultureInfo("en-US");Pump();
@@ -178,26 +233,44 @@ Console.WriteLine($"PASS: {count} assertions; screenshots in {output}");
 void Check(bool condition,string label){if(!condition)throw new InvalidOperationException(label);count++;}
 void Pump(){Dispatcher.UIThread.RunJobs();Thread.Sleep(30);Dispatcher.UIThread.RunJobs();}
 void Complete(Task task){var deadline=DateTime.UtcNow.AddSeconds(20);while(!task.IsCompleted && DateTime.UtcNow<deadline)Pump();task.GetAwaiter().GetResult();Pump();}
+void ClickButton(Window window,string name){Pump();var button=window.FindControl<Button>(name)!;var point=button.TranslatePoint(new Point(button.Bounds.Width/2,button.Bounds.Height/2),window)!.Value;window.MouseMove(point);window.MouseDown(point,Avalonia.Input.MouseButton.Left);window.MouseUp(point,Avalonia.Input.MouseButton.Left);Pump();}
+void Until(Func<bool> condition){var deadline=DateTime.UtcNow.AddSeconds(20);while(!condition() && DateTime.UtcNow<deadline)Pump();Check(condition(),"Asynchronous update operation completed");Pump();}
 void Capture(Window window,string name){Pump();window.CaptureRenderedFrame()!.Save(Path.Combine(output,name));}
 
 sealed class FakeUpdates(string root):IUpdateService
 {
     public UpdateServiceOptions Options {get;}=new(){Repository="QuickApp",ProductName="QuickApp"};
-    public Version CurrentVersion=>new(0,9,3);public string CurrentVersionText=>"0.9.3";public int InstallCalls; public string Mode="available"; public bool DelayDownload;
-    public Task<UpdateCheckResult> CheckAsync(Version? current=null,CancellationToken cancellationToken=default)
-        => Task.FromResult(Mode switch
+    public Version CurrentVersion=>new(0,9,3);public string CurrentVersionText=>"0.9.3";
+    public int InstallCalls,DownloadCalls,CheckCalls;public string Mode="available";public bool DelayDownload,ThrowInstall,ThrowDownload;
+    public TaskCompletionSource? CheckGate;
+    public TaskCompletionSource<UpdateInstallResult>? InstallGate;
+    public UpdateInstallResult InstallResult=new(UpdateInstallKind.Manual,"Controlled installation") { ShouldExitApplication=false };
+    public async Task<UpdateCheckResult> CheckAsync(Version? current=null,CancellationToken cancellationToken=default)
+    {
+        CheckCalls++;
+        if(CheckGate is not null)await CheckGate.Task;
+        if(Mode=="throw")throw new InvalidOperationException("controlled check exception");
+        return Mode switch
         {
             "latest" => UpdateCheckResult.Latest(),
             "failure" => UpdateCheckResult.Failed("controlled network failure"),
             "unsupported" => new UpdateCheckResult(new(new(9,0,0),"v9.0.0","QuickApp",null,"https://example.test/releases",null,null),true,null),
             _ => new UpdateCheckResult(new(new(9,0,0),"v9.0.0","QuickApp",null,"https://example.test/releases","https://example.test/setup.exe","QuickApp-win-x64-setup.exe","https://example.test/setup.exe.sha256"),true,null)
-        });
+        };
+    }
     public async Task<UpdateDownloadResult> DownloadAsync(UpdateInfo info,IProgress<UpdateDownloadProgress>? progress=null,CancellationToken cancellationToken=default)
     {
+        DownloadCalls++;
+        if(ThrowDownload)throw new IOException("controlled download failure");
         if(DelayDownload) await Task.Delay(Timeout.Infinite,cancellationToken);
         var path=Path.Combine(root,info.AssetName!);File.WriteAllText(path,"controlled fixture");return new UpdateDownloadResult(path,info.AssetName!,18);
     }
-    public Task<UpdateInstallResult> InstallAsync(UpdateDownloadResult download,CancellationToken cancellationToken=default){InstallCalls++;return Task.FromResult(new UpdateInstallResult(UpdateInstallKind.Manual,"Controlled installation") { ShouldExitApplication=false });}
+    public Task<UpdateInstallResult> InstallAsync(UpdateDownloadResult download,CancellationToken cancellationToken=default)
+    {
+        InstallCalls++;
+        if(ThrowInstall)throw new IOException("controlled launch failure");
+        return InstallGate?.Task ?? Task.FromResult(InstallResult);
+    }
 }
 sealed class FakeLauncher:ILauncher{public bool TryStart(LauncherItem item,out string? error){error=null;return true;}}
 sealed class FakeIcons:IIconProvider{public Task<string?> GetIconFileAsync(LauncherItem item,CancellationToken cancellationToken=default)=>Task.FromResult<string?>(null);}

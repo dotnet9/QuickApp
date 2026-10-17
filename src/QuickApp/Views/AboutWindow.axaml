@@ -28,15 +28,8 @@
       <Border Height="1" Background="{Binding PanelBorderBrush}" />
       <StackPanel Spacing="10">
         <TextBlock Text="{Binding Dock.UpdateResultText}" TextWrapping="Wrap" />
-        <TextBlock Text="{Binding Dock.UpdateDisplayText}" IsVisible="{Binding Dock.UpdateAvailable}" TextWrapping="Wrap" />
-        <TextBlock Text="{Binding Dock.UpdateNoteText}" Foreground="{Binding TextDimBrush}" TextWrapping="Wrap" />
-        <ProgressBar Minimum="0" Maximum="100" Value="{Binding Dock.DownloadProgress}" IsVisible="{Binding Dock.IsDownloadingUpdate}" />
         <WrapPanel Orientation="Horizontal">
-          <Button Margin="0,0,8,8" Content="{codewf:I18n {x:Static q:Language.CheckUpdates}}" Command="{Binding Dock.CheckUpdateCommand}" IsEnabled="{Binding !Dock.IsCheckingUpdate}" />
-          <Button Margin="0,0,8,8" Content="{codewf:I18n {x:Static q:Language.Download}}" Command="{Binding Dock.DownloadUpdateCommand}" IsVisible="{Binding Dock.CanDownloadUpdate}" />
-          <Button Margin="0,0,8,8" Content="{Binding Dock.UpdateInstallButtonText}" Command="{Binding Dock.InstallUpdateCommand}" IsVisible="{Binding Dock.IsUpdateReady}" />
-          <Button Margin="0,0,8,8" Content="{codewf:I18n {x:Static q:Language.OpenReleasePage}}" Command="{Binding Dock.OpenUpdateCommand}" IsVisible="{Binding Dock.NeedsUpdatePage}" />
-          <Button Margin="0,0,8,8" Content="{codewf:I18n {x:Static q:Language.Cancel}}" Command="{Binding Dock.CancelUpdateDownloadCommand}" IsVisible="{Binding Dock.IsDownloadingUpdate}" />
+          <Button Name="CheckUpdateButton" Margin="0,0,8,8" Content="{codewf:I18n {x:Static q:Language.CheckUpdates}}" Command="{Binding CheckUpdateCommand}" />
         </WrapPanel>
       </StackPanel>
       <TextBlock Text="{codewf:I18n {x:Static q:Language.Copyright}}" Foreground="{Binding TextDimBrush}" FontSize="12" />

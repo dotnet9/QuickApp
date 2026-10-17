@@ -99,10 +99,9 @@ public partial class App : Application
         _dock.SettingsRequested += (_, _) => ShowSettings();
         _dock.AboutRequested += (_, _) => ShowAbout();
 
-        // 检查到新版本时弹出版本说明卡片（已安装版本 / 最新版本 / 更新说明 + 安装、取消）：
-        // 设置窗口开着就以它为父窗口，否则挂在 Dock 上，卡片始终居中于发起方的窗口。
+        // 所有手动入口复用唯一更新窗口，优先挂在最上层的模态窗口上。
         viewModel.UpdateNotesRequested += () => Dispatcher.UIThread.Post(
-            () => UpdateNotesWindow.ShowFor((Window?)_settings ?? _dock, viewModel));
+            () => UpdateNotesWindow.ShowFor((Window?)_about ?? (Window?)_settings ?? _dock, viewModel));
 
         _singleInstance.Listen(() => _dock.ActivateFromExternal());
 
@@ -128,7 +127,7 @@ public partial class App : Application
 
         if (viewModel.Settings.CheckUpdates)
         {
-            _ = viewModel.CheckUpdateAsync();
+            _ = viewModel.CheckUpdateAsync(silent: true);
         }
 
         AppLog.Info("Dock 已显示，配置：" + viewModel.ConfigFilePath + "，快捷项：" + viewModel.Items.Count);
@@ -269,6 +268,7 @@ public partial class App : Application
             var autoStart = new NativeMenuItem { Header = _trayViewModel.AutoStartText, Command = _trayViewModel.ToggleAutoStartCommand };
             var pin = new NativeMenuItem { Header = _trayViewModel.PinText, Command = _trayViewModel.TogglePinCommand };
             var settings = new NativeMenuItem { Header = _trayViewModel.SettingsText, Command = _trayViewModel.ShowSettingsCommand };
+            var checkUpdates = new NativeMenuItem { Header = AppText.Get(Language.CheckUpdates), Command = viewModel.CheckUpdateCommand };
             var exit = new NativeMenuItem { Header = _trayViewModel.ExitText, Command = _trayViewModel.ExitCommand };
 
             // 文案随视图模型属性刷新（Dock 显隐/钉住/开机启动也可能在托盘之外变化）
@@ -276,6 +276,7 @@ public partial class App : Application
             _trayViewModel.ObservableForProperty(t => t.AutoStartText).Subscribe(x => autoStart.Header = x.Value);
             _trayViewModel.ObservableForProperty(t => t.PinText).Subscribe(x => pin.Header = x.Value);
             _trayViewModel.ObservableForProperty(t => t.SettingsText).Subscribe(x => settings.Header = x.Value);
+            _trayViewModel.ObservableForProperty(t => t.SettingsText).Subscribe(_ => checkUpdates.Header = AppText.Get(Language.CheckUpdates));
             _trayViewModel.ObservableForProperty(t => t.ExitText).Subscribe(x => exit.Header = x.Value);
 
             var menu = new NativeMenu
@@ -287,6 +288,7 @@ public partial class App : Application
                     pin,
                     new NativeMenuItemSeparator(),
                     settings,
+                    checkUpdates,
                     new NativeMenuItemSeparator(),
                     exit
                 }

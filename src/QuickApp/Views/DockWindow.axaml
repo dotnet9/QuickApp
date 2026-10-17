@@ -537,18 +537,8 @@
           <StackPanel Spacing="10">
             <DockPanel>
               <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
-                <Button Theme="{StaticResource LinkButton}" Classes="primary update-chip" Content="{l:I18n {x:Static q:Language.Download}}"
-                        IsVisible="{Binding CanDownloadUpdate}"
-                        Command="{Binding DownloadUpdateCommand}" />
-                <Button Theme="{StaticResource LinkButton}" Classes="primary update-chip" Content="{l:I18n {x:Static q:Language.OpenReleasePage}}"
-                        IsVisible="{Binding NeedsUpdatePage}"
-                        Command="{Binding OpenUpdateCommand}" />
-                <Button Theme="{StaticResource LinkButton}" Classes="primary update-chip" Content="{Binding UpdateInstallButtonText}"
-                        IsVisible="{Binding IsUpdateReady}"
-                        Command="{Binding InstallUpdateCommand}" />
-                <Button Theme="{StaticResource LinkButton}" Classes="update-chip" Content="{l:I18n {x:Static q:Language.Cancel}}"
-                        IsVisible="{Binding IsDownloadingUpdate}"
-                        Command="{Binding CancelUpdateDownloadCommand}" />
+                <Button Name="ViewUpdateButton" Theme="{StaticResource LinkButton}" Classes="primary update-chip" Content="{l:I18n {x:Static q:Language.View}}"
+                        Command="{Binding ShowUpdateNotesCommand}" />
                 <Button Theme="{StaticResource LinkButton}" Classes="update-chip" Content="{l:I18n {x:Static q:Language.Dismiss}}"
                         IsVisible="{Binding !IsDownloadingUpdate}"
                         Command="{Binding DismissUpdateCommand}" />

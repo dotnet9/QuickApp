@@ -6,7 +6,7 @@
         xmlns:vm="clr-namespace:QuickApp.ViewModels"
         x:Class="QuickApp.Views.UpdateNotesWindow"
         x:DataType="vm:DockViewModel"
-        Title="{l:I18n {x:Static q:Language.UpdateAvailable}}"
+        Title="{l:I18n {x:Static q:Language.CheckUpdates}}"
         Width="520"
         SizeToContent="Height"
         CanResize="False"
@@ -27,35 +27,40 @@
         <TextBlock Grid.Column="1" Classes="row" HorizontalAlignment="Right"
                    Text="{Binding CurrentVersionText}" Foreground="{Binding TextBrush}" />
       </Grid>
-      <Grid ColumnDefinitions="Auto,*">
-        <TextBlock Classes="row" Text="{l:I18n {x:Static q:Language.LatestVersion}}" Foreground="{Binding TextDimBrush}" />
-        <TextBlock Grid.Column="1" Classes="row" HorizontalAlignment="Right" FontWeight="SemiBold"
-                   Text="{Binding UpdateTag}" Foreground="{Binding AccentBrush}" />
-      </Grid>
-      <TextBlock Classes="row" Text="{l:I18n {x:Static q:Language.ReleaseNotes}}" Foreground="{Binding TextDimBrush}" Margin="0,8,0,2" />
-      <Border CornerRadius="8" Padding="12,10"
-              Background="{Binding HoverBrush}" BorderBrush="{Binding PanelBorderBrush}" BorderThickness="1">
-        <ScrollViewer Name="NotesScroll" MaxHeight="260" HorizontalScrollBarVisibility="Disabled">
-          <SelectableTextBlock Name="NotesText" TextWrapping="Wrap" FontSize="12"
-                               Foreground="{Binding TextBrush}" />
-        </ScrollViewer>
-      </Border>
-      <StackPanel Name="InstallBar" Spacing="6" Margin="0,8,0,0" IsVisible="False">
-        <TextBlock Name="ProgressText" FontSize="11" Foreground="{Binding TextDimBrush}" />
-        <ProgressBar Name="DownloadBar" Minimum="0" Maximum="100" Height="6" />
+      <TextBlock Name="StatusText" TextWrapping="Wrap" Foreground="{Binding TextBrush}" Margin="0,8,0,0" />
+      <ProgressBar Name="CheckingBar" IsIndeterminate="True" Height="6" IsVisible="False" />
+      <StackPanel Name="ReleaseDetails" Spacing="6" IsVisible="False">
+        <Grid ColumnDefinitions="Auto,*">
+          <TextBlock Classes="row" Text="{l:I18n {x:Static q:Language.LatestVersion}}" Foreground="{Binding TextDimBrush}" />
+          <TextBlock Grid.Column="1" Classes="row" HorizontalAlignment="Right" FontWeight="SemiBold"
+                     Text="{Binding UpdateTag}" Foreground="{Binding AccentBrush}" />
+        </Grid>
+        <TextBlock Classes="row" Text="{l:I18n {x:Static q:Language.ReleaseNotes}}" Foreground="{Binding TextDimBrush}" Margin="0,8,0,2" />
+        <Border CornerRadius="8" Padding="12,10"
+                Background="{Binding HoverBrush}" BorderBrush="{Binding PanelBorderBrush}" BorderThickness="1">
+          <ScrollViewer Name="NotesScroll" MaxHeight="260" HorizontalScrollBarVisibility="Disabled">
+            <SelectableTextBlock Name="NotesText" TextWrapping="Wrap" FontSize="12"
+                                 Foreground="{Binding TextBrush}" />
+          </ScrollViewer>
+        </Border>
+        <StackPanel Name="InstallBar" Spacing="6" Margin="0,8,0,0" IsVisible="False">
+          <TextBlock Name="ProgressText" FontSize="11" Foreground="{Binding TextDimBrush}" />
+          <ProgressBar Name="DownloadBar" Minimum="0" Maximum="100" Height="6" />
+        </StackPanel>
+        <TextBlock Name="DownloadError" FontSize="11" TextWrapping="Wrap" IsVisible="False"
+                   Foreground="{Binding DangerBrush}" />
+        <TextBlock Name="InstallNote" FontSize="11" TextWrapping="Wrap" IsVisible="False"
+                   Text="{l:I18n {x:Static q:Language.InstallConfirmHint}}"
+                   Foreground="{Binding TextDimBrush}" />
+        <TextBlock Name="FallbackNote" FontSize="11" TextWrapping="Wrap" IsVisible="False"
+                   Text="{l:I18n {x:Static q:Language.PackageFallbackHint}}"
+                   Foreground="{Binding TextDimBrush}" />
       </StackPanel>
-      <TextBlock Name="DownloadError" FontSize="11" TextWrapping="Wrap" IsVisible="False"
-                 Text="{l:I18n {x:Static q:Language.CannotDownloadHint}}"
-                 Foreground="{Binding DangerBrush}" />
-      <TextBlock Name="InstallNote" FontSize="11" TextWrapping="Wrap" IsVisible="False"
-                 Text="{l:I18n {x:Static q:Language.InstallConfirmHint}}"
-                 Foreground="{Binding TextDimBrush}" />
-      <TextBlock Name="FallbackNote" FontSize="11" TextWrapping="Wrap" IsVisible="False"
-                 Text="{l:I18n {x:Static q:Language.PackageFallbackHint}}"
-                 Foreground="{Binding TextDimBrush}" />
     </StackPanel>
     <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right" Margin="0,14,0,0">
-      <Button Name="CancelButton" Theme="{StaticResource LinkButton}" Content="{l:I18n {x:Static q:Language.Cancel}}" />
+      <Button Name="CancelDownloadButton" Theme="{StaticResource LinkButton}" Content="{l:I18n {x:Static q:Language.Cancel}}"
+              IsVisible="{Binding IsDownloadingUpdate}" Command="{Binding CancelUpdateDownloadCommand}" />
+      <Button Name="CancelButton" Theme="{StaticResource LinkButton}" Content="{l:I18n {x:Static q:Language.Close}}" />
       <Button Name="InstallButton" Theme="{StaticResource LinkButton}" Classes="primary" IsDefault="True" Content="{l:I18n {x:Static q:Language.Install}}" />
     </StackPanel>
   </StackPanel>

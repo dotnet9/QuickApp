@@ -39,8 +39,6 @@ public partial class DockWindow : Window, IDockHost
     private readonly DispatcherTimer _hideTimer;
     private readonly DispatcherTimer _revealTimer;
     private DockViewModel? _vm;
-    /// <summary>更新就绪的成功色（原型 --ok）。</summary>
-    private static readonly IBrush UpdateReadyBrush = new SolidColorBrush(Color.FromRgb(0x3F, 0xB9, 0x6F));
 
     private Window? _revealHandleWindow;
     private Border? _revealHandleBar;
@@ -1337,6 +1335,11 @@ public partial class DockWindow : Window, IDockHost
         items.Add(BuildEdgePicker(closeMenu));
         items.Add(new Separator());
         items.Add(MenuEntry(AppText.Get(Language.Settings), Icons.Gear, ShowSettings));
+        items.Add(MenuEntry(AppText.Get(Language.CheckUpdates), Icons.Download, () =>
+        {
+            closeMenu();
+            _vm!.CheckUpdateCommand.Execute(null);
+        }));
         items.Add(MenuEntry(AppText.Get(Language.About), Icons.Info, () => AboutRequested?.Invoke(this, EventArgs.Empty)));
         items.Add(new Separator());
         items.Add(MenuEntry(AppText.Get(Language.Exit), Icons.Power, Exit, danger: true));
@@ -1519,141 +1522,8 @@ public partial class DockWindow : Window, IDockHost
         }
     }
 
-    /// <summary>竖排更新胶囊：弹出更新卡片（原型 .update-card），状态与进度变化时原位刷新。</summary>
-    private void OnUpdatePillClick(object? sender, RoutedEventArgs e)
-    {
-        if (_vm is null)
-        {
-            return;
-        }
-
-        var icon = new Path
-        {
-            Width = 17,
-            Height = 17,
-            Stretch = Stretch.Uniform,
-            StrokeThickness = 1.8,
-            StrokeLineCap = PenLineCap.Round,
-            StrokeJoin = PenLineJoin.Round
-        };
-        var title = new TextBlock { FontSize = 13, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center };
-        var tag = new TextBlock { FontSize = 11, Foreground = _vm?.TextDimBrush ?? Brushes.Gray, VerticalAlignment = VerticalAlignment.Center };
-        var tagChip = new Border
-        {
-            BorderBrush = _vm.PanelBorderBrush,
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(999),
-            Padding = new Thickness(8, 2),
-            Child = tag,
-            VerticalAlignment = VerticalAlignment.Center
-        };
-        var desc = new TextBlock { FontSize = 11.5, Foreground = _vm?.TextDimBrush ?? Brushes.Gray, TextWrapping = TextWrapping.Wrap };
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, HorizontalAlignment = HorizontalAlignment.Right };
-        var progress = new ProgressBar { Minimum = 0, Maximum = 100, Height = 4, MinHeight = 4 };
-
-        var head = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
-        head.ColumnSpacing = 8;
-        Grid.SetColumn(icon, 0);
-        Grid.SetColumn(title, 1);
-        Grid.SetColumn(tagChip, 2);
-        head.Children.Add(icon);
-        head.Children.Add(title);
-        head.Children.Add(tagChip);
-
-        var card = new StackPanel { Spacing = 8 };
-        card.Children.Add(head);
-        card.Children.Add(desc);
-        card.Children.Add(actions);
-        card.Children.Add(progress);
-
-        Button LinkButton(string text, bool primary, System.Windows.Input.ICommand? command)
-        {
-            var button = new Button { Content = text, Padding = new Thickness(10, 3) };
-            if (TryGetResource("LinkButton", null, out object? theme) && theme is ControlTheme controlTheme)
-            {
-                button.Theme = controlTheme;
-            }
-
-            if (primary)
-            {
-                button.Classes.Add("primary");
-            }
-
-            button.Command = command;
-            return button;
-        }
-
-        void Refresh()
-        {
-            bool ready = _vm.IsUpdateReady;
-            bool downloading = _vm.IsDownloadingUpdate;
-            icon.Data = ready ? Icons.Check : downloading ? Icons.Download : Icons.Upload;
-            icon.Stroke = ready ? UpdateReadyBrush : _vm.AccentBrush;
-            title.Text = ready ? AppText.Get(Language.UpdateReady) : downloading ? AppText.Get(Language.DownloadingUpdate) : AppText.Get(Language.UpdateAvailable);
-            tag.Text = _vm.UpdateTag;
-            desc.Text = ready
-                ? AppText.Get(Language.InstallExplanation)
-                : downloading
-                    ? AppText.Get(Language.DownloadExplanation)
-                    : _vm.NeedsUpdatePage
-                        ? AppText.Get(Language.ManualPackageExplanation)
-                        : AppText.Get(Language.DownloadConfirmExplanation);
-            actions.Children.Clear();
-            if (_vm.CanDownloadUpdate)
-            {
-                actions.Children.Add(LinkButton(AppText.Get(Language.Download), true, _vm.DownloadUpdateCommand));
-                actions.Children.Add(LinkButton(AppText.Get(Language.Dismiss), false, _vm.DismissUpdateCommand));
-            }
-            else if (_vm.NeedsUpdatePage)
-            {
-                actions.Children.Add(LinkButton(AppText.Get(Language.OpenReleasePage), true, _vm.OpenUpdateCommand));
-                actions.Children.Add(LinkButton(AppText.Get(Language.Dismiss), false, _vm.DismissUpdateCommand));
-            }
-            else if (downloading)
-            {
-                actions.Children.Add(LinkButton(AppText.Get(Language.Cancel), false, _vm.CancelUpdateDownloadCommand));
-            }
-            else if (ready)
-            {
-                actions.Children.Add(LinkButton(_vm.UpdateInstallButtonText, true, _vm.InstallUpdateCommand));
-                actions.Children.Add(LinkButton(AppText.Get(Language.Dismiss), false, _vm.DismissUpdateCommand));
-            }
-
-            progress.IsVisible = downloading;
-            progress.Value = _vm.DownloadProgress;
-        }
-
-        Refresh();
-        void OnVmChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
-        {
-            if (args.PropertyName is nameof(DockViewModel.DownloadProgress)
-                or nameof(DockViewModel.IsDownloadingUpdate)
-                or nameof(DockViewModel.IsUpdateReady)
-                or nameof(DockViewModel.CanDownloadUpdate)
-                or nameof(DockViewModel.NeedsUpdatePage))
-            {
-                Refresh();
-            }
-        }
-
-        _vm.PropertyChanged += OnVmChanged;
-        var flyout = new Flyout
-        {
-            Placement = _vm.Settings.Edge == DockEdge.Right ? PlacementMode.Left : PlacementMode.Right,
-            Content = new Border
-            {
-                Background = _vm.MenuBrush,
-                BorderBrush = _vm.PanelBorderBrush,
-                BorderThickness = new Thickness(1),
-                CornerRadius = new CornerRadius(12),
-                Padding = new Thickness(12, 12, 12, 10),
-                Width = 290,
-                Child = card
-            }
-        };
-        flyout.Closed += (_, _) => _vm.PropertyChanged -= OnVmChanged;
-        flyout.ShowAt(UpdatePillButton);
-    }
+    /// <summary>竖排更新胶囊与其余入口共用更新窗口。</summary>
+    private void OnUpdatePillClick(object? sender, RoutedEventArgs e) => _vm?.RequestUpdateNotes();
 
     private void CopyToClipboard(string text)
     {
