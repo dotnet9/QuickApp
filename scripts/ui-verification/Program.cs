@@ -18,6 +18,15 @@ using QuickApp.ViewModels;
 using QuickApp.Views;
 using ReactiveUI.Avalonia;
 
+if (args.FirstOrDefault() == "--desktop-modal")
+{
+    var desktopThread = new Thread(() => Environment.ExitCode = DesktopModalVerification.Run(args.Skip(1).FirstOrDefault() ?? "artifacts/ui-desktop-modal"));
+    desktopThread.SetApartmentState(ApartmentState.STA);
+    desktopThread.Start();
+    desktopThread.Join();
+    return;
+}
+
 var output = Path.GetFullPath(args.FirstOrDefault() ?? "artifacts/ui-verification");
 Directory.CreateDirectory(output);
 int count=0;
@@ -161,7 +170,7 @@ ClickButton(about,"CheckUpdateButton");Pump();
 var releaseNotes=about.OwnedWindows.OfType<UpdateNotesWindow>().Single();
 Check(model.IsCheckingUpdate && releaseNotes.FindControl<ProgressBar>("CheckingBar")!.IsVisible,"About immediately opens the shared checking window");
 Capture(releaseNotes,"update-checking.png");
-UpdateNotesWindow.ShowFor(settings,model);Pump();
+UpdateNotesWindow.ShowFor(about,model);Pump();
 Check(about.OwnedWindows.OfType<UpdateNotesWindow>().Single()==releaseNotes && !settings.OwnedWindows.OfType<UpdateNotesWindow>().Any(),"Repeated entries activate one existing update window");
 updates.CheckGate.SetResult();Until(()=>!model.IsCheckingUpdate);updates.CheckGate=null;
 Check(model.UpdateAvailable && model.CanDownloadUpdate,"Check exposes matching verified package");
@@ -224,6 +233,23 @@ Check(releaseNotes.DataContext==model,"Vertical Dock capsule opens the same upda
 model.SetEdgeCommand.Execute(DockEdge.Top);Pump();ClickButton(updateDock,"ViewUpdateButton");Pump();
 releaseNotes=settings.OwnedWindows.OfType<UpdateNotesWindow>().Single();
 Check(releaseNotes.DataContext==model,"Horizontal Dock banner opens the same update window");releaseNotes.Close();updateDock.Close();model.AttachHost(host);
+// 使用真实的模态 owner 链；不能用普通 Show() 代替 About.ShowDialog(Dock)。
+var modalDock=new DockWindow();modalDock.Attach(model);modalDock.Show();Pump();
+var modalAbout=new AboutWindow { DataContext=vm };var aboutLifetime=modalAbout.ShowDialog(modalDock);Pump();
+UpdateNotesWindow.ShowFor(modalAbout,model);Pump();
+releaseNotes=modalAbout.OwnedWindows.OfType<UpdateNotesWindow>().Single();
+Check(!modalAbout.Topmost && modalDock.Topmost && releaseNotes.Topmost && releaseNotes.Owner==modalAbout,"Nested update explicitly inherits Topmost through About to Dock");
+releaseNotes.Close();modalAbout.Close();modalDock.Close();Pump();model.AttachHost(host);
+Check(aboutLifetime.IsCompleted,"Closing nested dialogs completes the About modal lifetime");
+UpdateNotesWindow.ShowFor(settings,model);Pump();
+releaseNotes=settings.OwnedWindows.OfType<UpdateNotesWindow>().Single();
+modalAbout=new AboutWindow { DataContext=vm };aboutLifetime=modalAbout.ShowDialog(settings);Pump();
+UpdateNotesWindow.ShowFor(modalAbout,model);Pump();
+Check(releaseNotes.Owner==modalAbout && modalAbout.OwnedWindows.OfType<UpdateNotesWindow>().Single()==releaseNotes && !releaseNotes.Topmost,"Reusing the update window moves its modal owner to About and clears obsolete Topmost");
+releaseNotes.Hide();UpdateNotesWindow.ShowFor(modalAbout,model);Pump();
+Check(releaseNotes.IsVisible && releaseNotes.Owner==modalAbout,"A hidden shared update window can be shown again with the correct owner");
+releaseNotes.Close();modalAbout.Close();Pump();
+Check(aboutLifetime.IsCompleted && !settings.OwnedWindows.Any(),"Reparented update and About release their owner after closing");
 Check(File.Exists(store.ConfigFile),"Isolated settings remain intact");
 about.Close();settings.Close();
 I18nManager.Instance.Culture=CultureInfo.GetCultureInfo("en-US");Pump();

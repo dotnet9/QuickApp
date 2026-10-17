@@ -35,6 +35,10 @@ jobs:
         shell: pwsh
         run: dotnet run --project scripts/ui-verification/UiVerification.csproj -c Release -- artifacts/ui-verification
 
+      - name: 验证 Windows 原生模态窗口层级
+        shell: pwsh
+        run: dotnet run --project scripts/ui-verification/UiVerification.csproj -c Release --no-build -- --desktop-modal artifacts/ui-desktop-modal
+
       - uses: actions/setup-node@v4
         with:
           node-version: '24'

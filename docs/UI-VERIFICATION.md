@@ -1,5 +1,13 @@
 ﻿# QuickApp 界面验证
 
+## 0.9.10 嵌套模态窗口复核（2026-10-17）
+
+在真实 Windows 桌面复现了 Dock → 关于 → 检查更新的遮挡：托管 owner 和 HWND owner 都正确，但“关于”原生置顶、更新窗口未置顶，原生 Z 序断言失败。“关于”自身的 `Topmost` 属性仍为 `false`，因此只检查直接 owner 的属性不足以发现问题。
+
+修复后，同一原生测试通过 17 条断言，覆盖 Dock/设置打开关于、复用窗口切换 owner、隐藏与最小化后恢复，以及原生关闭消息后父窗口输入逐层恢复。测试使用隔离配置及受控更新服务，不启动产品安装器。此模式已接入普通 CI 和发布门禁：`dotnet run --project scripts/ui-verification/UiVerification.csproj -c Release --no-build -- --desktop-modal artifacts/ui-desktop-modal`。
+
+Release 构建、189 项 Core 测试、164 条离屏实际界面断言、资源生成一致性，以及发布入口和安装包哈希门禁均通过。原生窗口检查用于补足离屏界面无法验证的系统层级和输入禁用状态。
+
 ## 0.9.7 安装器构建复核（2026-10-16）
 
 本版更新版本号与安装包构建流程，应用交互和配色沿用 0.9.6，README 静态图继续明确标注截图来源。正式 `scripts/publish.ps1` 已重新完成 Windows x64 NativeAOT，正式 EXE 的双语资源及版本 `--selfcheck` 退出码为 0，PE 为 AMD64 且 CLR 目录为空；真实 Inno 安装包编译及 SHA-256 核对通过。未执行真实产品安装、覆盖升级或卸载。

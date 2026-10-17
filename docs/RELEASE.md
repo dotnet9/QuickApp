@@ -16,6 +16,7 @@ pwsh scripts/build_prototype.ps1 -Check
 pwsh scripts/tests/publish_entry_test.ps1
 pwsh scripts/tests/release_installers_test.ps1
 dotnet run --project scripts/ui-verification/UiVerification.csproj -c Release -- artifacts/ui-managed
+dotnet run --project scripts/ui-verification/UiVerification.csproj -c Release --no-build -- --desktop-modal artifacts/ui-desktop-modal
 pwsh scripts/publish.ps1 -RuntimeIdentifier win-x64
 $process = Start-Process ./artifacts/publish/win-x64/net10.0-windows/QuickApp/QuickApp.exe -ArgumentList '--selfcheck' -WindowStyle Hidden -Wait -PassThru
 if ($process.ExitCode -ne 0) { throw 'NativeAOT runtime verification failed.' }

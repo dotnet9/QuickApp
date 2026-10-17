@@ -31,19 +31,33 @@ public partial class UpdateNotesWindow : CodeWFWindow
 
     public static void ShowFor(Window owner, DockViewModel dock)
     {
-        if (_current is not null)
+        var window = _current;
+        if (window is null)
         {
-            _current.Activate();
-            return;
+            window = new UpdateNotesWindow();
+            window._vm = dock;
+            window.DataContext = dock;
+            dock.PropertyChanged += window.OnDockPropertyChanged;
+            window.UpdateState();
+            _current = window;
         }
 
-        var window = new UpdateNotesWindow();
-        window._vm = dock;
-        window.DataContext = dock;
-        dock.PropertyChanged += window.OnDockPropertyChanged;
-        window.UpdateState();
-        _current = window;
-        window.ShowDialog(owner);
+        bool sameOwner = ReferenceEquals(window.Owner, owner);
+        if (window.IsVisible && !sameOwner) window.Hide();
+
+        // Windows 会把 Dock 的原生置顶状态传给“关于”，但不会同步其 Topmost 属性，
+        // 更深一层的模态窗口必须沿 owner 链显式继承，否则会被已禁用的“关于”挡住。
+        window.Topmost = HasTopmostOwner(owner);
+        if (!window.IsVisible) _ = window.ShowDialog(owner);
+        if (window.WindowState == WindowState.Minimized) window.WindowState = WindowState.Normal;
+        window.Activate();
+    }
+
+    private static bool HasTopmostOwner(Window owner)
+    {
+        for (WindowBase? ancestor = owner; ancestor is not null; ancestor = ancestor.Owner)
+            if (ancestor.Topmost) return true;
+        return false;
     }
 
     private void OnDockPropertyChanged(object? sender, PropertyChangedEventArgs e) => UpdateState();

@@ -9,7 +9,7 @@
 
 QuickApp 是一个跨平台的系统快捷启动器，用常驻 Dock 统一打开应用、文件、目录、网址和常用命令。支持四边停靠、搜索和 Windows 全局快捷键，平时只占一排图标（Windows 功能最全，Linux / macOS 提供核心功能）。
 
-当前版本：`0.9.9`。版本源为 `Directory.Build.props` 的 `VersionPrefix`。
+当前版本：`0.9.10`。版本源为 `Directory.Build.props` 的 `VersionPrefix`。
 
 ## 界面预览
 
