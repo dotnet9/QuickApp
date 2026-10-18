@@ -774,6 +774,112 @@ public partial class DockWindow : Window, IDockHost
         e.Handled = true;
     }
 
+    /// <summary>系统应用结果行的右键菜单：运行 / 以管理员身份运行 / 复制路径 / 打开文件位置 / 加入 Dock。</summary>
+    private void OnInstalledResultContextRequested(object? sender, ContextRequestedEventArgs e)
+    {
+        if (_vm is null)
+        {
+            return;
+        }
+
+        ItemViewModel? item = ItemOfInstalledResult(e.Source);
+        if (item is null)
+        {
+            return;
+        }
+
+        _contextMenu?.Close();
+        var menu = new ContextMenu();
+        _contextMenu = menu;
+        _isContextMenuOpen = true;
+        _hideTimer.Stop();
+        menu.Closed += (_, _) =>
+        {
+            if (ReferenceEquals(_contextMenu, menu))
+            {
+                _contextMenu = null;
+                _isContextMenuOpen = false;
+                ScheduleAutoHide();
+            }
+        };
+
+        ItemViewModel captured = item;
+        menu.Items.Add(MenuEntry(AppText.Get(Language.Run), Icons.Play, () => _vm.RunCommand.Execute(captured)));
+
+        if (captured.Model.Kind == ItemKind.App)
+        {
+            menu.Items.Add(MenuEntry(AppText.Get(Language.RunAsAdministrator), null, () => RunAsAdministrator(captured)));
+        }
+
+        menu.Items.Add(new Separator());
+        menu.Items.Add(MenuEntry(AppText.Get(Language.CopyPath), Icons.Copy, () => CopyToClipboard(captured.Model.Target)));
+        menu.Items.Add(MenuEntry(AppText.Get(Language.OpenLocation), Icons.Folder, () => RevealInExplorer(captured.Model.Target)));
+        menu.Items.Add(new Separator());
+        menu.Items.Add(MenuEntry(AppText.Get(Language.AddToDock), Icons.Plus, () => captured.AddToDockCommand.Execute(null)));
+
+        menu.PlacementTarget = InstalledItemsHost;
+        menu.Placement = PlacementMode.Pointer;
+        menu.Open(InstalledItemsHost);
+        e.Handled = true;
+    }
+
+    /// <summary>结果行上的 Enter/Space 等同运行。</summary>
+    private void OnInstalledResultKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (_vm is null || e.Source is TextBox || (e.Key != Key.Enter && e.Key != Key.Space))
+        {
+            return;
+        }
+
+        ItemViewModel? item = ItemOfInstalledResult(e.Source);
+        if (item is null)
+        {
+            return;
+        }
+
+        _vm.RunCommand.Execute(item);
+        e.Handled = true;
+    }
+
+    private static ItemViewModel? ItemOfInstalledResult(object? source)
+        => (source as Visual)?.GetSelfAndVisualAncestors()
+            .Select(visual => visual.DataContext)
+            .OfType<ItemViewModel>()
+            .FirstOrDefault(candidate => candidate.IsSystemResult);
+
+    /// <summary>以管理员身份启动（ShellExecute runas，会弹 UAC）。</summary>
+    private void RunAsAdministrator(ItemViewModel item)
+    {
+        try
+        {
+            var info = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = item.Model.Target,
+                Arguments = item.Model.Arguments ?? string.Empty,
+                UseShellExecute = true,
+                Verb = "runas"
+            };
+
+            string? directory = System.IO.Path.GetDirectoryName(item.Model.Target);
+            if (!string.IsNullOrWhiteSpace(directory) && System.IO.Directory.Exists(directory))
+            {
+                info.WorkingDirectory = directory;
+            }
+
+            System.Diagnostics.Process.Start(info);
+        }
+        catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)
+        {
+            // 用户在 UAC 弹窗上点了「否」
+            _vm?.Toast(AppText.Get(Language.AdministratorPromptDeclined));
+        }
+        catch (Exception ex)
+        {
+            AppLog.Error("以管理员身份运行失败", ex);
+            _vm?.Toast(AppText.Get(Language.AdministratorRunFailedPrefix) + ex.Message);
+        }
+    }
+
     private static Border? TileOf(object? source)
         => (source as Visual)?.GetSelfAndVisualAncestors()
             .OfType<Border>()

@@ -133,6 +133,9 @@ public static class Language
     public const string CopyPath = "QuickApp.Text.CopyPath";
     public const string CopyCommand = "QuickApp.Text.CopyCommand";
     public const string OpenLocation = "QuickApp.Text.OpenLocation";
+    public const string RunAsAdministrator = "QuickApp.Text.RunAsAdministrator";
+    public const string AdministratorPromptDeclined = "QuickApp.Text.AdministratorPromptDeclined";
+    public const string AdministratorRunFailedPrefix = "QuickApp.Text.AdministratorRunFailedPrefix";
     public const string Add = "QuickApp.Text.Add";
     public const string File = "QuickApp.Text.File";
     public const string Directory = "QuickApp.Text.Directory";

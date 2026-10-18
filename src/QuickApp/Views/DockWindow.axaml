@@ -132,7 +132,10 @@
               Padding="5,7"
               Cursor="Hand"
               Focusable="True"
-              PointerPressed="OnInstalledResultPointerPressed">
+              PointerPressed="OnInstalledResultPointerPressed"
+              ContextRequested="OnInstalledResultContextRequested"
+              KeyDown="OnInstalledResultKeyDown"
+              Tag="systemResult">
         <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="9">
           <Border Width="36"
                   Height="36"
