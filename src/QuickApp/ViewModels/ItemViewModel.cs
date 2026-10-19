@@ -92,10 +92,8 @@ public sealed class ItemViewModel : ViewModelBase
     /// <summary>占位状态显示的首字（图标还没提取出来时）。</summary>
     public string Initial => string.IsNullOrEmpty(Name) ? "?" : Name[..1].ToUpperInvariant();
 
-    public string TargetSummary => ItemQuery.DescribeTarget(Model);
-
-    public string Tooltip => (string.IsNullOrWhiteSpace(TargetSummary) ? Name : Name + Environment.NewLine + TargetSummary)
-        + (string.IsNullOrWhiteSpace(Model.Hotkey) ? string.Empty : Environment.NewLine + Model.Hotkey);
+    /// <summary>悬停提示只给名称：路径/热键等详情太长，会盖住相邻图标影响点击。</summary>
+    public string Tooltip => Name;
 
     /// <summary>图标缓存文件的绝对路径。</summary>
     public string? IconFile
