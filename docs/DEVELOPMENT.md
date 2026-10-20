@@ -77,9 +77,11 @@ Windows 上 Dock 置顶时，“关于”会继承原生置顶状态，但其 Av
 
 程序默认在启动时检查 GitHub Releases 的最新稳定版本，也可以在设置页手动检查，或关闭自动检查。更新提示会按当前系统和 CPU 架构选择下载资产：Windows x64 优先选择安装包，Linux 选择 `.deb`，macOS 选择 `.dmg`；没有匹配资产时打开 Release 页面，避免下载错误平台的文件。点击“下载”后界面显示进度，下载完成后还要再次点击“安装/打开安装包”；程序不会静默下载、校验并替换正在运行的程序。每个发布文件旁边的 `.sha256` 可用于完整性校验。
 
-默认检查只访问 GitHub 网页端点：读取 `releases/latest` 的重定向头获取版本号，有新版本时再解析 `expanded_assets/{tag}` 安装包列表，并从 `releases.atom` 取该版本的正文作为「更新说明」（正文不在资产列表页出现，而走 API 容易限流，故用 feed），全程不消耗 API 配额。说明拉取失败只少一段文案，不影响新版本提示、下载与安装入口。版本号已确认而安装包列表暂不可用时，仍显示新版本并提供发布页入口；失败或空资产列表不会写入缓存，下次检查可重新解析。推荐应用解析复用同一策略。`UpdateChecker` 的 `allowApiFallback` 仅供需要 API 回退的调用方显式启用。
+默认检查只访问 GitHub 网页端点：读取 `releases/latest` 的重定向头获取版本号，有新版本时再解析 `expanded_assets/{tag}` 安装包列表，并从 `releases.atom` 取该版本的正文作为「更新说明」（正文不在资产列表页出现，而走 API 容易限流，故用 feed），全程不消耗 API 配额。说明拉取失败只少一段文案，不影响新版本提示、下载与安装入口。版本号已确认而安装包列表暂不可用时，仍显示新版本并提供发布页入口；失败或空资产列表不会写入缓存，下次检查可重新解析。推荐应用同样读取网页端点，按内嵌目录的 `installerSuffixes` 选择当前平台安装包，并要求配对同名 `.sha256`。当前推荐 `dotnet9/Vex-Flutter`，使用独立的 `vex-flutter` 标识，不迁移旧 Vex 的安装记录。`UpdateChecker` 的 `allowApiFallback` 仅供需要 API 回退的调用方显式启用。
 
 这种设计把检查更新和安装更新分开，避免覆盖便携模式、运行中的文件或用户配置。Windows 安装器升级时保留 `%LOCALAPPDATA%\QuickApp\config.json`，卸载也不会删除该配置目录。
+
+推荐列表统一维护在 [`src/QuickApp.Core/RecommendedApps.json`](../src/QuickApp.Core/RecommendedApps.json)，作为程序集内嵌资源随程序发布。名称、各语言介绍、图标、仓库、平台安装包规则与启动路径均来自配置，客户端与原型没有应用专属分支。增删条目及图标维护方式见[推荐应用配置](RECOMMENDED_APPS.md)。
 
 ## 使用说明
 

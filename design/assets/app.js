@@ -17,13 +17,15 @@
   let draft = null, pendingIcon = null, dragId = null, picker = null;
   const returnFocus = new Map();
   let revealTimer, hideTimer, updateTimer, update = null, updateDialogOpen = false, updateChecking = false;
-  const rec = {id:'vex', name:'Vex · 维刻', version:'v1.5.1', phase:stored?.vexInstalled ? 'installed' : 'idle', progress:0};
+  const recommendations = (window.QUICKAPP_RECOMMENDED_APPS || []).map(app => ({...app,
+    phase:stored?.recommendedInstalled?.[app.id] ? 'installed' : 'idle', progress:0}));
 
   function persist() {
     if (configError) { QA.toast('配置读取失败，请先重新加载配置。'); return false; }
     const settings = Object.fromEntries(Object.keys(defaults).map(key => [key, st[key]]));
     savedConfig = {settings, items:items.map(it => ({...it}))};
-    try { localStorage.setItem(storageKey, JSON.stringify({...savedConfig, vexInstalled:rec.phase === 'installed'})); }
+    const recommendedInstalled = Object.fromEntries(recommendations.map(app => [app.id, app.phase === 'installed']));
+    try { localStorage.setItem(storageKey, JSON.stringify({...savedConfig, recommendedInstalled})); }
     catch (_) { QA.toast('浏览器存储不可用，本次修改仅保留到关闭页面。'); }
     return true;
   }
@@ -277,38 +279,52 @@
     } catch (e) { configError = '配置读取失败：' + e.message; refresh(); QA.toast(configError); }
   }
   function renderRec() {
-    const inDock = items.some(it => it.recId === rec.id);
-    const card = h('div', {class:'rec-card', 'data-rec':rec.id}, h('div', {class:'rec-head'},
-      h('span', {class:'rec-icon'}, h('img', {src:'assets/vex-logo.svg', alt:'Vex 图标'})),
-      h('div', {class:'rec-info'}, h('div', {class:'rec-title'}, h('strong', {text:rec.name}), h('span', {class:'rec-ver', text:rec.version})),
-        h('div', {class:'rec-desc', text:'Markdown 编辑器：实时预览、大纲、统计与多格式导出。'}), h('div', {class:'rec-meta', text:'Vex-v1.5.1-win-x64-setup.exe · 40.7 MB'}))));
-    if (['downloading', 'installing'].includes(rec.phase)) card.append(h('div', {class:'rec-download'},
-      h('div', {class:'update-progress' + (rec.phase === 'installing' ? ' indeterminate' : '')}, h('i', {style:'width:' + rec.progress + '%'})),
-      h('span', {class:'rec-pct', text:rec.phase === 'installing' ? '安装中…' : rec.progress + '%'}),
-      rec.phase === 'downloading' ? chip('取消', () => { clearInterval(rec.timer); rec.phase = 'idle'; renderRec(); }) : null));
-    else card.append(h('div', {class:'rec-foot'}, h('div', {class:'rec-actions'},
-      rec.phase === 'installed' ? h('span', {class:'rec-badge', text:'已安装'}) : null,
-      chip(rec.phase === 'idle' ? '安装' : inDock ? '移出 Dock' : '加入 Dock', () => {
-        if (rec.phase === 'idle') installRec();
-        else if (inDock) remove(items.find(it => it.recId === rec.id)); else addRec();
-      }, rec.phase === 'idle'), chip('发布页', () => window.open('https://github.com/dotnet9/Vex/releases/latest', '_blank', 'noopener')))));
-    $('#recList').replaceChildren(card);
+    $('#recList').replaceChildren(...recommendations.map(rec => {
+      const inDock = items.some(it => it.recId === rec.id);
+      const localized = rec.localizations?.[document.documentElement.lang];
+      const displayName = localized?.displayName ?? rec.displayName ?? rec.name;
+      const description = localized?.description ?? rec.description ?? '';
+      const card = h('div', {class:'rec-card', 'data-rec':rec.id}, h('div', {class:'rec-head'},
+        h('span', {class:'rec-icon'}, h('img', {src:rec.icon, alt:rec.name})),
+        h('div', {class:'rec-info'}, h('div', {class:'rec-title'}, h('strong', {'data-catalog-text':'', text:displayName}), h('span', {class:'rec-ver', text:'最新版本'})),
+          h('div', {class:'rec-desc', 'data-catalog-text':'', text:description}), h('div', {class:'rec-meta', text:'安装包实时取自 GitHub Releases · SHA-256 校验'}))));
+      if (['downloading', 'installing'].includes(rec.phase)) card.append(h('div', {class:'rec-download'},
+        h('div', {class:'update-progress' + (rec.phase === 'installing' ? ' indeterminate' : '')}, h('i', {style:'width:' + rec.progress + '%'})),
+        h('span', {class:'rec-pct', text:rec.phase === 'installing' ? '安装中…' : rec.progress + '%'}),
+        rec.phase === 'downloading' ? chip('取消', () => { clearInterval(rec.timer); rec.phase = 'idle'; renderRec(); }) : null));
+      else {
+        const installAction = chip(rec.phase === 'idle' ? '安装' : inDock ? '移出 Dock' : '加入 Dock', () => {
+          if (rec.phase === 'idle') installRec(rec);
+          else if (inDock) remove(items.find(it => it.recId === rec.id)); else addRec(rec);
+        }, rec.phase === 'idle');
+        if (rec.phase === 'idle' && !rec.installerSuffixes?.['win-x64']) {
+          installAction.disabled = true;
+          installAction.textContent = '暂无法获取当前系统的安装包';
+        }
+        card.append(h('div', {class:'rec-foot'}, h('div', {class:'rec-actions'},
+        rec.phase === 'installed' ? h('span', {class:'rec-badge', text:'已安装'}) : null,
+        installAction, chip('发布页', () => window.open(`https://github.com/${rec.owner}/${rec.repo}/releases/latest`, '_blank', 'noopener')))));
+      }
+      return card;
+    }));
   }
-  function addRec() {
+  function addRec(rec) {
     if (configError) { QA.toast('配置读取失败，请先重新加载配置。'); return; }
-    if (!items.some(it => it.recId === rec.id)) items.push({id:'rec-vex', recId:rec.id, name:'Vex', type:'app', target:'C:\\Program Files\\Vex\\Vex.exe', customUrl:'assets/vex-logo.svg'});
-    persist(); refresh(); QA.toast('Vex 快捷方式已加入 Dock');
+    const target = (rec.launcherPathsWindows?.[0] || '').replaceAll('%LOCALAPPDATA%', 'C:\\Users\\User\\AppData\\Local').replaceAll('%ProgramFiles%', 'C:\\Program Files');
+    if (!items.some(it => it.recId === rec.id)) items.push({id:'rec-' + rec.id, recId:rec.id, name:rec.name, type:'app', target, customUrl:rec.icon});
+    persist(); refresh(); QA.toast(rec.name + ' 快捷方式已加入 Dock');
   }
-  function installRec() {
+  function installRec(rec) {
     rec.phase = 'downloading'; rec.progress = 0; renderRec();
     rec.timer = setInterval(() => {
       rec.progress = Math.min(100, rec.progress + 10); renderRec();
       if (rec.progress === 100) {
         clearInterval(rec.timer); rec.phase = 'installing'; renderRec();
-        rec.timer = setTimeout(() => { rec.phase = 'installed'; addRec(); }, 900);
+        rec.timer = setTimeout(() => { rec.phase = 'installed'; addRec(rec); }, 900);
       }
     }, 180);
   }
+  window.addEventListener('quickapp-language-changed', renderRec);
   const updateActions = {
     download() { update.phase = 'downloading'; update.progress = 0; renderUpdate();
       updateTimer = setInterval(() => { update.progress += 10; if (update.progress >= 100) { clearInterval(updateTimer); update.phase = 'ready'; } renderUpdate(); }, 180); },

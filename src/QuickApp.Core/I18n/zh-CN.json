@@ -342,7 +342,7 @@
       "VersionDownloaded": "{0} 下载完成",
       "FixedHotkey": "固定：{0}",
       "Copyright": "版权所有 © Dotnet9",
-      "VexDescription": "Markdown 编辑器：实时预览、大纲、统计与多格式导出。",
+      "RecommendedPackageHint": "安装包实时取自 GitHub Releases · SHA-256 校验",
       "InterfaceLanguage": "语言",
       "ChineseLanguage": "简体中文",
       "TrayAutoStart": "开机启动（{0}）",

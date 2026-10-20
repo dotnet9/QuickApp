@@ -342,7 +342,7 @@
       "VersionDownloaded": "{0} downloaded",
       "FixedHotkey": "Fixed: {0}",
       "Copyright": "Copyright © Dotnet9",
-      "VexDescription": "Markdown editor with live preview, outline, statistics and export.",
+      "RecommendedPackageHint": "Live packages from GitHub Releases · SHA-256 verification",
       "InterfaceLanguage": "Language",
       "ChineseLanguage": "简体中文",
       "TrayAutoStart": "Launch at sign-in ({0})",

@@ -2,9 +2,11 @@ using System;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using QuickApp.Core.Models;
+using QuickApp.Core.Json;
 using QuickApp.Core.Services;
 using Xunit;
 
@@ -13,70 +15,115 @@ namespace QuickApp.Core.Tests;
 public sealed class RecommendedAppsServiceTests
 {
     [Fact]
-    public void Loads_embedded_catalog_with_at_least_one_app()
+    public void Loads_embedded_catalog_with_valid_unique_entries()
     {
-        var service = CreateService("{}");
+        var service = CreateService();
 
         var catalog = service.GetCatalog();
 
-        Assert.NotEmpty(catalog);
+        Assert.NotNull(catalog);
+        Assert.Equal(catalog.Count, catalog.Select(app => app.Id).Distinct(StringComparer.OrdinalIgnoreCase).Count());
         Assert.All(catalog, app =>
         {
             Assert.False(string.IsNullOrWhiteSpace(app.Id));
             Assert.False(string.IsNullOrWhiteSpace(app.Name));
             Assert.False(string.IsNullOrWhiteSpace(app.Owner));
             Assert.False(string.IsNullOrWhiteSpace(app.Repo));
+            Assert.NotEmpty(app.InstallerSuffixes);
+            Assert.All(app.InstallerSuffixes, entry => Assert.False(string.IsNullOrWhiteSpace(entry.Value)));
         });
     }
 
-    [Fact]
-    public async Task Resolves_latest_release_asset_for_current_platform()
+    [Theory]
+    [InlineData("win-x64", "Vex-v0.5.2-windows-x64-setup.exe")]
+    [InlineData("linux-x64", "Vex-v0.5.2-linux-x64.deb")]
+    [InlineData("linux-arm64", "Vex-v0.5.2-linux-arm64.deb")]
+    [InlineData("osx-x64", "Vex-v0.5.2-macos-universal.dmg")]
+    [InlineData("osx-arm64", "Vex-v0.5.2-macos-universal.dmg")]
+    public async Task Resolves_latest_flutter_release_asset_for_platform(string rid, string expectedAsset)
     {
-        RecommendedApp app = CreateService("{}").GetCatalog().First(a => a.Id == "vex");
-        string rid = CurrentRuntimeIdentifier();
-        string expectedAsset = rid == "win-x64"
-            ? "Vex-v1.5.1-win-x64-setup.exe"
-            : $"Vex-v1.5.1-{rid}{PlatformExtension(rid)}";
-
-        var service = CreateService("{}");
+        var service = CreateService(runtimeIdentifier: rid);
+        RecommendedApp app = CreateApp();
 
         RecommendedRelease? release = await service.ResolveAsync(app, force: true);
 
         // 网页端点把根相对链接补全为 github.com 前缀
-        string downloadBase = "https://github.com/dotnet9/Vex/releases/download/v1.5.1/";
+        string downloadBase = "https://github.com/dotnet9/Vex-Flutter/releases/download/v0.5.2/";
         Assert.NotNull(release);
-        Assert.Equal("v1.5.1", release!.Tag);
+        Assert.Equal("v0.5.2", release!.Tag);
         Assert.Equal(downloadBase + expectedAsset, release.AssetUrl);
         Assert.Equal(expectedAsset, release.AssetName);
         Assert.Equal(downloadBase + expectedAsset + ".sha256", release.ChecksumUrl);
         // 网页端点（默认路径，不占 API 配额）不携带资产大小，允许为 null；下载时由 Content-Length 补足
         Assert.Null(release.AssetSize);
-        Assert.False(string.IsNullOrWhiteSpace(release.PageUrl));
+        Assert.Equal("https://github.com/dotnet9/Vex-Flutter/releases/tag/v0.5.2", release.PageUrl);
     }
 
     [Fact]
     public async Task Returns_null_when_release_has_no_matching_platform_asset()
     {
-        RecommendedApp app = CreateService("{}").GetCatalog().First(a => a.Id == "vex");
+        RecommendedApp app = CreateApp();
         // expanded_assets 只有别的平台的资产
-        string html = "<a href=\"/dotnet9/Vex/releases/download/v1.5.1/Vex-0.9.0-osx-arm64.dmg\">x</a>";
-        var handler = new StubHandler(_ => "{}", expandedHtml: html);
-        var service = new RecommendedAppsService(new HttpClient(handler) { BaseAddress = new Uri("https://github.com/") });
+        string html = "<a href=\"/dotnet9/Vex-Flutter/releases/download/v0.5.2/Vex-v0.5.2-android-arm64.apk\">x</a>";
+        var service = CreateService(new StubHandler(expandedHtml: html));
 
         RecommendedRelease? release = await service.ResolveAsync(app, force: true);
 
         Assert.Null(release);
     }
 
+    [Theory]
+    [InlineData("/dotnet9/Vex-Flutter/releases/download/v0.5.2/", false)]
+    [InlineData("/dotnet9/Vex/releases/download/v0.5.2/", true)]
+    [InlineData("/dotnet9/Vex-Flutter/releases/download/v0.5.1/", true)]
+    [InlineData("https://example.test/dotnet9/Vex-Flutter/releases/download/v0.5.2/", true)]
+    public async Task Rejects_missing_checksum_or_assets_outside_latest_repository(string prefix, bool includeChecksum)
+    {
+        const string asset = "Vex-v0.5.2-windows-x64-setup.exe";
+        string html = Link(prefix + asset) + (includeChecksum ? Link(prefix + asset + ".sha256") : string.Empty);
+        var service = CreateService(new StubHandler(expandedHtml: html), "win-x64");
+
+        Assert.Null(await service.ResolveAsync(CreateApp()));
+    }
+
+    [Fact]
+    public async Task Resolves_tag_after_client_follows_redirect()
+    {
+        var service = CreateService(new StubHandler(followRedirect: true));
+
+        Assert.NotNull(await service.ResolveAsync(CreateApp()));
+    }
+
+    [Fact]
+    public async Task Failed_asset_request_is_not_cached()
+    {
+        var handler = new StubHandler { AssetsStatusCode = HttpStatusCode.ServiceUnavailable };
+        var service = CreateService(handler);
+        RecommendedApp app = CreateApp();
+
+        Assert.Null(await service.ResolveAsync(app));
+        handler.AssetsStatusCode = HttpStatusCode.OK;
+        Assert.NotNull(await service.ResolveAsync(app));
+        Assert.Equal(2, handler.ExpandedRequests);
+    }
+
+    [Fact]
+    public async Task Unsupported_platform_has_no_package()
+    {
+        var service = CreateService(runtimeIdentifier: "win-arm64");
+
+        Assert.Null(await service.ResolveAsync(CreateApp()));
+    }
+
     [Fact]
     public async Task Caches_release_within_ttl_and_skips_second_request()
     {
-        RecommendedApp app = CreateService("{}").GetCatalog().First(a => a.Id == "vex");
-        var handler = new StubHandler(_ => "{}");
-        var service = new RecommendedAppsService(new HttpClient(handler) { BaseAddress = new Uri("https://github.com/") });
+        var handler = new StubHandler();
+        var service = CreateService(handler);
+        RecommendedApp app = CreateApp();
 
-        await service.ResolveAsync(app, force: true);
-        await service.ResolveAsync(app); // TTL 内：不应再请求资产列表
+        Assert.NotNull(await service.ResolveAsync(app, force: true));
+        Assert.NotNull(await service.ResolveAsync(app)); // TTL 内：不应再请求资产列表
 
         Assert.Equal(1, handler.ExpandedRequests);
     }
@@ -84,12 +131,12 @@ public sealed class RecommendedAppsServiceTests
     [Fact]
     public async Task Force_bypasses_cache()
     {
-        RecommendedApp app = CreateService("{}").GetCatalog().First(a => a.Id == "vex");
-        var handler = new StubHandler(_ => "{}");
-        var service = new RecommendedAppsService(new HttpClient(handler) { BaseAddress = new Uri("https://github.com/") });
+        var handler = new StubHandler();
+        var service = CreateService(handler);
+        RecommendedApp app = CreateApp();
 
-        await service.ResolveAsync(app, force: true);
-        await service.ResolveAsync(app, force: true);
+        Assert.NotNull(await service.ResolveAsync(app, force: true));
+        Assert.NotNull(await service.ResolveAsync(app, force: true));
 
         Assert.Equal(2, handler.ExpandedRequests);
     }
@@ -124,50 +171,80 @@ public sealed class RecommendedAppsServiceTests
         }
     }
 
-    private static string PlatformExtension(string rid)
-        => rid.StartsWith("linux-", StringComparison.OrdinalIgnoreCase) ? ".deb"
-            : rid.StartsWith("osx-", StringComparison.OrdinalIgnoreCase) ? ".dmg"
-            : "-setup.exe";
-
-    private static RecommendedAppsService CreateService(string releaseJson)
+    [Fact]
+    public void Reads_application_text_from_configuration_with_language_fallbacks()
     {
-        var http = new HttpClient(new StubHandler(_ => releaseJson))
-        {
-            BaseAddress = new Uri("https://github.com/")
-        };
-        return new RecommendedAppsService(http);
+        const string json = """
+            {
+              "id": "another-app",
+              "name": "Notes",
+              "displayName": "笔记工具",
+              "description": "默认介绍",
+              "localizations": {
+                "en-US": { "displayName": "My Notes", "description": "Configured introduction" },
+                "ja-JP": { "displayName": "ノート" }
+              }
+            }
+            """;
+        RecommendedApp app = JsonSerializer.Deserialize(json, AppJsonContext.Default.RecommendedApp)!;
+
+        Assert.Equal("My Notes", app.DisplayNameForCulture("en-US"));
+        Assert.Equal("Configured introduction", app.DescriptionForCulture("en-US"));
+        Assert.Equal("ノート", app.DisplayNameForCulture("ja-JP"));
+        Assert.Equal("默认介绍", app.DescriptionForCulture("ja-JP"));
+        Assert.Equal("笔记工具", app.DisplayNameForCulture("fr-FR"));
+        Assert.Equal("默认介绍", app.DescriptionForCulture(null));
+        Assert.Equal("Notes", new RecommendedApp { Name = "Notes" }.DisplayNameForCulture("en-US"));
     }
 
-    private static string CurrentRuntimeIdentifier()
+    // 解析测试使用固定样例，与内置推荐列表的增删无关。
+    private static RecommendedApp CreateApp() => new()
     {
-        string os = OperatingSystem.IsWindows() ? "win"
-            : OperatingSystem.IsLinux() ? "linux"
-            : OperatingSystem.IsMacOS() ? "osx"
-            : throw new PlatformNotSupportedException();
-        string arch = System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture switch
+        Id = "release-fixture",
+        Name = "Vex",
+        Owner = "dotnet9",
+        Repo = "Vex-Flutter",
+        InstallerSuffixes = new()
         {
-            System.Runtime.InteropServices.Architecture.X64 => "x64",
-            System.Runtime.InteropServices.Architecture.Arm64 => "arm64",
-            _ => "x64"
-        };
-        return os + "-" + arch;
+            ["win-x64"] = "-windows-x64-setup.exe",
+            ["linux-x64"] = "-linux-x64.deb",
+            ["linux-arm64"] = "-linux-arm64.deb",
+            ["osx-x64"] = "-macos-universal.dmg",
+            ["osx-arm64"] = "-macos-universal.dmg"
+        }
+    };
+
+    private static RecommendedAppsService CreateService(StubHandler? handler = null, string runtimeIdentifier = "win-x64")
+    {
+        return new RecommendedAppsService(new HttpClient(handler ?? new StubHandler()), runtimeIdentifier: runtimeIdentifier);
     }
+
+    private static string Link(string url) => "<a href=\"" + url + "\">download</a>";
 
     /// <summary>
-    /// 按请求路径返回内容：releases/latest 302 到 tag，expanded_assets 返回当前平台资产
-    /// （expandedHtml 覆盖时用调用方给的），API 兜底返回 respond 的 release JSON。
+    /// 最新发布的真实命名覆盖全部桌面平台，并混入 Android 安装包与旧仓库链接。
     /// </summary>
-    private sealed class StubHandler(Func<string, string> respond, string? expandedHtml = null) : HttpMessageHandler
+    private sealed class StubHandler(string? expandedHtml = null, bool followRedirect = false) : HttpMessageHandler
     {
         public int ExpandedRequests;
+        public HttpStatusCode AssetsStatusCode = HttpStatusCode.OK;
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             string url = request.RequestUri?.ToString() ?? string.Empty;
+            Assert.StartsWith("https://github.com/dotnet9/Vex-Flutter/", url);
             if (url.Contains("/releases/latest", StringComparison.Ordinal))
             {
-                var redirect = new HttpResponseMessage(HttpStatusCode.Found);
-                redirect.Headers.Location = new Uri("https://github.com/dotnet9/Vex/releases/tag/v1.5.1");
+                var page = new Uri("https://github.com/dotnet9/Vex-Flutter/releases/tag/v0.5.2");
+                var redirect = new HttpResponseMessage(followRedirect ? HttpStatusCode.OK : HttpStatusCode.Found);
+                if (followRedirect)
+                {
+                    redirect.RequestMessage = new HttpRequestMessage(HttpMethod.Get, page);
+                }
+                else
+                {
+                    redirect.Headers.Location = new Uri(page.PathAndQuery, UriKind.Relative);
+                }
                 return Task.FromResult(redirect);
             }
 
@@ -176,29 +253,26 @@ public sealed class RecommendedAppsServiceTests
                 Interlocked.Increment(ref ExpandedRequests);
                 if (expandedHtml is not null)
                 {
-                    return Task.FromResult(JsonResponse(expandedHtml));
+                    return Task.FromResult(HtmlResponse(expandedHtml));
                 }
 
-                string rid = CurrentRuntimeIdentifier();
-                string asset = rid == "win-x64"
-                    ? "Vex-v1.5.1-win-x64-setup.exe"
-                    : $"Vex-v1.5.1-{rid}{PlatformExtension(rid)}";
-                string html = "<a href=\"/dotnet9/Vex/releases/download/v1.5.1/" + asset + "\">x</a>" +
-                    "<a href=\"https://github.com/dotnet9/Vex/releases/download/v1.5.1/" + asset + ".sha256\">s</a>";
-                return Task.FromResult(JsonResponse(html));
-            }
-
-            if (url.Contains("api.github.com", StringComparison.Ordinal))
-            {
-                return Task.FromResult(JsonResponse(respond(url)));
+                string[] suffixes = ["android-arm64.apk", "windows-x64-setup.exe", "macos-universal.dmg", "linux-x64.deb", "linux-arm64.deb"];
+                string html = Link("/dotnet9/Vex/releases/download/v0.5.2/Vex-v0.5.2-windows-x64-setup.exe");
+                foreach (string suffix in suffixes)
+                {
+                    string asset = "Vex-v0.5.2-" + suffix;
+                    html += Link("/dotnet9/Vex-Flutter/releases/download/v0.5.2/" + asset) +
+                        Link("https://github.com/dotnet9/Vex-Flutter/releases/download/v0.5.2/" + asset + ".sha256");
+                }
+                return Task.FromResult(HtmlResponse(html));
             }
 
             return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
         }
 
-        private static HttpResponseMessage JsonResponse(string content)
+        private HttpResponseMessage HtmlResponse(string content)
         {
-            var response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(content) };
+            var response = new HttpResponseMessage(AssetsStatusCode) { Content = new StringContent(content) };
             return response;
         }
     }

@@ -1,6 +1,7 @@
 namespace QuickApp.Core.Models;
 
 using System;
+using System.Collections.Generic;
 
 /// <summary>
 /// 推荐应用目录条目：只描述「是什么软件、从哪个仓库取发布包、装完后去哪找主程序」。
@@ -21,11 +22,29 @@ public sealed class RecommendedApp
     /// <summary>一句话介绍。</summary>
     public string? Description { get; set; }
 
+    /// <summary>按界面语言配置展示名与介绍；未配置的字段使用默认文案。</summary>
+    public Dictionary<string, RecommendedAppText> Localizations { get; set; } = new();
+
+    /// <summary>Assets/Recommended 下的 PNG 文件名；为空或不存在时使用 QuickApp 图标。</summary>
+    public string? Icon { get; set; }
+
+    public string DisplayNameForCulture(string? culture)
+        => LocalizedText(culture)?.DisplayName ?? DisplayName ?? Name;
+
+    public string DescriptionForCulture(string? culture)
+        => LocalizedText(culture)?.Description ?? Description ?? string.Empty;
+
+    private RecommendedAppText? LocalizedText(string? culture)
+        => culture is not null && Localizations.TryGetValue(culture, out RecommendedAppText? text) ? text : null;
+
     /// <summary>GitHub 仓库拥有者。</summary>
     public string Owner { get; set; } = string.Empty;
 
     /// <summary>GitHub 仓库名。</summary>
     public string Repo { get; set; } = string.Empty;
+
+    /// <summary>按运行平台标识配置安装包文件名后缀；版本与下载地址仍从最新发布实时解析。</summary>
+    public Dictionary<string, string> InstallerSuffixes { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Windows 安装器的静默安装参数（如 Inno Setup 的 /VERYSILENT）；
@@ -48,4 +67,11 @@ public sealed class RecommendedApp
             : OperatingSystem.IsMacOS() ? LauncherPathsMacOS
             : OperatingSystem.IsLinux() ? LauncherPathsLinux
             : System.Array.Empty<string>();
+}
+
+public sealed class RecommendedAppText
+{
+    public string? DisplayName { get; set; }
+
+    public string? Description { get; set; }
 }

@@ -343,7 +343,7 @@ public static class Language
     public const string VersionDownloaded = "QuickApp.Text.VersionDownloaded";
     public const string FixedHotkey = "QuickApp.Text.FixedHotkey";
     public const string Copyright = "QuickApp.Text.Copyright";
-    public const string VexDescription = "QuickApp.Text.VexDescription";
+    public const string RecommendedPackageHint = "QuickApp.Text.RecommendedPackageHint";
     public const string InterfaceLanguage = "QuickApp.Text.InterfaceLanguage";
     public const string ChineseLanguage = "QuickApp.Text.ChineseLanguage";
     public const string TrayAutoStart = "QuickApp.Text.TrayAutoStart";

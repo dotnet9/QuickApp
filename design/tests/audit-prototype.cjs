@@ -6,6 +6,7 @@ const { pathToFileURL } = require('node:url');
   const productVersion=fs.readFileSync(path.resolve(__dirname,'../../Directory.Build.props'),'utf8').match(/<VersionPrefix\b[^>]*>(\d+\.\d+\.\d+)<\/VersionPrefix>/)?.[1];
   if(!productVersion)throw new Error('Product version is missing');
   const nextVersion=productVersion.split('.').map(Number);nextVersion[2]++;
+  const catalog=JSON.parse(fs.readFileSync(path.resolve(__dirname,'../../src/QuickApp.Core/RecommendedApps.json'),'utf8'));
   const output=path.resolve(process.env.QUICKAPP_AUDIT_OUTPUT||'artifacts/prototype-verification');fs.mkdirSync(output,{recursive:true});
   const browser=await chromium.launch({headless:true,...(process.env.CI?{}:{channel:'msedge'})});
   const page=await browser.newPage({viewport:{width:1280,height:900},deviceScaleFactor:1});
@@ -25,6 +26,7 @@ const { pathToFileURL } = require('node:url');
   const isolated=path.join(output,'standalone');fs.mkdirSync(isolated,{recursive:true});
   const entry=path.join(isolated,'QuickApp.html');fs.copyFileSync(path.resolve(__dirname,'../index.html'),entry);
   const dependencies=[];page.on('request',request=>{if(!request.url().startsWith('data:')&&request.url()!==pathToFileURL(entry).href)dependencies.push(request.url());});
+  await page.addInitScript(()=>localStorage.setItem('quickapp-prototype-v2',JSON.stringify({settings:{},items:[],recommendedInstalled:{'removed-app':true}})));
   await page.goto(pathToFileURL(entry).href);
   await page.locator('#btnMenu').click();await page.getByRole('menuitem',{name:'设置',exact:true}).click();
   // 入场动画会缩放渲染边界，设计尺寸应检查布局值。
@@ -77,6 +79,29 @@ const { pathToFileURL } = require('node:url');
     await page.locator('.settings-card').screenshot({path:path.join(output,'minimum-data-'+language+'.png'),animations:'disabled'});routes++;
     await page.locator('.settings-card').evaluate(element=>element.style.height='');
   }
+  await page.locator('[data-tab="recommend"]').click();
+  if(await page.locator('.rec-card').count()!==catalog.length)throw new Error('Recommendation count differs from the embedded catalog');
+  for(const app of catalog){
+    const recommended=page.locator(`.rec-card[data-rec="${app.id}"]`),text=app.localizations?.['en-US'];
+    if(await recommended.locator('.rec-title strong').textContent()!==(text?.displayName??app.displayName??app.name) || await recommended.locator('.rec-desc').textContent()!==(text?.description??app.description??''))throw new Error('Recommendation text differs from configuration: '+app.id);
+    const iconPath=app.icon?path.resolve(__dirname,'../../src/QuickApp/Assets/Recommended',app.icon):null;
+    const icon=fs.readFileSync(iconPath&&fs.existsSync(iconPath)?iconPath:path.resolve(__dirname,'../../logo.png'));
+    if(await recommended.locator('.rec-icon img').getAttribute('src')!=='data:image/png;base64,'+icon.toString('base64'))throw new Error('Recommendation icon differs from configuration: '+app.id);
+    await page.evaluate(()=>{window.open=url=>{window.openedRelease=url;};});
+    await recommended.getByRole('button',{name:'Release page',exact:true}).click();
+    if(await page.evaluate(()=>window.openedRelease)!==`https://github.com/${app.owner}/${app.repo}/releases/latest`)throw new Error('Recommendation release page differs from configuration');
+    if(!app.installerSuffixes?.['win-x64'])continue;
+    await recommended.getByRole('button',{name:'Install',exact:true}).click();
+    await recommended.getByRole('button',{name:'Cancel',exact:true}).click();
+    await recommended.getByRole('button',{name:'Install',exact:true}).click();
+    await recommended.getByRole('button',{name:'Remove from Dock',exact:true}).waitFor();
+    const installed=await page.evaluate(()=>JSON.parse(localStorage.getItem('quickapp-prototype-v2')));
+    if(!installed.recommendedInstalled[app.id] || installed.items.filter(item=>item.recId===app.id).length!==1 || installed.items.find(item=>item.recId===app.id).name!==app.name)throw new Error('Configured recommendation installation failed');
+    await recommended.getByRole('button',{name:'Remove from Dock',exact:true}).click();
+    await recommended.getByRole('button',{name:'Add to Dock',exact:true}).click();
+    if(await page.locator(`#dockItems .dock-item[data-id="rec-${app.id}"]`).count()!==1)throw new Error('Recommendation cannot be added back to the Dock');
+  }
+  await page.locator('.settings-card').screenshot({path:path.join(output,'recommended-apps.png'),animations:'disabled'});routes++;
   await page.locator('[data-tab="appearance"]').click();await setMode('system');
   await page.locator('#settingsClose').click();await page.locator('#btnMenu').click();
   await page.getByRole('menuitem',{name:'About',exact:true}).click();
@@ -112,6 +137,27 @@ const { pathToFileURL } = require('node:url');
   await page.locator('[data-tab="about"]').click();await page.locator('#aboutCheckUpdate').click();
   if(!(await updateButtons.getByRole('button',{name:'Install',exact:true}).isVisible()))throw new Error('Settings About must retain the same downloaded package');
   if(await page.locator('#dialogLayer .modal-card').count()!==1)throw new Error('Update entries must share a single dialog');
+  const fallbackIcon='data:image/png;base64,'+fs.readFileSync(path.resolve(__dirname,'../../logo.png')).toString('base64');
+  const sampleCatalog=['one','two'].map(id=>({id,name:id,description:'Configured '+id,icon:fallbackIcon,owner:'example',repo:id,
+    installerSuffixes:{'win-x64':'-setup.exe'},launcherPathsWindows:[`%LOCALAPPDATA%\\Programs\\${id}\\${id}.exe`]}));
+  for(const configuredApps of [[],sampleCatalog]){
+    const fixture=await browser.newPage({viewport:{width:1280,height:900}});
+    fixture.on('pageerror',error=>errors.push(error.message));
+    await fixture.addInitScript(apps=>{
+      Object.defineProperty(window,'QUICKAPP_RECOMMENDED_APPS',{get:()=>apps,set:()=>{}});
+      localStorage.setItem('quickapp-prototype-v2',JSON.stringify({settings:{},items:[]}));
+      localStorage.setItem('quickapp-appearance',JSON.stringify({language:'en-US',palette:'DotNet'}));
+    },configuredApps);
+    await fixture.goto(pathToFileURL(entry).href);
+    await fixture.locator('#btnMenu').click();await fixture.getByRole('menuitem',{name:'Settings',exact:true}).click();
+    await fixture.locator('[data-tab="recommend"]').click();
+    if(await fixture.locator('.rec-card').count()!==configuredApps.length)throw new Error('Empty or multiple-app catalog was not rendered');
+    for(const app of configuredApps)await fixture.locator(`.rec-card[data-rec="${app.id}"]`).getByRole('button',{name:'Install',exact:true}).click();
+    for(const app of configuredApps)await fixture.locator(`.rec-card[data-rec="${app.id}"]`).getByRole('button',{name:'Remove from Dock',exact:true}).waitFor();
+    if(await fixture.locator('#dockItems .dock-item').count()!==configuredApps.length)throw new Error('Multiple recommendations share installation or Dock state');
+    await fixture.locator('.settings-card').screenshot({path:path.join(output,`recommended-count-${configuredApps.length}.png`),animations:'disabled'});routes++;
+    await fixture.close();
+  }
   if(dependencies.length)throw new Error('Unexpected external dependency: '+dependencies.join(', '));
   if(errors.length)throw new Error(errors.join('\n'));
   await browser.close();console.log(`PASS: ${routes} rendered states; zero JavaScript errors`);

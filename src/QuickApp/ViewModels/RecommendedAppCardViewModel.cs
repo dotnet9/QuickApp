@@ -67,7 +67,7 @@ public sealed class RecommendedAppCardViewModel : ViewModelBase
         _installCompleted = installCompleted;
         _dockMembershipChanged = dockMembershipChanged;
         _toast = toast;
-        Icon = LoadIcon(app.Id);
+        Icon = LoadIcon(app.Icon);
 
         InstallCommand = ReactiveCommand.CreateFromTask(InstallAsync);
         CancelCommand = ReactiveCommand.Create(CancelDownload);
@@ -79,12 +79,12 @@ public sealed class RecommendedAppCardViewModel : ViewModelBase
 
     public string Id => _app.Id;
 
-    /// <summary>卡片图标：Assets/rec-{id}.png 命名约定，缺失时回退 QuickApp logo；两者都不可用为 null（图标区留空）。</summary>
+    /// <summary>卡片图标由目录配置，缺失时回退 QuickApp logo。</summary>
     public IImage? Icon { get; }
 
-    public string DisplayName => CodeWF.Toolkit.Lang.I18nManager.Instance.Culture?.Name == "en-US" || string.IsNullOrWhiteSpace(_app.DisplayName) ? _app.Name : _app.DisplayName!;
+    public string DisplayName => _app.DisplayNameForCulture(CodeWF.Toolkit.Lang.I18nManager.Instance.Culture?.Name);
 
-    public string Description => _app.Id == "vex" ? AppText.Get(Language.VexDescription) : _app.Description ?? string.Empty;
+    public string Description => _app.DescriptionForCulture(CodeWF.Toolkit.Lang.I18nManager.Instance.Culture?.Name);
 
     public ICommand InstallCommand { get; }
 
@@ -451,24 +451,29 @@ public sealed class RecommendedAppCardViewModel : ViewModelBase
         return Math.Max(1, bytes / 1024) + " KB";
     }
 
-    private static IImage? LoadIcon(string appId)
+    private static IImage? LoadIcon(string? icon)
     {
-        try
-        {
-            return new Avalonia.Media.Imaging.Bitmap(
-                Avalonia.Platform.AssetLoader.Open(new Uri($"avares://QuickApp/Assets/rec-{appId}.png")));
-        }
-        catch
+        if (!string.IsNullOrWhiteSpace(icon))
         {
             try
             {
                 return new Avalonia.Media.Imaging.Bitmap(
-                    Avalonia.Platform.AssetLoader.Open(new Uri("avares://QuickApp/Assets/logo.png")));
+                    Avalonia.Platform.AssetLoader.Open(new Uri($"avares://QuickApp/Assets/Recommended/{icon}")));
             }
             catch
             {
-                return null;
+                // 未提供专属图标时使用产品图标。
             }
+        }
+
+        try
+        {
+            return new Avalonia.Media.Imaging.Bitmap(
+                Avalonia.Platform.AssetLoader.Open(new Uri("avares://QuickApp/Assets/logo.png")));
+        }
+        catch
+        {
+            return null;
         }
     }
 }

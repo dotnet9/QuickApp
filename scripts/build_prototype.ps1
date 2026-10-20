@@ -16,7 +16,18 @@ $source = [regex]::Replace($source, '<script src="([^"]+)"></script>', {
     param($match)
     '<script>' + [IO.File]::ReadAllText((Join-Path $design $match.Groups[1].Value)).Replace('</script', '<\/script') + '</script>'
 })
-foreach ($asset in '../logo.svg','assets/vex-logo.svg') {
+# 与客户端读取同一份目录，离线原型直接内嵌配置及图标。
+$catalog = @([IO.File]::ReadAllText((Join-Path $root 'src/QuickApp.Core/RecommendedApps.json')) | ConvertFrom-Json -AsHashtable)
+foreach ($app in $catalog) {
+    $iconPath = if ($app.icon) { Join-Path $root ('src/QuickApp/Assets/Recommended/' + $app.icon) } else { $null }
+    if ($iconPath -and (Test-Path -LiteralPath $iconPath -PathType Leaf)) {
+        $app.icon = 'data:image/png;base64,' + [Convert]::ToBase64String([IO.File]::ReadAllBytes($iconPath))
+    } else {
+        $app.icon = 'data:image/png;base64,' + [Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path $root 'logo.png')))
+    }
+}
+$source = $source.Replace('__RECOMMENDED_APPS__', (ConvertTo-Json -InputObject $catalog -Depth 20 -Compress -EscapeHandling EscapeHtml))
+foreach ($asset in @('../logo.svg')) {
     $assetPath = [IO.Path]::GetFullPath((Join-Path $design $asset))
     $svg = [IO.File]::ReadAllText($assetPath).ReplaceLineEndings("`n")
     $uri = 'data:image/svg+xml;base64,' + [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($svg))

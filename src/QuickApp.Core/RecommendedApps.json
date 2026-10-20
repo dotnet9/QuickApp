@@ -1,14 +1,28 @@
 [
   {
-    "id": "vex",
+    "id": "vex-flutter",
     "name": "Vex",
     "displayName": "Vex · 维刻",
-    "description": "极简之力，妙笔成章 —— 跨平台 Markdown 编辑器：实时预览、大纲导航、文档统计，可导出 HTML / PDF / Word 与公众号富文本。",
+    "description": "本地优先的 Markdown 写作空间：即时编辑、源码预览、思维导图与多格式导出。",
+    "localizations": {
+      "en-US": {
+        "displayName": "Vex",
+        "description": "Local-first Markdown workspace with instant editing, source preview, mind maps and export."
+      }
+    },
+    "icon": "vex-flutter.png",
     "owner": "dotnet9",
-    "repo": "Vex",
+    "repo": "Vex-Flutter",
+    "installerSuffixes": {
+      "win-x64": "-windows-x64-setup.exe",
+      "linux-x64": "-linux-x64.deb",
+      "linux-arm64": "-linux-arm64.deb",
+      "osx-x64": "-macos-universal.dmg",
+      "osx-arm64": "-macos-universal.dmg"
+    },
     "installArgumentsWindows": "/VERYSILENT /NORESTART /SUPPRESSMSGBOXES",
-    "launcherPathsWindows": [ "%LOCALAPPDATA%\\Programs\\Vex\\Vex.exe", "%ProgramFiles%\\Vex\\Vex.exe" ],
-    "launcherPathsLinux": [ "/usr/bin/vex", "/opt/Vex/vex" ],
+    "launcherPathsWindows": [ "%LOCALAPPDATA%\\Programs\\Vex\\vex.exe" ],
+    "launcherPathsLinux": [ "/usr/bin/vex", "/usr/lib/vex/vex" ],
     "launcherPathsMacOS": [ "/Applications/Vex.app" ]
   }
 ]
